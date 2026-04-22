@@ -19,14 +19,14 @@ export interface AziendaCreateRequest {
 }
 
 export class AziendaService {
-    private static basePath = '/api/aziende';
+    private static basePath = '/api/anagrafica';
 
     /**
      * Recupera tutte le aziende
      */
     static async getAll(): Promise<Azienda[]> {
         // Specifichiamo che il server risponde con un array di AziendaData
-        const response = await httpClient.get<AziendaData[]>(this.basePath);
+        const response = await httpClient.get<AziendaData[]>(this.basePath + '/aziende');
         return response.data.map((data) => new Azienda(data));
     }
 
@@ -36,7 +36,7 @@ export class AziendaService {
      */
     static async create(payload: AziendaCreateRequest): Promise<Azienda> {
         // Specifichiamo che la risposta sarà un oggetto AziendaData
-        const response = await httpClient.post<AziendaData>(this.basePath, payload);
+        const response = await httpClient.post<AziendaData>(this.basePath + '/registrazione', payload);
         return new Azienda(response.data);
     }
 
@@ -44,6 +44,6 @@ export class AziendaService {
      * Elimina un'azienda tramite ID
      */
     static async delete(idUtente: number | string): Promise<void> {
-        await httpClient.delete(`${this.basePath}/${idUtente}`);
+        await httpClient.delete(`${this.basePath}/aziende/${idUtente}`);
     }
 }

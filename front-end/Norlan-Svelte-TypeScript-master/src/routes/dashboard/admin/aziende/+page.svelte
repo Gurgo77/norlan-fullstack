@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale, slide } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import {
 		Building2, Plus, X, Trash2,
 		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle,
