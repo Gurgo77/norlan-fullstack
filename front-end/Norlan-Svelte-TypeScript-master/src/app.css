@@ -1,0 +1,95 @@
+@import 'tailwindcss';
+
+
+@keyframes typing {
+    from {
+      width: 0;
+    }
+    to {
+      width: 100%;
+    }
+  }
+
+  .typing::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 2px;
+    background: white;
+    animation: typing 2s steps(100, end) infinite;
+  }
+
+  @keyframes slideInFromBottom {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .slide-in-bottom {
+    animation: slideInFromBottom 0.8s ease-out forwards;
+  }
+
+   /* Pulsazione per il pulsante */
+   @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+
+  
+
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+
+  /* Rotazione per l'icona */
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .float {
+    animation: float 3s infinite;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  .ombraHome {
+    box-shadow: 0 10px 20px 10px rgba(0, 0, 0, 0.3); /* Ombra più forte */
+  }
+
+  .ombraChiSiamo {
+    box-shadow: 0 10px 10px 10px rgba(0, 0, 0, 0.3); /* Ombra più forte */
+  }

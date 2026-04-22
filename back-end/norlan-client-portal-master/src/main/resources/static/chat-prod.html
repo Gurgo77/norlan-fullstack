@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Chat Produzione</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body style="font-family: Arial; padding: 20px;">
+<h2>Collaudo Produzione (Sicurezza JWT Attiva)</h2>
+
+<div>
+    <label><b>1. Incolla il tuo JWT Token (da Postman):</b></label><br>
+    <textarea id="jwtToken" rows="3" style="width:100%;" placeholder="eyJhbGciOiJIUz..."></textarea>
+</div><br>
+
+<div>
+    <label><b>2. Tuo ID Utente:</b></label> <input type="number" id="myId" value="1">
+    <button onclick="connetti()">Connetti e Autentica</button>
+</div>
+
+<hr>
+<div id="chatArea" style="display:none;">
+    <label><b>ID Destinatario:</b></label> <input type="number" id="targetId" value="2"><br><br>
+    <input type="text" id="msg" placeholder="Scrivi un messaggio..." style="width: 70%;">
+    <button onclick="invia()">Invia Messaggio</button>
+
+    <h3>Messaggi:</h3>
+    <ul id="listaMessaggi" style="background:#f4f4f4; padding:20px; min-height: 200px;"></ul>
+</div>
+
+<script>
+    let stompClient = null;
+
+    function connetti() {
+        const token = document.getElementById('jwtToken').value.trim();
+        const myId = document.getElementById('myId').value;
+        if(!token) return alert("Devi incollare il token JWT!");
+
+        // 1. Ci connettiamo al nostro stesso server in modo nativo
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        // 2. INIEZIONE DI PRODUZIONE: Passiamo l'header Authorization nel payload STOMP
+        const stompHeaders = {
+            'Authorization': 'Bearer ' + token
+        };
+
+        stompClient.connect(stompHeaders, function (frame) {
+            alert("Autenticazione Riuscita! Connesso come ID " + myId);
+            document.getElementById('chatArea').style.display = 'block';
+
+            // 1. Ascoltiamo i messaggi normali (Questo c'era già)
+            stompClient.subscribe('/user/' + myId + '/queue/messages', function (messaggio) {
+                const data = JSON.parse(messaggio.body);
+                const li = document.createElement('li');
+                li.innerHTML = `<b>Da ${data.nomeMittente}:</b> ${data.testo}`;
+                document.getElementById('listaMessaggi').appendChild(li);
+            });
+
+            // 🔥 2. AGGIUNGI QUESTO: Ascoltiamo la coda degli errori privata
+            stompClient.subscribe('/user/queue/errors', function (messaggioErrore) {
+                // Il server invia solo una stringa di testo per l'errore, non un JSON
+                alert("⚠️ BLOCCO SICUREZZA: " + messaggioErrore.body);
+
+                // Opzionale: rimuovi l'ultimo messaggio "finto" che avevi aggiunto alla lista
+                // visto che il server l'ha rifiutato
+                const lista = document.getElementById('listaMessaggi');
+                if (lista.lastChild) {
+                    lista.removeChild(lista.lastChild);
+                }
+            });
+
+        }, function(error) {
+            alert("Errore o Token Rifiutato dal Server. Guarda la console.");
+        });
+    }
+
+    function invia() {
+        const testo = document.getElementById('msg').value;
+        const targetId = document.getElementById('targetId').value;
+        const myId = document.getElementById('myId').value;
+
+        const payload = { idMittente: parseInt(myId), idDestinatario: parseInt(targetId), testo: testo };
+
+        stompClient.send("/app/chat.send", {}, JSON.stringify(payload));
+
+        const li = document.createElement('li');
+        li.innerHTML = `<span style="color:blue"><b>Tu:</b> ${testo}</span>`;
+        document.getElementById('listaMessaggi').appendChild(li);
+        document.getElementById('msg').value = '';
+    }
+</script>
+</body>
+</html>
