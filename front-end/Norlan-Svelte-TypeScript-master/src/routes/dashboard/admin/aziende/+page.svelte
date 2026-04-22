@@ -1,36 +1,33 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Building2, Plus, X, Trash2,
 		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle,
-		MapPin, Mail, Phone, User, Globe, Users, UserCheck, Briefcase, IdCard, Lock
+		MapPin, Mail, Phone, User, Globe, Users, UserCheck, Lock
 	} from 'lucide-svelte';
-	import { Azienda, type AziendaData } from '$lib/models/Azienda';
-	import { Dipendente, type DipendenteData } from '$lib/models/Dipendente';
+
+	// Modelli
+	import { Azienda } from '$lib/models/Azienda';
+	import { Dipendente } from '$lib/models/Dipendente';
 	import { Ruolo } from '$lib/models/Enums';
 
-	interface DipendenteUI {
-		id: number | string;
-		idAzienda: number;
-		nome: string;
-		cognome: string;
-		codiceFiscale: string;
-		mansione: string;
-		email: string;
-	}
+	// Servizi
+	import { AziendaService } from '$lib/services/AziendaService';
+	import { DipendenteService } from '$lib/services/DipendenteService';
+	import { isAxiosError } from 'axios';
 
+	// --- STATO REATTIVO (Svelte 5) ---
 	let aziende = $state<Azienda[]>([]);
-	let dipendentiAll = $state<DipendenteUI[]>([]);
+	let dipendentiAll = $state<Dipendente[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
 	let selectedAzienda = $state<Azienda | null>(null);
-
 	let showModal = $state(false);
 	let isSaving = $state(false);
 
-	// STATO DEL FORM COMPLETO
+	// Stato del modulo per la nuova azienda
 	let formAzienda = $state({
 		ragioneSociale: '',
 		partitaIva: '',
@@ -48,69 +45,68 @@
 	let aziendaDaEliminare = $state<Azienda | null>(null);
 	let confermaTesto = $state('');
 
-	// VALIDAZIONE DINAMICA
+	// --- LOGICA DERIVATA ---
 	const isFormValid = $derived(
-		formAzienda.ragioneSociale.trim() !== '' &&
-		formAzienda.partitaIva.length === 11 &&
-		formAzienda.email.trim() !== '' &&
-		formAzienda.password.trim() !== ''
+			formAzienda.ragioneSociale.trim() !== '' &&
+			formAzienda.partitaIva.length === 11 &&
+			formAzienda.email.trim() !== '' &&
+			formAzienda.password.trim() !== ''
 	);
 
-	onMount(() => {
-		const datiAziende = localStorage.getItem('norlan_aziende_test');
-		const datiDipendenti = localStorage.getItem('norlan_dipendenti_test');
+	const filteredAziende = $derived(
+			aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase()))
+	);
 
-		if (datiAziende) {
-			const parsedAziende = JSON.parse(datiAziende) as AziendaData[];
-			aziende = parsedAziende.map(a => new Azienda(a));
+	// FIX: Usiamo (d as any) per evitare l'errore di TypeScript su idAzienda se non è esplicito nel modello
+	const dipendentiCorrenti = $derived(
+			selectedAzienda
+					? dipendentiAll.filter(d => (d as any).idAzienda === selectedAzienda?.idUtente)
+					: []
+	);
+
+	// --- AZIONI ---
+	onMount(async () => {
+		try {
+			const [resAziende, resDipendenti] = await Promise.all([
+				AziendaService.getAll(),
+				DipendenteService.getAll().catch(() => [])
+			]);
+
+			aziende = resAziende;
+			dipendentiAll = resDipendenti;
+		} catch (error) {
+			console.error("Errore caricamento dati:", error);
+			if (isAxiosError(error) && error.code === 'ERR_NETWORK') {
+				alert("Errore: Il backend (localhost:8080) è offline.");
+			}
+		} finally {
+			isLoading = false;
 		}
-
-		if (datiDipendenti) {
-			const rawDip = JSON.parse(datiDipendenti) as DipendenteData[];
-			dipendentiAll = rawDip.map((d) => new Dipendente(d));
-		} else {
-			const mockDipendenti = [
-				{ id: 1, idAzienda: 1713345600000, nome: 'Mario', cognome: 'Rossi', codiceFiscale: 'RSSMRA80A01H501U', mansione: 'Operaio Specializzato', email: 'mario.rossi@mail.it' },
-				{ id: 2, idAzienda: 1713345600000, nome: 'Laura', cognome: 'Bianchi', codiceFiscale: 'BNCLRA85B42L219Z', mansione: 'Segreteria', email: 'laura.b@mail.it' }
-			];
-			localStorage.setItem('norlan_dipendenti_test', JSON.stringify(mockDipendenti));
-			dipendentiAll = mockDipendenti.map(d => new Dipendente(d as unknown as DipendenteData));
-		}
-
-		isLoading = false;
 	});
-
-	function sincronizzaLocale() {
-		localStorage.setItem('norlan_aziende_test', JSON.stringify(aziende));
-	}
 
 	async function salvaNuovaAzienda() {
 		if (!isFormValid) return;
 		isSaving = true;
 
-		const nuova = new Azienda({
-			idUtente: Math.floor(Date.now()),
-			email: formAzienda.email,
-			ragioneSociale: formAzienda.ragioneSociale,
-			partitaIva: formAzienda.partitaIva,
-			sedeLegale: formAzienda.sedeLegale,
-			pec: formAzienda.pec,
-			telefono: formAzienda.telefono,
-			cellulare: formAzienda.cellulare,
-			referenteAziendale: formAzienda.referenteAziendale,
-			hasDipendenti: formAzienda.hasDipendenti,
-			ruolo: Ruolo.AZIENDA,
-			etichettaDisplay: formAzienda.ragioneSociale.toUpperCase(),
-			passwordHash: formAzienda.password
-		});
+		try {
+			// Payload completo con Ruolo (risolve l'errore di interfaccia)
+			const payload = {
+				...formAzienda,
+				ruolo: Ruolo.AZIENDA
+			};
 
-		aziende = [...aziende, nuova];
-		sincronizzaLocale();
+			const nuova = await AziendaService.create(payload);
+			aziende = [...aziende, nuova];
 
-		// Reset form
-		formAzienda = { ragioneSociale: '', partitaIva: '', email: '', password: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
-		showModal = false;
-		isSaving = false;
+			// Reset Form
+			formAzienda = { ragioneSociale: '', partitaIva: '', email: '', password: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
+			showModal = false;
+		} catch (error) {
+			console.error("Errore salvataggio:", error);
+			alert("Errore durante il salvataggio dell'azienda.");
+		} finally {
+			isSaving = false;
+		}
 	}
 
 	function preparaEliminazione(azienda: Azienda | null) {
@@ -120,23 +116,20 @@
 		showDeleteModal = true;
 	}
 
-	function confermaEliminazione() {
+	async function confermaEliminazione() {
 		if (confermaTesto === 'ELIMINA' && aziendaDaEliminare) {
-			aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
-			sincronizzaLocale();
-			showDeleteModal = false;
-			aziendaDaEliminare = null;
-			selectedAzienda = null;
+			try {
+				await AziendaService.delete(aziendaDaEliminare.idUtente);
+				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
+				showDeleteModal = false;
+				aziendaDaEliminare = null;
+				selectedAzienda = null;
+			} catch (error) {
+				console.error("Errore eliminazione:", error);
+				alert("Errore durante l'eliminazione.");
+			}
 		}
 	}
-
-	const filteredAziende = $derived(
-		aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase()))
-	);
-
-	const dipendentiCorrenti = $derived(
-		selectedAzienda ? dipendentiAll.filter(d => d.idAzienda === selectedAzienda?.idUtente) : []
-	);
 </script>
 
 <div in:fade>
@@ -234,7 +227,6 @@
 
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				<div class="space-y-8">
-
 					<div>
 						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Building2 size={16}/> Struttura Organizzativa</h3>
 						<div class="grid grid-cols-2 gap-4">
@@ -253,11 +245,11 @@
 						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Globe size={16}/> Dati Legali</h3>
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Ragione Sociale <span class="text-red-500">*</span></label>
+								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Ragione Sociale *</label>
 								<input bind:value={formAzienda.ragioneSociale} type="text" placeholder="Es. NorLan Srl" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-extrabold uppercase text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]" />
 							</div>
 							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1 flex justify-between">Partita IVA <span class="text-red-500">*</span> <span class="text-gray-300 font-normal">{formAzienda.partitaIva.length}/11</span></label>
+								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1 flex justify-between">Partita IVA * <span class="text-gray-300 font-normal">{formAzienda.partitaIva.length}/11</span></label>
 								<input bind:value={formAzienda.partitaIva} type="text" maxlength="11" placeholder="11 cifre numeriche" class="w-full px-5 py-3 bg-white border {formAzienda.partitaIva.length > 0 && formAzienda.partitaIva.length !== 11 ? 'border-red-300 focus:ring-red-500 text-red-600' : 'border-gray-200 focus:ring-[#1B4B6B]'} rounded-2xl font-bold text-xs outline-none focus:ring-2" />
 							</div>
 							<div class="col-span-1 md:col-span-2 space-y-1">
@@ -293,22 +285,20 @@
 						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Lock size={16}/> Accesso Portale</h3>
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Email Accesso <span class="text-red-500">*</span></label>
+								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Email Accesso *</label>
 								<input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B] lowercase" />
 							</div>
 							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Password Iniziale <span class="text-red-500">*</span></label>
+								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Password Iniziale *</label>
 								<input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]" />
 							</div>
 						</div>
 					</div>
-
 				</div>
 			</div>
 
 			<div class="p-6 border-t border-gray-100 flex gap-4 bg-white items-center justify-between">
 				<button onclick={() => showModal = false} class="px-8 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 transition-all uppercase text-xs">Annulla</button>
-
 				<div class="flex items-center gap-4">
 					{#if !isFormValid}
 						<p class="text-[9px] font-bold text-red-500 uppercase tracking-widest text-right hidden md:block">Compila i campi obbligatori<br>e verifica P.IVA (11 cifre)</p>
@@ -339,7 +329,7 @@
 {/if}
 
 <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .custom-scrollbar-track { background: transparent; }
+	.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+	.custom-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+	.custom-scrollbar-track { background: transparent; }
 </style>
