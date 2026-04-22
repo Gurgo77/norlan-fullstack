@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Building2, Plus, X, Trash2,
 		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle,
-		Mail, Phone, User, Globe, Users, UserCheck, Lock
+		Phone, User, Globe, Users, UserCheck, MapPin
 	} from 'lucide-svelte';
 
 	// Modelli
@@ -55,7 +55,6 @@
 			aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	// Filtro tipizzato correttamente
 	const dipendentiCorrenti = $derived(
 			selectedAzienda
 					? dipendentiAll.filter(d => (d as Dipendente & { idAzienda: number }).idAzienda === selectedAzienda?.idUtente)
@@ -88,7 +87,6 @@
 			});
 			aziende = [...aziende, nuova];
 			showModal = false;
-			// Reset form
 			formAzienda = { ragioneSociale: '', partitaIva: '', email: '', password: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
 		} catch (error) {
 			console.error("Errore nel salvataggio:", error);
@@ -166,68 +164,74 @@
 			<button onclick={() => selectedAzienda = null} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco</button>
 
 			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
-				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end">
+				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
 					<div>
 						<div class="flex items-center gap-3 mb-4">
-							<span class="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase">Attiva</span>
+							{#if selectedAzienda.hasDipendenti}
+								<span class="bg-purple-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Users size={12}/> Azienda con Personale</span>
+							{:else}
+								<span class="bg-blue-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><User size={12}/> Ditta Individuale</span>
+							{/if}
 						</div>
-						<h1 class="text-4xl font-extrabold uppercase tracking-tight">{selectedAzienda.ragioneSociale}</h1>
+						<h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedAzienda.ragioneSociale}</h1>
 					</div>
-					<button onclick={() => preparaEliminazione(selectedAzienda)} class="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-6 py-3 rounded-xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20"><Trash2 size={16} /> Elimina</button>
+					<button onclick={() => preparaEliminazione(selectedAzienda)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl"><Trash2 size={16} /> Elimina Anagrafica</button>
 				</div>
 
-				<div class="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+				<div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-16 bg-gray-50/30">
 					<div class="space-y-8">
-						<h2 class="text-[#1B4B6B] font-extrabold uppercase text-xs border-b pb-4 flex items-center gap-2"><Globe size={16} /> Dati Legali</h2>
-						<div class="grid grid-cols-1 gap-6">
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Partita IVA</p><p class="text-sm font-extrabold text-[#1B4B6B]">{selectedAzienda.partitaIva}</p></div>
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Sede Legale</p><p class="text-sm font-bold text-[#1B4B6B] uppercase">{selectedAzienda.sedeLegale || 'N.D.'}</p></div>
+						<h2 class="text-[#1B4B6B] font-black uppercase text-xs tracking-widest border-b border-gray-200 pb-4 flex items-center gap-2"><Globe size={16} /> Profilo Legale</h2>
+						<div class="space-y-6">
+							<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Partita IVA</p><p class="text-base font-extrabold text-[#1B4B6B] tracking-widest">{selectedAzienda.partitaIva}</p></div>
+							<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><MapPin size={10}/> Sede Legale</p><p class="text-sm font-bold text-[#1B4B6B] uppercase leading-relaxed">{selectedAzienda.sedeLegale || 'N.D.'}</p></div>
 						</div>
 					</div>
+
 					<div class="space-y-8">
-						<h2 class="text-[#1B4B6B] font-extrabold uppercase text-xs border-b pb-4 flex items-center gap-2"><User size={16} /> Contatti</h2>
-						<div class="grid grid-cols-2 gap-6">
-							<div class="col-span-2"><p class="text-[9px] font-bold text-gray-400 uppercase">Referente</p><p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{selectedAzienda.referenteAziendale || '-'}</p></div>
-							<div class="flex flex-col gap-1">
-								<p class="text-[9px] font-bold text-gray-400 uppercase italic">Email Accesso</p>
-								<div class="flex items-center gap-2 text-[#1B4B6B] font-bold text-sm truncate"><Mail size={12} /> {selectedAzienda.email}</div>
+						<h2 class="text-[#1B4B6B] font-black uppercase text-xs tracking-widest border-b border-gray-200 pb-4 flex items-center gap-2"><Phone size={16} /> Recapiti</h2>
+						<div class="space-y-6">
+							<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Email Accesso</p><p class="text-sm font-bold text-[#1B4B6B] lowercase">{selectedAzienda.email}</p></div>
+							<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">PEC Certificata</p><p class="text-sm font-bold text-[#1B4B6B] lowercase">{selectedAzienda.pec || '-'}</p></div>
+							<div class="grid grid-cols-2 gap-4">
+								<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Telefono</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.telefono || '-'}</p></div>
+								<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Cellulare</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.cellulare || '-'}</p></div>
 							</div>
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase">PEC</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.pec || '-'}</p></div>
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Telefono</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.telefono || selectedAzienda.cellulare || '-'}</p></div>
+						</div>
+					</div>
+
+					<div class="space-y-8">
+						<h2 class="text-[#1B4B6B] font-black uppercase text-xs tracking-widest border-b border-gray-200 pb-4 flex items-center gap-2"><UserCheck size={16} /> Responsabile</h2>
+						<div class="space-y-6">
+							<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Referente Aziendale</p><p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{selectedAzienda.referenteAziendale || 'Non assegnato'}</p></div>
 						</div>
 					</div>
 				</div>
 			</div>
 
 			{#if selectedAzienda.hasDipendenti}
-				<div in:slide class="space-y-6">
-					<div class="flex items-center gap-3">
-						<div class="p-2 bg-purple-100 text-purple-600 rounded-lg"><Users size={20} /></div>
-						<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale Aziendale ({dipendentiCorrenti.length})</h2>
+				<div in:slide class="space-y-8 mb-20">
+					<div class="flex items-center gap-4">
+						<div class="p-3 bg-purple-100 text-purple-600 rounded-2xl shadow-inner"><Users size={24} /></div>
+						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale Aziendale ({dipendentiCorrenti.length})</h2>
 					</div>
 
 					{#if dipendentiCorrenti.length > 0}
-						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 							{#each dipendentiCorrenti as d (d.idUtente)}
-								<div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+								<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all">
 									<div class="flex items-center gap-4 mb-4">
-										<div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-[#1B4B6B] font-black">{d.nome[0]}{d.cognome[0]}</div>
-										<div>
-											<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm">{d.nome} {d.cognome}</h4>
-										</div>
+										<div class="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#1B4B6B] font-black text-sm">{d.nome[0]}{d.cognome[0]}</div>
+										<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{d.nome}<br>{d.cognome}</h4>
 									</div>
-									<div class="space-y-2 border-t pt-4">
-										<div class="flex items-center justify-between"><span class="text-[9px] text-gray-400 font-bold uppercase">Codice Fiscale</span><span class="text-[10px] font-mono font-bold text-[#1B4B6B]">{d.codiceFiscale}</span></div>
-										<div class="flex items-center justify-between"><span class="text-[9px] text-gray-400 font-bold uppercase">Email</span><span class="text-[10px] font-bold text-[#1B4B6B] lowercase">{d.email}</span></div>
+									<div class="space-y-2 pt-4 border-t border-gray-50">
+										<p class="text-[8px] text-gray-300 font-black uppercase">Codice Fiscale</p>
+										<p class="text-[10px] font-mono font-bold text-gray-600">{d.codiceFiscale}</p>
 									</div>
 								</div>
 							{/each}
 						</div>
 					{:else}
-						<div class="bg-gray-50 rounded-2xl p-10 text-center border-2 border-dashed border-gray-200">
-							<Users size={32} class="mx-auto text-gray-300 mb-3" />
-							<p class="text-gray-400 font-bold uppercase text-[10px]">Nessun dipendente censito per questa azienda.</p>
-						</div>
+						<div class="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-100 text-gray-300 uppercase font-bold text-xs">Nessun dipendente censito</div>
 					{/if}
 				</div>
 			{/if}
@@ -240,8 +244,7 @@
 		<div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 			<div class="bg-[#1B4B6B] p-8 text-white flex justify-between items-center shrink-0">
 				<div>
-					<h2 class="text-2xl font-extrabold uppercase tracking-tight">Inserimento Anagrafica</h2>
-					<p class="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Completa tutti i dati richiesti dal modello</p>
+					<h2 class="text-2xl font-extrabold uppercase tracking-tight">Nuova Azienda</h2>
 				</div>
 				<button onclick={() => showModal = false} class="hover:bg-white/10 p-2 rounded-xl transition-colors"><X size={28} /></button>
 			</div>
@@ -249,70 +252,40 @@
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				<div class="space-y-8">
 					<div>
-						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Building2 size={16}/> Struttura Organizzativa</h3>
+						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Building2 size={16}/> Struttura</h3>
 						<div class="grid grid-cols-2 gap-4">
-							<button onclick={() => formAzienda.hasDipendenti = false} class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 {formAzienda.hasDipendenti === false ? 'bg-white border-[#1B4B6B] text-[#1B4B6B] shadow-md' : 'bg-transparent border-gray-200 text-gray-400 hover:border-gray-300'}">
-								<UserCheck size={24} />
-								<span class="font-extrabold uppercase text-[10px]">Persona Singola</span>
+							<button onclick={() => formAzienda.hasDipendenti = false} class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 {formAzienda.hasDipendenti === false ? 'bg-white border-[#1B4B6B] text-[#1B4B6B]' : 'bg-transparent border-gray-200 text-gray-400'}">
+								<UserCheck size={24} /><span class="font-extrabold uppercase text-[10px]">Persona Singola</span>
 							</button>
-							<button onclick={() => formAzienda.hasDipendenti = true} class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 {formAzienda.hasDipendenti === true ? 'bg-white border-[#1B4B6B] text-[#1B4B6B] shadow-md' : 'bg-transparent border-gray-200 text-gray-400 hover:border-gray-300'}">
-								<Users size={24} />
-								<span class="font-extrabold uppercase text-[10px]">Con Dipendenti</span>
+							<button onclick={() => formAzienda.hasDipendenti = true} class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 {formAzienda.hasDipendenti === true ? 'bg-white border-[#1B4B6B] text-[#1B4B6B]' : 'bg-transparent border-gray-200 text-gray-400'}">
+								<Users size={24} /><span class="font-extrabold uppercase text-[10px]">Con Dipendenti</span>
 							</button>
 						</div>
 					</div>
 
-					<div>
-						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Globe size={16}/> Dati Legali</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Ragione Sociale *</label>
-								<input bind:value={formAzienda.ragioneSociale} type="text" placeholder="Es. NorLan Srl" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-extrabold uppercase text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]" />
-							</div>
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1 flex justify-between">Partita IVA * <span class="text-gray-300 font-normal">{formAzienda.partitaIva.length}/11</span></label>
-								<input bind:value={formAzienda.partitaIva} type="text" maxlength="11" placeholder="11 cifre numeriche" class="w-full px-5 py-3 bg-white border {formAzienda.partitaIva.length > 0 && formAzienda.partitaIva.length !== 11 ? 'border-red-300 focus:ring-red-500 text-red-600' : 'border-gray-200 focus:ring-[#1B4B6B]'} rounded-2xl font-bold text-xs outline-none focus:ring-2" />
-							</div>
-							<div class="col-span-1 md:col-span-2 space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Sede Legale</label>
-								<input bind:value={formAzienda.sedeLegale} type="text" placeholder="Via, Civico, CAP, Città (PR)" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B] uppercase" />
-							</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div class="space-y-1">
+							<label for="ragSoc" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Ragione Sociale *</label>
+							<input id="ragSoc" bind:value={formAzienda.ragioneSociale} type="text" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold uppercase text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
+						</div>
+						<div class="space-y-1">
+							<label for="piva" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Partita IVA *</label>
+							<input id="piva" bind:value={formAzienda.partitaIva} type="text" maxlength="11" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
+						</div>
+						<div class="col-span-2 space-y-1">
+							<label for="sede" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Sede Legale</label>
+							<input id="sede" bind:value={formAzienda.sedeLegale} type="text" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B] uppercase" />
 						</div>
 					</div>
 
-					<div>
-						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Phone size={16}/> Referente & Contatti</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div class="col-span-1 md:col-span-2 space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Referente Aziendale</label>
-								<input bind:value={formAzienda.referenteAziendale} type="text" placeholder="Nome e Cognome" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B] uppercase" />
-							</div>
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Email PEC</label>
-								<input bind:value={formAzienda.pec} type="email" placeholder="azienda@pec.it" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B] lowercase" />
-							</div>
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Telefono Fisso</label>
-								<input bind:value={formAzienda.telefono} type="text" placeholder="Es. 02 123456" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]" />
-							</div>
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Cellulare Referente</label>
-								<input bind:value={formAzienda.cellulare} type="text" placeholder="Es. 333 1234567" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]" />
-							</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div class="space-y-1">
+							<label for="email" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Email Accesso *</label>
+							<input id="email" bind:value={formAzienda.email} type="email" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
 						</div>
-					</div>
-
-					<div>
-						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Lock size={16}/> Accesso Portale</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Email Accesso *</label>
-								<input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B] lowercase" />
-							</div>
-							<div class="space-y-1">
-								<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Password Iniziale *</label>
-								<input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]" />
-							</div>
+						<div class="space-y-1">
+							<label for="pass" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Password Iniziale *</label>
+							<input id="pass" bind:value={formAzienda.password} type="password" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
 						</div>
 					</div>
 				</div>
@@ -320,14 +293,9 @@
 
 			<div class="p-6 border-t border-gray-100 flex gap-4 bg-white items-center justify-between">
 				<button onclick={() => showModal = false} class="px-8 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 transition-all uppercase text-xs">Annulla</button>
-				<div class="flex items-center gap-4">
-					{#if !isFormValid}
-						<p class="text-[9px] font-bold text-red-500 uppercase tracking-widest text-right hidden md:block">Compila i campi obbligatori<br>e verifica P.IVA (11 cifre)</p>
-					{/if}
-					<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="px-10 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl shadow-xl hover:bg-[#1B4B6B]/90 transition-all flex items-center justify-center gap-3 uppercase text-xs disabled:opacity-30 disabled:grayscale">
-						{#if isSaving} <Loader2 size={18} class="animate-spin" /> Salvataggio... {:else} Salva Azienda {/if}
-					</button>
-				</div>
+				<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="px-10 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl shadow-xl hover:bg-[#1B4B6B]/90 transition-all flex items-center justify-center gap-3 uppercase text-xs disabled:opacity-30">
+					{#if isSaving} <Loader2 size={18} class="animate-spin" /> {:else} Salva Azienda {/if}
+				</button>
 			</div>
 		</div>
 	</div>
@@ -339,7 +307,7 @@
 			<div class="bg-red-600 p-8 text-white text-center"><AlertTriangle size={48} class="mx-auto mb-4" /><h2 class="text-2xl font-extrabold uppercase">Attenzione</h2></div>
 			<div class="p-8 text-center space-y-6">
 				<p class="text-gray-500 font-bold text-sm uppercase">Digita <span class="text-red-600">ELIMINA</span> per confermare</p>
-				<input bind:value={confermaTesto} type="text" class="w-full px-4 py-3 border border-red-100 rounded-xl text-center font-black text-red-600 uppercase tracking-widest outline-none focus:ring-2 focus:ring-red-600/20" placeholder="ELIMINA" />
+				<input bind:value={confermaTesto} type="text" class="w-full px-4 py-3 border border-red-100 rounded-xl text-center font-black text-red-600 uppercase tracking-widest outline-none" placeholder="ELIMINA" />
 				<div class="flex flex-col gap-3">
 					<button onclick={confermaEliminazione} disabled={confermaTesto !== 'ELIMINA'} class="w-full py-4 bg-red-600 text-white font-extrabold rounded-2xl uppercase text-xs disabled:opacity-30">Conferma</button>
 					<button onclick={() => showDeleteModal = false} class="text-gray-300 font-bold uppercase text-[10px]">Annulla</button>
