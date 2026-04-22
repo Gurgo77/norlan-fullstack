@@ -1,9 +1,9 @@
 package it.norlan.clientportal.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import it.norlan.clientportal.dto.AuthRequestDTO;
 import it.norlan.clientportal.factory.UtenteFactory;
 import it.norlan.clientportal.model.*;
-import it.norlan.clientportal.dto.*;
 import it.norlan.clientportal.repository.AziendaRepository;
 import it.norlan.clientportal.repository.UtenteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,17 +26,17 @@ public class RegistrazioneService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private NotificaService notificaService;
+
     @Transactional
     public Utente registraNuovoUtente(AuthRequestDTO dto) {
-        // 1. Uso della Factory per l'istanziazione polimorfica
         Utente nuovoUtente = utenteFactory.creaUtente(dto.getRuolo());
 
-        // 2. Dati comuni
         nuovoUtente.setEmail(dto.getEmail());
         nuovoUtente.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
         nuovoUtente.setRuolo(dto.getRuolo());
 
-        // 3. Mapping specifico per sottoclasse
         if (nuovoUtente instanceof Azienda) {
             Azienda azienda = (Azienda) nuovoUtente;
             azienda.setRagioneSociale(dto.getRagioneSociale());
@@ -60,6 +60,20 @@ public class RegistrazioneService {
             }
         }
 
-        return utenteRepository.save(nuovoUtente);
+        // 2. Salvataggio nel database
+        Utente utenteSalvato = utenteRepository.save(nuovoUtente);
+
+        // 3. Innesco dello Strategy Pattern per l'invio della mail
+        String messaggioBenvenuto = "Benvenuto nel portale Norlan! La tua registrazione come "
+                + dto.getRuolo() + " è stata completata con successo.";
+
+        notificaService.inviaNotifica(
+                utenteSalvato,
+                messaggioBenvenuto,
+                Notifica.Priorita.MEDIA,
+                Notifica.CanaleNotifica.EMAIL // Questo parametro seleziona automaticamente la EmailNotificaStrategy
+        );
+
+        return utenteSalvato;
     }
 }
