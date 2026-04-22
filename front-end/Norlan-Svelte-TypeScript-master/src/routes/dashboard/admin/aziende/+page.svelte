@@ -4,7 +4,7 @@
 	import {
 		Building2, Plus, X, Trash2,
 		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle,
-		MapPin, Mail, Phone, User, Globe, Users, UserCheck, Lock
+		Mail, Phone, User, Globe, Users, UserCheck, Lock
 	} from 'lucide-svelte';
 
 	// Modelli
@@ -13,9 +13,8 @@
 	import { Ruolo } from '$lib/models/Enums';
 
 	// Servizi
-	import { AziendaService } from '$lib/services/AziendaService';
-	import { DipendenteService } from '$lib/services/DipendenteService';
-	import { isAxiosError } from 'axios';
+	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import { LavoratoreService } from '$lib/services/LavoratoreService';
 
 	// --- STATO REATTIVO (Svelte 5) ---
 	let aziende = $state<Azienda[]>([]);
@@ -27,7 +26,6 @@
 	let showModal = $state(false);
 	let isSaving = $state(false);
 
-	// Stato del modulo per la nuova azienda
 	let formAzienda = $state({
 		ragioneSociale: '',
 		partitaIva: '',
@@ -57,10 +55,10 @@
 			aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	// FIX: Usiamo (d as any) per evitare l'errore di TypeScript su idAzienda se non è esplicito nel modello
+	// Filtro tipizzato correttamente
 	const dipendentiCorrenti = $derived(
 			selectedAzienda
-					? dipendentiAll.filter(d => (d as any).idAzienda === selectedAzienda?.idUtente)
+					? dipendentiAll.filter(d => (d as Dipendente & { idAzienda: number }).idAzienda === selectedAzienda?.idUtente)
 					: []
 	);
 
@@ -68,17 +66,13 @@
 	onMount(async () => {
 		try {
 			const [resAziende, resDipendenti] = await Promise.all([
-				AziendaService.getAll(),
-				DipendenteService.getAll().catch(() => [])
+				AnagraficaService.getAllAziende(),
+				LavoratoreService.getAllLavoratori().catch(() => [])
 			]);
-
 			aziende = resAziende;
 			dipendentiAll = resDipendenti;
 		} catch (error) {
 			console.error("Errore caricamento dati:", error);
-			if (isAxiosError(error) && error.code === 'ERR_NETWORK') {
-				alert("Errore: Il backend (localhost:8080) è offline.");
-			}
 		} finally {
 			isLoading = false;
 		}
@@ -87,23 +81,18 @@
 	async function salvaNuovaAzienda() {
 		if (!isFormValid) return;
 		isSaving = true;
-
 		try {
-			// Payload completo con Ruolo (risolve l'errore di interfaccia)
-			const payload = {
+			const nuova = await AnagraficaService.createAzienda({
 				...formAzienda,
 				ruolo: Ruolo.AZIENDA
-			};
-
-			const nuova = await AziendaService.create(payload);
+			});
 			aziende = [...aziende, nuova];
-
-			// Reset Form
-			formAzienda = { ragioneSociale: '', partitaIva: '', email: '', password: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
 			showModal = false;
+			// Reset form
+			formAzienda = { ragioneSociale: '', partitaIva: '', email: '', password: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
 		} catch (error) {
-			console.error("Errore salvataggio:", error);
-			alert("Errore durante il salvataggio dell'azienda.");
+			console.error("Errore nel salvataggio:", error);
+			alert("Errore durante il salvataggio.");
 		} finally {
 			isSaving = false;
 		}
@@ -119,14 +108,12 @@
 	async function confermaEliminazione() {
 		if (confermaTesto === 'ELIMINA' && aziendaDaEliminare) {
 			try {
-				await AziendaService.delete(aziendaDaEliminare.idUtente);
+				await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente);
 				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
 				showDeleteModal = false;
-				aziendaDaEliminare = null;
 				selectedAzienda = null;
 			} catch (error) {
 				console.error("Errore eliminazione:", error);
-				alert("Errore durante l'eliminazione.");
 			}
 		}
 	}
@@ -176,40 +163,74 @@
 		{/if}
 	{:else}
 		<div in:fade>
-			<button onclick={() => selectedAzienda = null} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna indietro</button>
-			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-8">
-				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative overflow-hidden">
-					<div class="relative z-10">
+			<button onclick={() => selectedAzienda = null} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco</button>
+
+			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
+				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end">
+					<div>
 						<div class="flex items-center gap-3 mb-4">
 							<span class="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase">Attiva</span>
-							<span class="bg-white/10 text-white text-[10px] font-black px-3 py-1 rounded-full border border-white/20 uppercase">{selectedAzienda.hasDipendenti ? 'Con Dipendenti' : 'Ditta Individuale'}</span>
 						</div>
 						<h1 class="text-4xl font-extrabold uppercase tracking-tight">{selectedAzienda.ragioneSociale}</h1>
-						<p class="text-white/40 font-bold uppercase text-[10px] mt-2 tracking-widest italic">Anagrafica Certificata NorLan</p>
 					</div>
-					<button onclick={() => preparaEliminazione(selectedAzienda)} class="relative z-10 flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-6 py-3 rounded-xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20"><Trash2 size={16} /> Elimina</button>
+					<button onclick={() => preparaEliminazione(selectedAzienda)} class="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-6 py-3 rounded-xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20"><Trash2 size={16} /> Elimina</button>
 				</div>
+
 				<div class="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
 					<div class="space-y-8">
 						<h2 class="text-[#1B4B6B] font-extrabold uppercase text-xs border-b pb-4 flex items-center gap-2"><Globe size={16} /> Dati Legali</h2>
 						<div class="grid grid-cols-1 gap-6">
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Partita IVA</p><p class="text-sm font-extrabold text-[#1B4B6B] tracking-widest">{selectedAzienda.partitaIva}</p></div>
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1"><MapPin size={10}/> Sede Legale</p><p class="text-sm font-bold text-[#1B4B6B] uppercase">{selectedAzienda.sedeLegale || 'N.D.'}</p></div>
+							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Partita IVA</p><p class="text-sm font-extrabold text-[#1B4B6B]">{selectedAzienda.partitaIva}</p></div>
+							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Sede Legale</p><p class="text-sm font-bold text-[#1B4B6B] uppercase">{selectedAzienda.sedeLegale || 'N.D.'}</p></div>
 						</div>
 					</div>
 					<div class="space-y-8">
 						<h2 class="text-[#1B4B6B] font-extrabold uppercase text-xs border-b pb-4 flex items-center gap-2"><User size={16} /> Contatti</h2>
-						<div class="grid grid-cols-1 gap-6">
-							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Referente</p><p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{selectedAzienda.referenteAziendale || '-'}</p></div>
-							<div class="flex gap-8">
-								<div><p class="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1"><Mail size={10}/> PEC</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.pec || '-'}</p></div>
-								<div><p class="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1"><Phone size={10}/> Tel</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.telefono || '-'}</p></div>
-								<div><p class="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1"><Phone size={10}/> Cel</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.cellulare || '-'}</p></div>
+						<div class="grid grid-cols-2 gap-6">
+							<div class="col-span-2"><p class="text-[9px] font-bold text-gray-400 uppercase">Referente</p><p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{selectedAzienda.referenteAziendale || '-'}</p></div>
+							<div class="flex flex-col gap-1">
+								<p class="text-[9px] font-bold text-gray-400 uppercase italic">Email Accesso</p>
+								<div class="flex items-center gap-2 text-[#1B4B6B] font-bold text-sm truncate"><Mail size={12} /> {selectedAzienda.email}</div>
 							</div>
+							<div><p class="text-[9px] font-bold text-gray-400 uppercase">PEC</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.pec || '-'}</p></div>
+							<div><p class="text-[9px] font-bold text-gray-400 uppercase">Telefono</p><p class="text-sm font-bold text-[#1B4B6B]">{selectedAzienda.telefono || selectedAzienda.cellulare || '-'}</p></div>
 						</div>
 					</div>
 				</div>
 			</div>
+
+			{#if selectedAzienda.hasDipendenti}
+				<div in:slide class="space-y-6">
+					<div class="flex items-center gap-3">
+						<div class="p-2 bg-purple-100 text-purple-600 rounded-lg"><Users size={20} /></div>
+						<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale Aziendale ({dipendentiCorrenti.length})</h2>
+					</div>
+
+					{#if dipendentiCorrenti.length > 0}
+						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+							{#each dipendentiCorrenti as d (d.idUtente)}
+								<div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+									<div class="flex items-center gap-4 mb-4">
+										<div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-[#1B4B6B] font-black">{d.nome[0]}{d.cognome[0]}</div>
+										<div>
+											<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm">{d.nome} {d.cognome}</h4>
+										</div>
+									</div>
+									<div class="space-y-2 border-t pt-4">
+										<div class="flex items-center justify-between"><span class="text-[9px] text-gray-400 font-bold uppercase">Codice Fiscale</span><span class="text-[10px] font-mono font-bold text-[#1B4B6B]">{d.codiceFiscale}</span></div>
+										<div class="flex items-center justify-between"><span class="text-[9px] text-gray-400 font-bold uppercase">Email</span><span class="text-[10px] font-bold text-[#1B4B6B] lowercase">{d.email}</span></div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<div class="bg-gray-50 rounded-2xl p-10 text-center border-2 border-dashed border-gray-200">
+							<Users size={32} class="mx-auto text-gray-300 mb-3" />
+							<p class="text-gray-400 font-bold uppercase text-[10px]">Nessun dipendente censito per questa azienda.</p>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>

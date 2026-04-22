@@ -1,31 +1,27 @@
-// src/lib/services/AuthService.ts
-import httpClient from '../api/httpClient';
-import { AuthResponse, type AuthResponseData } from '../models/AuthResponse';
+import httpClient from '$lib/api/httpClient'; // Aggiornato con alias $lib
+import { AuthResponse, type AuthResponseData } from '$lib/models/AuthResponse';
 
 export class AuthService {
-	private static readonly endpoint = '/api/auth';
+	// Percorso base allineato con @RequestMapping("/api/auth") in AuthController.java
+	private static readonly basePath = '/api/auth';
 
 	/**
 	 * Invia le credenziali al backend e riceve il token JWT + dati utente.
 	 */
 	static async login(email: string, password: string): Promise<AuthResponse> {
-		try {
-			// Chiamata REALE all'endpoint Spring Security
-			const response = await httpClient.post<AuthResponseData>(`${this.endpoint}/login`, {
-				email,
-				password
-			});
+		// Rimosso il try/catch: se c'è un errore (es. 401), viene catturato direttamente
+		// dal blocco try/catch della pagina di login (+page.svelte) per aggiornare la UI.
+		const response = await httpClient.post<AuthResponseData>(`${this.basePath}/login`, {
+			email,
+			password
+		});
 
-			const authData = new AuthResponse(response.data);
+		const authData = new AuthResponse(response.data);
 
-			// Salvataggio della sessione e del TOKEN nel localStorage
-			this.setSession(authData);
+		// Salvataggio della sessione e del TOKEN nel localStorage
+		this.setSession(authData);
 
-			return authData;
-		} catch (error) {
-			console.error('Errore di autenticazione:', error);
-			throw new Error('Credenziali non valide. Riprova.');
-		}
+		return authData;
 	}
 
 	private static setSession(authData: AuthResponse): void {
@@ -49,8 +45,10 @@ export class AuthService {
 	/**
 	 * Recupera l'utente attualmente loggato.
 	 */
-
 	static getSession(): { idUtente: number; email: string; ruolo: string } | null {
+		// Previene errori di Server-Side Rendering (SSR) in SvelteKit
+		if (typeof window === 'undefined') return null;
+
 		const userStr = localStorage.getItem('currentUser');
 		return userStr ? JSON.parse(userStr) : null;
 	}
@@ -59,19 +57,32 @@ export class AuthService {
 	 * Recupera il token JWT salvato.
 	 */
 	static getToken(): string | null {
+		if (typeof window === 'undefined') return null;
+
 		return localStorage.getItem('jwt_token');
 	}
 
 	/**
-	 * Pulisce la sessione ed esegue il redirect al login.
+	 * Comunica il logout al backend, pulisce la sessione ed esegue il redirect.
 	 */
-	static logout(): void {
-		localStorage.removeItem('jwt_token');
-		localStorage.removeItem('userId');
-		localStorage.removeItem('userEmail');
-		localStorage.removeItem('userRole');
-		localStorage.removeItem('currentUser');
+	static async logout(): Promise<void> {
+		if (typeof window === 'undefined') return;
 
-		window.location.href = '/login';
+		try {
+			// Comunichiamo al backend che l'utente sta uscendo (endpoint /logout)
+			await httpClient.post(`${this.basePath}/logout`);
+		} catch (error) {
+			console.warn('Il server non ha risposto al logout, procedo con la pulizia locale.', error);
+		} finally {
+			// Puliamo tutto in locale indipendentemente dalla risposta del server
+			localStorage.removeItem('jwt_token');
+			localStorage.removeItem('userId');
+			localStorage.removeItem('userEmail');
+			localStorage.removeItem('userRole');
+			localStorage.removeItem('currentUser');
+
+			// Redirect alla pagina di login
+			window.location.href = '/login';
+		}
 	}
 }
