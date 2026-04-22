@@ -38,7 +38,7 @@ export class AziendaService {
 	 */
 	static async hasDipendenti(idAzienda: number | string): Promise<boolean> {
 		// Metodo 2: Tipizzazione esplicita con DipendenteData[]
-		const response = await httpClient.get<DipendenteData[]>(`/api/dipendenti/azienda/${idAzienda}`);
+		const response = await httpClient.get<DipendenteData[]>(`/api/lavoratori/azienda/${idAzienda}`);
 
 		// Restituisce true se l'array contiene almeno un dipendente
 		return response.data.length > 0;
