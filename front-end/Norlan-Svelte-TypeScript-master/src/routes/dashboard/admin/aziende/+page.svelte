@@ -2,9 +2,8 @@
 	import { onMount } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
-		Building2, Plus, X, Trash2,
-		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle,
-		Phone, User, Globe, Users, UserCheck, MapPin
+		Building2, Plus, Trash2,
+		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin
 	} from 'lucide-svelte';
 
 	// Modelli
@@ -15,6 +14,7 @@
 	// Servizi
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
+	import { AziendaService } from '$lib/services/AziendaService'; // AGGIUNTO
 
 	// --- STATO REATTIVO (Svelte 5) ---
 	let aziende = $state<Azienda[]>([]);
@@ -23,6 +23,7 @@
 	let searchQuery = $state('');
 
 	let selectedAzienda = $state<Azienda | null>(null);
+	let dynamicHasDipendenti = $state(false); // STATO PER IL NUOVO METODO
 	let showModal = $state(false);
 	let isSaving = $state(false);
 
@@ -55,9 +56,10 @@
 			aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
+	// Filtro corretto e robusto per i dipendenti
 	const dipendentiCorrenti = $derived(
 			selectedAzienda
-					? dipendentiAll.filter(d => (d as Dipendente & { idAzienda: number }).idAzienda === selectedAzienda?.idUtente)
+					? dipendentiAll.filter(d => String((d as any).idAzienda) === String(selectedAzienda?.idUtente))
 					: []
 	);
 
@@ -76,6 +78,13 @@
 			isLoading = false;
 		}
 	});
+
+	// Funzione per gestire la selezione e il controllo dinamico
+	async function apriDettaglio(azienda: Azienda) {
+		selectedAzienda = azienda;
+		// USIAMO IL NUOVO METODO
+		dynamicHasDipendenti = await AziendaService.hasDipendenti(azienda.idUtente);
+	}
 
 	async function salvaNuovaAzienda() {
 		if (!isFormValid) return;
@@ -140,7 +149,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 				{#each filteredAziende as a (a.idUtente)}
 					<div class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-[#1B4B6B]/20 hover:-translate-y-1 transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
-						<div role="button" tabindex="0" onclick={() => selectedAzienda = a} onkeydown={(e) => e.key === 'Enter' && (selectedAzienda = a)} class="p-8 pb-4 cursor-pointer flex-1">
+						<div role="button" tabindex="0" onclick={() => apriDettaglio(a)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(a)} class="p-8 pb-4 cursor-pointer flex-1">
 							<div class="flex justify-between items-start mb-6">
 								<div class="p-4 bg-gray-50 rounded-2xl text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white transition-all"><Building2 size={28} /></div>
 								<button onclick={(e) => { e.stopPropagation(); preparaEliminazione(a); }} class="text-gray-300 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50 z-10"><Trash2 size={20} /></button>
@@ -151,7 +160,7 @@
 								<span class="text-[8px] font-black px-2 py-0.5 rounded border {a.hasDipendenti ? 'border-purple-100 bg-purple-50 text-purple-600' : 'border-blue-100 bg-blue-50 text-blue-600'} uppercase">{a.hasDipendenti ? 'Con Personale' : 'Individuale'}</span>
 							</div>
 						</div>
-						<button onclick={() => selectedAzienda = a} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
+						<button onclick={() => apriDettaglio(a)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
 							<div class="flex items-center gap-2"><ShieldCheck size={16} class="text-green-600"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Verificata</span></div>
 							<ChevronRight size={20} class="text-[#1B4B6B]" />
 						</button>
@@ -167,7 +176,7 @@
 				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
 					<div>
 						<div class="flex items-center gap-3 mb-4">
-							{#if selectedAzienda.hasDipendenti}
+							{#if dynamicHasDipendenti}
 								<span class="bg-purple-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Users size={12}/> Azienda con Personale</span>
 							{:else}
 								<span class="bg-blue-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><User size={12}/> Ditta Individuale</span>
@@ -208,7 +217,7 @@
 				</div>
 			</div>
 
-			{#if selectedAzienda.hasDipendenti}
+			{#if dynamicHasDipendenti}
 				<div in:slide class="space-y-8 mb-20">
 					<div class="flex items-center gap-4">
 						<div class="p-3 bg-purple-100 text-purple-600 rounded-2xl shadow-inner"><Users size={24} /></div>
@@ -231,94 +240,10 @@
 							{/each}
 						</div>
 					{:else}
-						<div class="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-100 text-gray-300 uppercase font-bold text-xs">Nessun dipendente censito</div>
+						<div class="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-xs">Nessun dipendente censito</div>
 					{/if}
 				</div>
 			{/if}
 		</div>
 	{/if}
 </div>
-
-{#if showModal}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1B4B6B]/80 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-			<div class="bg-[#1B4B6B] p-8 text-white flex justify-between items-center shrink-0">
-				<div>
-					<h2 class="text-2xl font-extrabold uppercase tracking-tight">Nuova Azienda</h2>
-				</div>
-				<button onclick={() => showModal = false} class="hover:bg-white/10 p-2 rounded-xl transition-colors"><X size={28} /></button>
-			</div>
-
-			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				<div class="space-y-8">
-					<div>
-						<h3 class="text-xs font-black text-[#1B4B6B] uppercase border-b border-gray-100 pb-2 mb-4 flex items-center gap-2"><Building2 size={16}/> Struttura</h3>
-						<div class="grid grid-cols-2 gap-4">
-							<button onclick={() => formAzienda.hasDipendenti = false} class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 {formAzienda.hasDipendenti === false ? 'bg-white border-[#1B4B6B] text-[#1B4B6B]' : 'bg-transparent border-gray-200 text-gray-400'}">
-								<UserCheck size={24} /><span class="font-extrabold uppercase text-[10px]">Persona Singola</span>
-							</button>
-							<button onclick={() => formAzienda.hasDipendenti = true} class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 {formAzienda.hasDipendenti === true ? 'bg-white border-[#1B4B6B] text-[#1B4B6B]' : 'bg-transparent border-gray-200 text-gray-400'}">
-								<Users size={24} /><span class="font-extrabold uppercase text-[10px]">Con Dipendenti</span>
-							</button>
-						</div>
-					</div>
-
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div class="space-y-1">
-							<label for="ragSoc" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Ragione Sociale *</label>
-							<input id="ragSoc" bind:value={formAzienda.ragioneSociale} type="text" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold uppercase text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
-						</div>
-						<div class="space-y-1">
-							<label for="piva" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Partita IVA *</label>
-							<input id="piva" bind:value={formAzienda.partitaIva} type="text" maxlength="11" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
-						</div>
-						<div class="col-span-2 space-y-1">
-							<label for="sede" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Sede Legale</label>
-							<input id="sede" bind:value={formAzienda.sedeLegale} type="text" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B] uppercase" />
-						</div>
-					</div>
-
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div class="space-y-1">
-							<label for="email" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Email Accesso *</label>
-							<input id="email" bind:value={formAzienda.email} type="email" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
-						</div>
-						<div class="space-y-1">
-							<label for="pass" class="text-[10px] font-bold text-gray-400 uppercase ml-1">Password Iniziale *</label>
-							<input id="pass" bind:value={formAzienda.password} type="password" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs focus:ring-2 focus:ring-[#1B4B6B]" />
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<div class="p-6 border-t border-gray-100 flex gap-4 bg-white items-center justify-between">
-				<button onclick={() => showModal = false} class="px-8 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 transition-all uppercase text-xs">Annulla</button>
-				<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="px-10 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl shadow-xl hover:bg-[#1B4B6B]/90 transition-all flex items-center justify-center gap-3 uppercase text-xs disabled:opacity-30">
-					{#if isSaving} <Loader2 size={18} class="animate-spin" /> {:else} Salva Azienda {/if}
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
-{#if showDeleteModal}
-	<div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
-			<div class="bg-red-600 p-8 text-white text-center"><AlertTriangle size={48} class="mx-auto mb-4" /><h2 class="text-2xl font-extrabold uppercase">Attenzione</h2></div>
-			<div class="p-8 text-center space-y-6">
-				<p class="text-gray-500 font-bold text-sm uppercase">Digita <span class="text-red-600">ELIMINA</span> per confermare</p>
-				<input bind:value={confermaTesto} type="text" class="w-full px-4 py-3 border border-red-100 rounded-xl text-center font-black text-red-600 uppercase tracking-widest outline-none" placeholder="ELIMINA" />
-				<div class="flex flex-col gap-3">
-					<button onclick={confermaEliminazione} disabled={confermaTesto !== 'ELIMINA'} class="w-full py-4 bg-red-600 text-white font-extrabold rounded-2xl uppercase text-xs disabled:opacity-30">Conferma</button>
-					<button onclick={() => showDeleteModal = false} class="text-gray-300 font-bold uppercase text-[10px]">Annulla</button>
-				</div>
-			</div>
-		</div>
-	</div>
-{/if}
-
-<style>
-	.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-	.custom-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-	.custom-scrollbar-track { background: transparent; }
-</style>
