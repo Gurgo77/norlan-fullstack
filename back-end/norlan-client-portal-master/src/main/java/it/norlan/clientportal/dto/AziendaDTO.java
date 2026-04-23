@@ -21,4 +21,12 @@ public class AziendaDTO {
 
     // Possiamo aggiungere campi extra che servono a Nicolò (es. per la UI)
     private String etichettaDisplay;
+
+    // ... altri campi esistenti
+
+    private String sedeLegale;
+    private String pec;
+    private String telefono;
+    private String cellulare;
+    private String referenteAziendale;
 }

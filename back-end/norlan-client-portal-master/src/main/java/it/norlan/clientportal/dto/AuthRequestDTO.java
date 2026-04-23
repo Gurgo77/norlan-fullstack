@@ -12,6 +12,11 @@ public class AuthRequestDTO {
 
     private String ragioneSociale;
     private String partitaIva;
+    private String sedeLegale;
+    private String pec;
+    private String telefono;
+    private String cellulare;
+    private String referenteAziendale;
 
     private String nome;
     private String cognome;

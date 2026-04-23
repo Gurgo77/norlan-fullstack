@@ -41,6 +41,11 @@ public class RegistrazioneService {
             Azienda azienda = (Azienda) nuovoUtente;
             azienda.setRagioneSociale(dto.getRagioneSociale());
             azienda.setPartitaIva(dto.getPartitaIva());
+            azienda.setSedeLegale(dto.getSedeLegale());
+            azienda.setPec(dto.getPec());
+            azienda.setTelefono(dto.getTelefono());
+            azienda.setCellulare(dto.getCellulare());
+            azienda.setReferenteAziendale(dto.getReferenteAziendale());
         }
         else if (nuovoUtente instanceof Docente) {
             Docente docente = (Docente) nuovoUtente;
