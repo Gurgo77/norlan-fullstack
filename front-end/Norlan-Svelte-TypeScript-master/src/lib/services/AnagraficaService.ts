@@ -1,91 +1,110 @@
 import httpClient from '$lib/api/httpClient';
-import { Azienda, type AziendaData } from '$lib/models/Azienda';
-import { Docente, type DocenteData } from '$lib/models/Docente';
-import type { Ruolo } from '$lib/models/Enums';
 
-// --- INTERFACCE DI RICHIESTA (Addio Any!) ---
+// Payload per la registrazione unificata
+export interface AuthRequestDTO {
+	email: string;
+	password?: string;
+	ruolo: 'AZIENDA' | 'DOCENTE' | 'LAVORATORE' | 'ADMIN';
+	ragioneSociale?: string;
+	nome?: string;
+	cognome?: string;
+	partitaIva?: string;
+}
 
-export interface CreateAziendaRequest {
+/**
+ * Interfacce basate sui metodi setter presenti nel controller BE
+ */
+export interface AziendaUpdate {
 	ragioneSociale: string;
 	partitaIva: string;
-	email: string;
-	password: string;
-	sedeLegale?: string;
-	pec?: string;
-	telefono?: string;
-	cellulare?: string;
-	referenteAziendale?: string;
-	hasDipendenti: boolean;
-	ruolo: Ruolo;
+	email?: string;
 }
 
-export interface CreateDocenteRequest {
-	nome: string;
-	cognome: string;
-	email: string;
-	password: string;
-	codiceFiscale: string;
-	specializzazione?: string;
-	telefono?: string;
-	ruolo: Ruolo;
+export interface DocenteUpdate {
+	specializzazioneTecnica: string;
+	email?: string;
 }
 
-// --- SERVICE ---
+export interface AdminUpdate {
+	nome?: string;
+	cognome?: string;
+	email?: string;
+}
 
 export class AnagraficaService {
 	private static readonly basePath = '/api/anagrafica';
 
 	// ==========================================
+	// SEZIONE REGISTRAZIONE
+	// ==========================================
+
+	static async registraUtente(dati: AuthRequestDTO): Promise<string> {
+		const response = await httpClient.post<string>(`${this.basePath}/registrazione`, dati);
+		return response.data;
+	}
+
+	// ==========================================
 	// SEZIONE AZIENDE
 	// ==========================================
 
-	/**
-	 * Recupera tutte le aziende registrate.
-	 */
-	static async getAllAziende(): Promise<Azienda[]> {
-		const response = await httpClient.get<AziendaData[]>(`${this.basePath}/aziende`);
-		return response.data.map((item) => new Azienda(item));
+	static async getAllAziende(): Promise<unknown[]> {
+		const response = await httpClient.get<unknown[]>(`${this.basePath}/aziende`);
+		return response.data;
+	}
+
+	static async getAziendaById(idAzienda: number | string): Promise<unknown> {
+		const response = await httpClient.get<unknown>(`${this.basePath}/aziende/${idAzienda}`);
+		return response.data;
 	}
 
 	/**
-	 * Crea una nuova azienda con validazione dei tipi.
+	 * @PutMapping("/aziende/{id}") - Aggiorna ragioneSociale, partitaIva ed email
 	 */
-	static async createAzienda(dati: CreateAziendaRequest): Promise<Azienda> {
-		const response = await httpClient.post<AziendaData>(`${this.basePath}/aziende`, dati);
-		return new Azienda(response.data);
+	static async updateAzienda(
+		idAzienda: number | string,
+		datiAggiornati: AziendaUpdate
+	): Promise<unknown> {
+		const response = await httpClient.put<unknown>(
+			`${this.basePath}/aziende/${idAzienda}`,
+			datiAggiornati
+		);
+		return response.data;
 	}
 
-	/**
-	 * Elimina un'azienda tramite ID.
-	 */
-	static async deleteAzienda(id: number | string): Promise<void> {
-		await httpClient.delete(`${this.basePath}/aziende/${id}`);
+	static async deleteAzienda(idAzienda: number | string): Promise<void> {
+		await httpClient.delete(`${this.basePath}/aziende/${idAzienda}`);
 	}
 
 	// ==========================================
 	// SEZIONE DOCENTI
 	// ==========================================
 
-	/**
-	 * Recupera tutti i docenti registrati.
-	 */
-	static async getAllDocenti(): Promise<Docente[]> {
-		const response = await httpClient.get<DocenteData[]>(`${this.basePath}/docenti`);
-		return response.data.map((item) => new Docente(item));
+	static async getAllDocenti(): Promise<unknown[]> {
+		const response = await httpClient.get<unknown[]>(`${this.basePath}/docenti`);
+		return response.data;
+	}
+
+	static async getDocenteById(idDocente: number | string): Promise<unknown> {
+		const response = await httpClient.get<unknown>(`${this.basePath}/docenti/${idDocente}`);
+		return response.data;
 	}
 
 	/**
-	 * Crea un nuovo docente con validazione dei tipi.
+	 * @PutMapping("/docenti/{id}") - Aggiorna specializzazioneTecnica ed email
 	 */
-	static async createDocente(dati: CreateDocenteRequest): Promise<Docente> {
-		const response = await httpClient.post<DocenteData>(`${this.basePath}/docenti`, dati);
-		return new Docente(response.data);
+	static async updateDocente(
+		idDocente: number | string,
+		datiAggiornati: DocenteUpdate
+	): Promise<unknown> {
+		const response = await httpClient.put<unknown>(
+			`${this.basePath}/docenti/${idDocente}`,
+			datiAggiornati
+		);
+		return response.data;
 	}
 
-	/**
-	 * Elimina un docente tramite ID.
-	 */
-	static async deleteDocente(id: number | string): Promise<void> {
-		await httpClient.delete(`${this.basePath}/docenti/${id}`);
+	static async deleteDocente(idDocente: number | string): Promise<void> {
+		await httpClient.delete(`${this.basePath}/docenti/${idDocente}`);
 	}
+
 }

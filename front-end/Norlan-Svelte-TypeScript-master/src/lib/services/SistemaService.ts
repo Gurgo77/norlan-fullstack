@@ -14,12 +14,12 @@ export class SistemaService {
 	private static readonly basePath = '/api/sistema';
 
 	// ==========================================
-	// SEZIONE NOTIFICHE UTENTE
+	// SEZIONE 1: NOTIFICHE
 	// ==========================================
 
 	/**
 	 * Recupera tutte le notifiche di un determinato utente (Lavoratore o Admin).
-	 * Endpoint: GET /api/sistema/notifiche/utente/{idUtente}
+	 * BE: GET /api/sistema/notifiche/utente/{idUtente}
 	 */
 	static async getNotificheUtente(idUtente: number | string): Promise<Notifica[]> {
 		const response = await httpClient.get<NotificaData[]>(
@@ -29,20 +29,40 @@ export class SistemaService {
 	}
 
 	/**
+	 * Conta quante notifiche non lette ha un utente. Perfetto per il badge rosso sull'icona della campanella!
+	 * BE: GET /api/sistema/notifiche/utente/{idUtente}/non-lette/count
+	 */
+	static async countNotificheNonLette(idUtente: number | string): Promise<number> {
+		// Aggiunto il tipo <number> alla chiamata Axios per evitare any impliciti
+		const response = await httpClient.get<number>(
+			`${this.basePath}/notifiche/utente/${idUtente}/non-lette/count`
+		);
+		return response.data;
+	}
+
+	/**
 	 * Segna una notifica come letta.
-	 * Endpoint: PATCH /api/sistema/notifiche/{idNotifica}/letta
+	 * BE: PATCH /api/sistema/notifiche/{idNotifica}/letta
 	 */
 	static async segnaLetta(idNotifica: number | string): Promise<void> {
 		await httpClient.patch(`${this.basePath}/notifiche/${idNotifica}/letta`);
 	}
 
+	/**
+	 * Elimina una notifica letta/vecchia.
+	 * BE: DELETE /api/sistema/notifiche/{idNotifica}
+	 */
+	static async deleteNotifica(idNotifica: number | string): Promise<void> {
+		await httpClient.delete(`${this.basePath}/notifiche/${idNotifica}`);
+	}
+
 	// ==========================================
-	// SEZIONE LOG DI SINCRONIZZAZIONE (Admin)
+	// SEZIONE 2: LOG E MONITORAGGIO
 	// ==========================================
 
 	/**
 	 * Recupera la cronologia completa di tutti i log.
-	 * Endpoint: GET /api/sistema/logs
+	 * BE: GET /api/sistema/logs
 	 */
 	static async getAllLogs(): Promise<LogSincronizzazione[]> {
 		const response = await httpClient.get<LogSincronizzazioneData[]>(`${this.basePath}/logs`);
@@ -51,7 +71,7 @@ export class SistemaService {
 
 	/**
 	 * Recupera solo i log che contengono errori (Esito Positivo = false).
-	 * Endpoint: GET /api/sistema/logs/errori
+	 * BE: GET /api/sistema/logs/errori
 	 */
 	static async getErrorLogs(): Promise<LogSincronizzazione[]> {
 		const response = await httpClient.get<LogSincronizzazioneData[]>(
@@ -62,8 +82,7 @@ export class SistemaService {
 
 	/**
 	 * Registra manualmente un evento di sistema.
-	 * Eliminato l'errore "any" usando l'interfaccia CreateLogRequest.
-	 * Endpoint: POST /api/sistema/logs
+	 * BE: POST /api/sistema/logs
 	 */
 	static async createLog(dati: CreateLogRequest): Promise<LogSincronizzazione> {
 		const response = await httpClient.post<LogSincronizzazioneData>(`${this.basePath}/logs`, dati);
@@ -72,7 +91,7 @@ export class SistemaService {
 
 	/**
 	 * Pulisce il database eliminando i log più vecchi di X giorni.
-	 * Endpoint: DELETE /api/sistema/logs/pulizia
+	 * BE: DELETE /api/sistema/logs/pulizia
 	 */
 	static async pulisciLogVecchi(giorniVecchiaia: number = 30): Promise<void> {
 		await httpClient.delete(`${this.basePath}/logs/pulizia`, {

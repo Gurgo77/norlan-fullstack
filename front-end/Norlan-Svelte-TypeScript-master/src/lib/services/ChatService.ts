@@ -1,14 +1,25 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import httpClient from '$lib/api/httpClient'; // Aggiornato con alias $lib
+import httpClient from '$lib/api/httpClient';
 import { Messaggio, type MessaggioData } from '$lib/models/Messaggio';
+
+// Interfaccia rigorosa per il payload in uscita (basata su MessaggioDTO del backend)
+export interface ChatMessagePayload {
+	idMittente: number;
+	idDestinatario: number;
+	testo: string;
+}
 
 export class ChatService {
 	private client: Client | null = null;
 
-	// CORRETTO: Allineato con @RequestMapping("/api/chat") del MessaggioController.java
+	// Allineato con @RequestMapping("/api/chat") del MessaggioController (per la parte REST)
 	private static readonly basePath = '/api/chat';
 
+	/**
+	 * @param onMessageReceived Callback chiamata quando arriva un nuovo messaggio
+	 * @param onError Callback chiamata in caso di errori WebSocket o di Accesso Negato
+	 */
 	constructor(
 		private onMessageReceived: (msg: Messaggio) => void,
 		private onError: (err: string) => void
@@ -17,8 +28,7 @@ export class ChatService {
 	/**
 	 * Avvia la connessione WebSocket
 	 */
-	connect(token: string, userId: number | string) {
-		// Usa l'URL dell'httpClient (così se in futuro cambi da localhost a www.tuosito.it si aggiorna da solo)
+	connect(token: string, userId: number | string): void {
 		const baseUrl = httpClient.defaults.baseURL || 'http://localhost:8080';
 
 		this.client = new Client({
@@ -27,19 +37,21 @@ export class ChatService {
 				Authorization: `Bearer ${token}`
 			},
 			onConnect: () => {
-				// Iscrizione alla coda dei messaggi personali
+				// Sottoscrizione ai messaggi in entrata
+				// BE: messagingTemplate.convertAndSendToUser(idDestinatario, "/queue/messages", dto)
 				this.client?.subscribe(`/user/${userId}/queue/messages`, (message) => {
 					const data: MessaggioData = JSON.parse(message.body);
 					this.onMessageReceived(new Messaggio(data));
 				});
 
-				// Iscrizione alla coda degli errori (AccessDeniedException del controller)
+				// Sottoscrizione alla coda degli errori (AccessDeniedException)
+				// BE: messagingTemplate.convertAndSendToUser(principal.getName(), "/queue/errors", e.getMessage())
 				this.client?.subscribe(`/user/queue/errors`, (message) => {
 					this.onError(message.body);
 				});
 			},
 			onStompError: (frame) => {
-				this.onError(frame.headers['message']);
+				this.onError(frame.headers['message'] || 'Errore di connessione STOMP');
 			}
 		});
 
@@ -47,22 +59,20 @@ export class ChatService {
 	}
 
 	/**
-	 * Chiude la connessione
+	 * Chiude la connessione (da chiamare nel blocco onDestroy() dei componenti Svelte)
 	 */
-	disconnect() {
-		if (this.client) {
+	disconnect(): void {
+		if (this.client && this.client.active) {
 			this.client.deactivate();
 		}
 	}
 
 	/**
-	 * Invia un messaggio tramite WebSocket
+	 * Invia un messaggio in tempo reale tramite WebSocket
+	 * BE: @MessageMapping("/chat.send")
 	 */
-	sendMessage(idMittente: number, idDestinatario: number, testo: string) {
+	sendMessage(payload: ChatMessagePayload): void {
 		if (this.client && this.client.connected) {
-			const payload = { idMittente, idDestinatario, testo };
-
-			// CORRETTO: Allineato con @MessageMapping("/chat.send") in ChatController.java
 			this.client.publish({
 				destination: '/app/chat.send',
 				body: JSON.stringify(payload)
@@ -73,10 +83,9 @@ export class ChatService {
 	}
 
 	/**
-	 * Recupera la cronologia dei messaggi tra due utenti tramite API REST
+	 * Recupera la cronologia dei messaggi storici tra due utenti tramite API REST standard
 	 */
 	static async getCronologia(id1: number, id2: number): Promise<Messaggio[]> {
-		// Aggiunto <MessaggioData[]> per evitare errori TypeScript "any"
 		const response = await httpClient.get<MessaggioData[]>(
 			`${this.basePath}/cronologia/${id1}/${id2}`
 		);

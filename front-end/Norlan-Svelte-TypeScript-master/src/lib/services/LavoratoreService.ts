@@ -1,14 +1,42 @@
-import httpClient from '$lib/api/httpClient'; // Alias SvelteKit
-import { Dipendente, type DipendenteData } from '$lib/models/Dipendente';
-import { AssegnazioneDPI, type AssegnazioneDPIData } from '$lib/models/AssegnazioneDPI';
-import type { CreateDipendenteRequest } from '$lib/models/CreateDipendenteRequest';
+import httpClient from '$lib/api/httpClient';
 
-// Definiamo l'interfaccia per l'assegnazione dei DPI (addio "any"!)
-export interface AssegnaDpiRequest {
-	nomeDpi: string; // Sostituisci con il nome esatto che si aspetta Spring Boot
-	dataAssegnazione: string; // Formato ISO es. "2026-04-22"
-	dataScadenza?: string; // Opzionale
-	note?: string; // Opzionale
+// ==========================================
+// INTERFACCE PAYLOAD E DTO
+// ==========================================
+
+// Interfaccia basata sui campi estratti nel PUT e necessari per il POST
+export interface DipendenteRequest {
+	nome: string;
+	cognome: string;
+	codiceFiscale: string;
+	email?: string;
+	password?: string; // Solo se necessaria per la creazione, altrimenti opzionale
+}
+
+// Interfaccia basata sull'entità AssegnazioneDPI del Backend
+export interface AssegnazioneDPIRequest {
+	nomeDpi: string; // Sostituisci con i nomi esatti della tua entità Java
+	dataConsegna: string; // Formato ISO: 'YYYY-MM-DD'
+	dataScadenza?: string;
+	note?: string;
+}
+
+// Interfacce di ritorno (Puoi importarle da $lib/models se le hai già create)
+export interface DipendenteDTO {
+	idUtente: number;
+	nome: string;
+	cognome: string;
+	codiceFiscale: string;
+	email: string;
+	ruolo: string;
+}
+
+export interface AssegnazioneDPIDTO {
+	id: number;
+	nomeDpi: string;
+	dataConsegna: string;
+	dataScadenza: string;
+	note: string;
 }
 
 export class LavoratoreService {
@@ -16,110 +44,115 @@ export class LavoratoreService {
 	private static readonly basePath = '/api/lavoratori';
 
 	// ==========================================
-	// SEZIONE DIPENDENTI
+	// SEZIONE DIPENDENTI / LAVORATORI
 	// ==========================================
 
 	/**
-	 * Recupera tutti i dipendenti registrati nell'intero sistema (Vista Admin).
-	 * Endpoint: GET /api/lavoratori
+	 * Recupera tutti i dipendenti del sistema.
+	 * BE: GET /api/lavoratori
 	 */
-	static async getAllLavoratori(): Promise<Dipendente[]> {
-		const response = await httpClient.get<DipendenteData[]>(this.basePath);
-		return response.data.map((item) => new Dipendente(item));
+	static async getAll(): Promise<DipendenteDTO[]> {
+		const response = await httpClient.get<DipendenteDTO[]>(this.basePath);
+		return response.data;
 	}
 
 	/**
-	 * Recupera la lista dei dipendenti di un'azienda specifica.
-	 * Endpoint: GET /api/lavoratori/azienda/{idAzienda}
+	 * NUOVO: Recupera un dipendente specifico tramite ID.
+	 * BE: GET /api/lavoratori/{id}
 	 */
-	static async getDipendentiByAzienda(idAzienda: number | string): Promise<Dipendente[]> {
-		const response = await httpClient.get<DipendenteData[]>(
-			`${this.basePath}/azienda/${idAzienda}`
-		);
-		return response.data.map((item) => new Dipendente(item));
+	static async getById(id: number | string): Promise<DipendenteDTO> {
+		const response = await httpClient.get<DipendenteDTO>(`${this.basePath}/${id}`);
+		return response.data;
 	}
 
 	/**
-	 * Recupera i dettagli di un singolo dipendente.
-	 * Endpoint: GET /api/lavoratori/{id}
+	 * Recupera i dipendenti di una specifica azienda.
+	 * BE: GET /api/lavoratori/azienda/{idAzienda}
 	 */
-	static async getDipendenteById(id: number | string): Promise<Dipendente> {
-		const response = await httpClient.get<DipendenteData>(`${this.basePath}/${id}`);
-		return new Dipendente(response.data);
+	static async getByAzienda(idAzienda: number | string): Promise<DipendenteDTO[]> {
+		const response = await httpClient.get<DipendenteDTO[]>(`${this.basePath}/azienda/${idAzienda}`);
+		return response.data;
 	}
 
 	/**
-	 * Crea un nuovo dipendente associato a un'azienda.
-	 * Rimosso l'any: ora accetta rigorosamente solo CreateDipendenteRequest
-	 * Endpoint: POST /api/lavoratori/azienda/{idAzienda}
+	 * NUOVO: Crea un nuovo dipendente per un'azienda specifica.
+	 * BE: POST /api/lavoratori/azienda/{idAzienda}
 	 */
-	static async createDipendente(
-		idAzienda: number | string,
-		dati: CreateDipendenteRequest
-	): Promise<Dipendente> {
-		const response = await httpClient.post<DipendenteData>(
+	static async create(idAzienda: number | string, dati: DipendenteRequest): Promise<DipendenteDTO> {
+		const response = await httpClient.post<DipendenteDTO>(
 			`${this.basePath}/azienda/${idAzienda}`,
 			dati
 		);
-		return new Dipendente(response.data);
+		return response.data;
 	}
 
 	/**
-	 * Elimina un dipendente dal sistema.
-	 * Endpoint: DELETE /api/lavoratori/{id}
+	 * NUOVO: Aggiorna i dati anagrafici di un dipendente.
+	 * BE: PUT /api/lavoratori/{id}
 	 */
-	static async deleteDipendente(id: number | string): Promise<void> {
-		await httpClient.delete(`${this.basePath}/${id}`);
+	static async update(
+		id: number | string,
+		datiAggiornati: DipendenteRequest
+	): Promise<DipendenteDTO> {
+		const response = await httpClient.put<DipendenteDTO>(`${this.basePath}/${id}`, datiAggiornati);
+		return response.data;
+	}
+
+	/**
+	 * Elimina un dipendente.
+	 * BE: DELETE /api/lavoratori/{id}
+	 */
+	static async delete(idLavoratore: number | string): Promise<void> {
+		await httpClient.delete(`${this.basePath}/${idLavoratore}`);
 	}
 
 	// ==========================================
-	// SEZIONE DPI (Dispositivi Protezione Individuale)
+	// SEZIONE DPI
 	// ==========================================
 
 	/**
-	 * Recupera i DPI assegnati a un singolo dipendente.
-	 * Endpoint: GET /api/lavoratori/{idDipendente}/dpi
+	 * NUOVO: Recupera tutti i DPI assegnati a un lavoratore.
+	 * BE: GET /api/lavoratori/{idDipendente}/dpi
 	 */
-	static async getDpiByDipendente(idDipendente: number | string): Promise<AssegnazioneDPI[]> {
-		const response = await httpClient.get<AssegnazioneDPIData[]>(
-			`${this.basePath}/${idDipendente}/dpi`
+	static async getDpiByLavoratore(idLavoratore: number | string): Promise<AssegnazioneDPIDTO[]> {
+		const response = await httpClient.get<AssegnazioneDPIDTO[]>(
+			`${this.basePath}/${idLavoratore}/dpi`
 		);
-		return response.data.map((item) => new AssegnazioneDPI(item));
+		return response.data;
 	}
 
 	/**
-	 * Assegna un nuovo DPI a un dipendente.
-	 * Sostituito "any" con la nostra nuova interfaccia "AssegnaDpiRequest".
-	 * Endpoint: POST /api/lavoratori/{idDipendente}/dpi
+	 * Assegna un nuovo DPI a un lavoratore.
+	 * BE: POST /api/lavoratori/{idDipendente}/dpi
 	 */
 	static async assegnaDpi(
-		idDipendente: number | string,
-		datiAssegnazione: AssegnaDpiRequest
-	): Promise<AssegnazioneDPI> {
-		const response = await httpClient.post<AssegnazioneDPIData>(
-			`${this.basePath}/${idDipendente}/dpi`,
-			datiAssegnazione
+		idLavoratore: number | string,
+		payload: AssegnazioneDPIRequest
+	): Promise<AssegnazioneDPIDTO> {
+		const response = await httpClient.post<AssegnazioneDPIDTO>(
+			`${this.basePath}/${idLavoratore}/dpi`,
+			payload
 		);
-		return new AssegnazioneDPI(response.data);
+		return response.data;
 	}
 
 	/**
-	 * Recupera tutti i DPI in scadenza entro un certo numero di giorni (default 30).
-	 * Endpoint: GET /api/lavoratori/dpi/in-scadenza
+	 * NUOVO: Recupera tutti i DPI in scadenza entro un certo numero di giorni (default 30).
+	 * BE: GET /api/lavoratori/dpi/in-scadenza?giorni={giorni}
 	 */
-	static async getDpiInScadenza(giorni: number = 30): Promise<AssegnazioneDPI[]> {
-		const response = await httpClient.get<AssegnazioneDPIData[]>(
+	static async getDpiInScadenza(giorni: number = 30): Promise<AssegnazioneDPIDTO[]> {
+		const response = await httpClient.get<AssegnazioneDPIDTO[]>(
 			`${this.basePath}/dpi/in-scadenza`,
 			{
 				params: { giorni }
 			}
 		);
-		return response.data.map((item) => new AssegnazioneDPI(item));
+		return response.data;
 	}
 
 	/**
-	 * Rimuove o invalida un'assegnazione DPI errata.
-	 * Endpoint: DELETE /api/lavoratori/dpi/{idDpi}
+	 * NUOVO: Rimuove un'assegnazione DPI errata.
+	 * BE: DELETE /api/lavoratori/dpi/{idDpi}
 	 */
 	static async deleteDpi(idDpi: number | string): Promise<void> {
 		await httpClient.delete(`${this.basePath}/dpi/${idDpi}`);
