@@ -23,7 +23,6 @@ public class AziendaDTO {
     private String etichettaDisplay;
 
     // ... altri campi esistenti
-
     private String sedeLegale;
     private String pec;
     private String telefono;

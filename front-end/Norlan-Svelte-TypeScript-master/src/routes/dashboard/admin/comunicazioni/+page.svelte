@@ -1,17 +1,20 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { fade, scale } from 'svelte/transition'; // Aggiunto scale per i messaggi
-	import { Send, Building2, MessageSquare, Loader2, User, Clock, Hash } from 'lucide-svelte';
+	import { fade, scale } from 'svelte/transition';
+	import { Send, Building2, MessageSquare, Loader2, Clock, Hash } from 'lucide-svelte';
+
+	// Servizi
 	import { ChatService } from '$lib/services/ChatService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
-	import { Messaggio } from '$lib/models/Messaggio';
-	import { Azienda } from '$lib/models/Azienda';
-	import { AuthService } from '$lib/services/AuthService';
-	import { AuthResponse } from '$lib/models/AuthResponse';
+	import { AuthService, type UserSession } from '$lib/services/AuthService';
 
-	// --- LOGICA ORIGINALE (Inalterata) ---
+	// Modelli
+	import { Messaggio } from '$lib/models/Messaggio';
+	import { Azienda, type AziendaData } from '$lib/models/Azienda';
+
+	// --- STATO REATTIVO ---
 	let chatService: ChatService | null = null;
-	let currentUser: AuthResponse | null = $state(null);
+	let currentUser: UserSession | null = $state(null);
 	let token: string = $state('');
 
 	let aziende: Azienda[] = $state([]);
@@ -21,21 +24,30 @@
 	let isLoading: boolean = $state(true);
 
 	onMount(async () => {
+		// 1. Recupero la sessione e il token usando i metodi sicuri del service (NO localStorage diretto)
 		currentUser = AuthService.getSession();
-		token = localStorage.getItem('token') || '';
+		token = AuthService.getToken() || '';
 
-		aziende = await AnagraficaService.getAllAziende();
-		isLoading = false;
+		try {
+			// 2. Scarichiamo le aziende tramite AnagraficaService e le mappiamo senza usare 'any'
+			const rawData = await AnagraficaService.getAllAziende() as AziendaData[];
+			aziende = rawData.map(dati => new Azienda(dati));
+		} catch (error) {
+			console.error("Errore nel recupero della rubrica", error);
+		} finally {
+			isLoading = false;
+		}
 
+		// 3. Connessione al WebSocket
 		if (currentUser && token) {
 			chatService = new ChatService(
-				(msg: Messaggio) => {
-					messaggi = [...messaggi, msg];
-					scrollToBottom();
-				},
-				(err: string) => {
-					console.error(err);
-				}
+					(msg: Messaggio) => {
+						messaggi = [...messaggi, msg];
+						scrollToBottom();
+					},
+					(err: string) => {
+						console.error("Errore Chat:", err);
+					}
 			);
 			chatService.connect(token, currentUser.idUtente);
 		}
@@ -51,6 +63,7 @@
 		activeContact = azienda;
 		messaggi = [];
 		if (currentUser && activeContact) {
+			// Usa l'API REST per caricare i messaggi storici
 			messaggi = await ChatService.getCronologia(currentUser.idUtente, activeContact.idUtente);
 			scrollToBottom();
 		}
@@ -59,8 +72,14 @@
 	function sendMessage() {
 		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
 
-		chatService.sendMessage(currentUser.idUtente, activeContact.idUtente, newMessage);
+		// 4. Inviamo il messaggio usando l'oggetto rigoroso ChatMessagePayload
+		chatService.sendMessage({
+			idMittente: currentUser.idUtente,
+			idDestinatario: activeContact.idUtente,
+			testo: newMessage
+		});
 
+		// 5. Creazione di un mock per mostrare immediatamente il messaggio in UI prima che il server risponda
 		const msgMock = new Messaggio({
 			idMessaggio: Date.now(),
 			idMittente: currentUser.idUtente,
@@ -104,8 +123,8 @@
 			{:else}
 				{#each aziende as azienda (azienda.idUtente)}
 					<button
-						onclick={() => selectContact(azienda)}
-						class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.idUtente === azienda.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
+							onclick={() => selectContact(azienda)}
+							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.idUtente === azienda.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
 					>
 						<div class="flex items-center gap-4">
 							<div class="p-3 rounded-2xl transition-all {activeContact?.idUtente === azienda.idUtente ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : 'bg-[#1B4B6B]/5 text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white'}">
@@ -151,8 +170,8 @@
 							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
 								<Clock size={10} />
 								<span class="text-[9px] font-black uppercase tracking-widest">
-            {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-          </span>
+                            {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                         </span>
 							</div>
 						</div>
 					</div>
@@ -162,15 +181,15 @@
 			<div class="p-8 border-t border-gray-100 bg-white">
 				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input
-						bind:value={newMessage}
-						type="text"
-						placeholder="Scrivi una comunicazione ufficiale..."
-						class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
+							bind:value={newMessage}
+							type="text"
+							placeholder="Scrivi una comunicazione ufficiale..."
+							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
 					/>
 					<button
-						type="submit"
-						disabled={!newMessage.trim()}
-						class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group"
+							type="submit"
+							disabled={!newMessage.trim()}
+							class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group"
 					>
 						<Send size={20} class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
 					</button>
@@ -189,10 +208,10 @@
 </div>
 
 <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(27, 75, 107, 0.1); border-radius: 10px; }
+	.custom-scrollbar::-webkit-scrollbar { width: 3px; }
+	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(27, 75, 107, 0.1); border-radius: 10px; }
 
-    /* Layout fix per altezza piena */
-    :global(body) { overflow: hidden; }
+	/* Layout fix per altezza piena */
+	:global(body) { overflow: hidden; }
 </style>

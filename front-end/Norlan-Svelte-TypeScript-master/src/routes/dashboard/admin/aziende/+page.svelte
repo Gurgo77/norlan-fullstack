@@ -6,17 +6,16 @@
 		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin
 	} from 'lucide-svelte';
 
-	// Modelli ed Enums
-	import { Azienda } from '$lib/models/Azienda';
-	import { Ruolo } from '$lib/models/Enums';
+	// Modelli
+	import { Azienda, type AziendaData } from '$lib/models/Azienda';
 
-	// Servizi
-	import { AziendaService, type AziendaCreateRequest } from '$lib/services/AziendaService';
+	// Servizi (Utilizziamo AnagraficaService come richiesto)
+	import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 
 	// --- STATO REATTIVO (Svelte 5) ---
 	let aziende = $state<Azienda[]>([]);
-	let dipendentiCorrenti = $state<DipendenteDTO[]>([]); // Tipizzazione forte
+	let dipendentiCorrenti = $state<DipendenteDTO[]>([]); // Tipizzazione forte, no any
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
@@ -25,8 +24,8 @@
 	let showModal = $state(false);
 	let isSaving = $state(false);
 
-	// Stato per il form di creazione
-	let formAzienda = $state<AziendaCreateRequest>({
+	// Stato per il form di creazione (Mappato su AuthRequestDTO del Backend)
+	let formAzienda = $state({
 		email: '',
 		password: '',
 		ragioneSociale: '',
@@ -36,8 +35,7 @@
 		telefono: '',
 		cellulare: '',
 		referenteAziendale: '',
-		hasDipendenti: false,
-		ruolo: Ruolo.AZIENDA
+		hasDipendenti: false
 	});
 
 	let showDeleteModal = $state(false);
@@ -49,7 +47,7 @@
 			formAzienda.ragioneSociale.trim() !== '' &&
 			formAzienda.partitaIva.length === 11 &&
 			formAzienda.email.trim() !== '' &&
-			(formAzienda.password ?? '').trim() !== ''
+			formAzienda.password.trim() !== ''
 	);
 
 	const filteredAziende = $derived(
@@ -59,8 +57,11 @@
 	// --- AZIONI ---
 	onMount(async () => {
 		try {
-			// Recupero iniziale di tutte le aziende tramite il service dedicato
-			aziende = await AziendaService.getAll();
+			// Recupero iniziale di tutte le aziende tramite AnagraficaService
+			const res = await AnagraficaService.getAllAziende();
+			// Cast sicuro dei dati unknown[] a AziendaData[] per inizializzare la classe
+			const data = res as AziendaData[];
+			aziende = data.map(item => new Azienda(item));
 		} catch (error) {
 			console.error("Errore caricamento dati aziende:", error);
 		} finally {
@@ -69,16 +70,16 @@
 	});
 
 	/**
-	 * Apre il dettaglio di un'azienda e carica i dipendenti associati on-demand.
+	 * Apre il dettaglio di un'azienda e carica i dipendenti associati.
 	 */
 	async function apriDettaglio(azienda: Azienda) {
 		selectedAzienda = azienda;
 		try {
-			// Verifica dinamica se ha dipendenti
-			dynamicHasDipendenti = await AziendaService.hasDipendenti(azienda.idUtente);
+			// Verifica se l'azienda ha dipendenti usando il metodo dedicato nel service
+			dynamicHasDipendenti = await AnagraficaService.hasDipendenti(azienda.idUtente);
 
 			if (dynamicHasDipendenti) {
-				// Scarica solo i dipendenti di questa azienda
+				// Scarica i dettagli dei dipendenti
 				dipendentiCorrenti = await LavoratoreService.getByAzienda(azienda.idUtente);
 			} else {
 				dipendentiCorrenti = [];
@@ -92,15 +93,29 @@
 		if (!isFormValid) return;
 		isSaving = true;
 		try {
-			// Creazione tramite service
-			const nuova = await AziendaService.create(formAzienda);
-			aziende = [...aziende, nuova];
+			// Prepariamo il DTO per il controller di registrazione del backend
+			const payload: AuthRequestDTO = {
+				email: formAzienda.email,
+				password: formAzienda.password,
+				ruolo: 'AZIENDA',
+				ragioneSociale: formAzienda.ragioneSociale,
+				partitaIva: formAzienda.partitaIva
+			};
+
+			// Eseguiamo la registrazione
+			await AnagraficaService.registraUtente(payload);
+
+			// Ricarichiamo la lista per vedere l'azienda appena creata con il suo ID reale
+			const res = await AnagraficaService.getAllAziende();
+			const data = res as AziendaData[];
+			aziende = data.map(item => new Azienda(item));
+
 			showModal = false;
 			// Reset form
 			formAzienda = {
 				email: '', password: '', ragioneSociale: '', partitaIva: '',
 				sedeLegale: '', pec: '', telefono: '', cellulare: '',
-				referenteAziendale: '', hasDipendenti: false, ruolo: Ruolo.AZIENDA
+				referenteAziendale: '', hasDipendenti: false
 			};
 		} catch (error) {
 			console.error("Errore nel salvataggio:", error);
@@ -120,8 +135,8 @@
 	async function confermaEliminazione() {
 		if (confermaTesto === 'ELIMINA' && aziendaDaEliminare) {
 			try {
-				// Eliminazione fisica tramite service
-				await AziendaService.delete(aziendaDaEliminare.idUtente);
+				// Eliminazione tramite AnagraficaService
+				await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente);
 				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
 				showDeleteModal = false;
 				selectedAzienda = null;
@@ -140,7 +155,7 @@
 				<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafiche Aziende</h1>
 				<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione centralizzata NorLan.</p>
 			</div>
-			<button onclick={() => showModal = true} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
+			<button onclick={() => (showModal = true)} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
 				<Plus size={18} /> Nuova Azienda
 			</button>
 		</div>
@@ -179,7 +194,7 @@
 		{/if}
 	{:else}
 		<div in:fade>
-			<button onclick={() => selectedAzienda = null} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco</button>
+			<button onclick={() => (selectedAzienda = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco</button>
 
 			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
 				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
@@ -266,7 +281,7 @@
 					<h3 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Registra Nuova Azienda</h3>
 					<p class="text-xs font-bold text-gray-400 uppercase mt-1">Inserisci i dati per creare il profilo cliente</p>
 				</div>
-				<button onclick={() => showModal = false} class="text-gray-400 hover:text-red-500 font-bold text-xl transition-colors px-4 py-2">&times;</button>
+				<button onclick={() => (showModal = false)} class="text-gray-400 hover:text-red-500 font-bold text-xl transition-colors px-4 py-2">&times;</button>
 			</div>
 
 			<div class="p-8 overflow-y-auto custom-scrollbar-data grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -307,7 +322,7 @@
 					<input bind:value={formAzienda.referenteAziendale} type="text" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold uppercase">
 				</div>
 
-				<div class="md:col-span-2 mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between cursor-pointer" onclick={() => formAzienda.hasDipendenti = !formAzienda.hasDipendenti}>
+				<div class="md:col-span-2 mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between cursor-pointer" onclick={() => (formAzienda.hasDipendenti = !formAzienda.hasDipendenti)}>
 					<div>
 						<p class="font-bold text-[#1B4B6B] text-sm uppercase">Ha dipendenti a carico?</p>
 						<p class="text-[10px] text-gray-500 font-bold">Attiva se l'azienda deve gestire lavoratori e DPI.</p>
@@ -319,7 +334,7 @@
 			</div>
 
 			<div class="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-4 shrink-0">
-				<button onclick={() => showModal = false} class="px-6 py-3 font-bold text-gray-500 hover:text-gray-700 uppercase text-xs">Annulla</button>
+				<button onclick={() => (showModal = false)} class="px-6 py-3 font-bold text-gray-500 hover:text-gray-700 uppercase text-xs">Annulla</button>
 				<button
 						onclick={salvaNuovaAzienda}
 						disabled={!isFormValid || isSaving}
@@ -348,7 +363,7 @@
 				</div>
 
 				<div class="flex gap-4">
-					<button onclick={() => showDeleteModal = false} class="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold uppercase text-xs hover:bg-gray-200 transition-colors">Annulla</button>
+					<button onclick={() => (showDeleteModal = false)} class="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold uppercase text-xs hover:bg-gray-200 transition-colors">Annulla</button>
 					<button onclick={confermaEliminazione} disabled={confermaTesto !== 'ELIMINA'} class="flex-1 py-3.5 bg-red-600 text-white rounded-xl font-black uppercase text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors">Conferma</button>
 				</div>
 			</div>
