@@ -4,6 +4,8 @@ import it.norlan.clientportal.model.Utente.Ruolo;
 import lombok.Data;
 
 @Data
+@NoArgsConstructor  // <--- AGGIUNGI QUESTA
+@AllArgsConstructor
 public class AuthRequestDTO {
 
     private String email;

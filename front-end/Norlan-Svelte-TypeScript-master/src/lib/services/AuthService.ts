@@ -30,12 +30,10 @@ export class AuthService {
 	 * BE: POST /api/auth/login
 	 */
 	static async login(credentials: LoginRequest): Promise<LoginResponse> {
+		// Assicurati che credentials sia un oggetto {email, password}
 		const response = await httpClient.post<LoginResponse>(`${this.basePath}/login`, credentials);
 		const authData = response.data;
-
-		// Salvataggio persistente dei dati
 		this.setSession(authData);
-
 		return authData;
 	}
 

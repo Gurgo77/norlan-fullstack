@@ -1,3 +1,6 @@
+DPI
+
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
@@ -6,44 +9,76 @@
 		ShieldCheck, AlertTriangle, Clock, Loader2, ArrowRight
 	} from 'lucide-svelte';
 
-	// --- INTERFACCE (ESLint & TS Fix) ---
-	interface DpiAssegnato {
-		id: number;
-		dipendente: string;
-		tipoDispositivo: string;
-		dataConsegna: string;
-		revisione: string;
-		stato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
+	// Import Servizi e Interfacce
+	import { LavoratoreService, type AssegnazioneDPIDTO } from '$lib/services/LavoratoreService';
+	import { AuthService } from '$lib/services/AuthService';
+
+	// --- INTERFACCE LOCALI ---
+	interface DpiRegistro extends AssegnazioneDPIDTO {
+		nomeCompletoDipendente: string;
+		statoDerivato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
 	}
 
+	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroAttivo = $state('TUTTI');
+	let registro = $state<DpiRegistro[]>([]);
 
-	let registro = $state<DpiAssegnato[]>([
-		{ id: 1, dipendente: 'MARIO ROSSI', tipoDispositivo: 'ELMETTO PROTETTIVO CON VISIERA', dataConsegna: '10/01/2025', revisione: '10/01/2026', stato: 'OK' },
-		{ id: 2, dipendente: 'LUIGI BIANCHI', tipoDispositivo: 'IMBRACATURA ANTICADUTA MOD. X2', dataConsegna: '15/05/2024', revisione: '15/05/2025', stato: 'DA_REVISIONARE' },
-		{ id: 3, dipendente: 'MARIO ROSSI', tipoDispositivo: 'GUANTI DIELETTRICI CLASSE 0', dataConsegna: '01/02/2025', revisione: '01/08/2025', stato: 'OK' },
-		{ id: 4, dipendente: 'FRANCESCO NERI', tipoDispositivo: 'SCARPE ANTINFORTUNISTICHE S3', dataConsegna: '10/10/2023', revisione: '10/10/2024', stato: 'SCADUTO' }
-	]);
+	// --- LOGICA DI CARICAMENTO ---
+	onMount(async () => {
+		const session = AuthService.getSession(); //
+		if (!session) return;
 
-	onMount(() => {
-		setTimeout(() => {
+		try {
+			// 1. Recupero i dipendenti dell'azienda
+			const dipendenti = await LavoratoreService.getByAzienda(session.idUtente);
+
+			// 2. Recupero i DPI per ogni dipendente e li unisco in un unico registro
+			const promises = dipendenti.map(async (d) => {
+				const dpiLavoratore = await LavoratoreService.getDpiByLavoratore(d.idUtente);
+				return dpiLavoratore.map(dpi => ({
+					...dpi,
+					nomeCompletoDipendente: `${d.nome} ${d.cognome}`.toUpperCase(),
+					statoDerivato: calcolaStato(dpi.dataScadenza)
+				}));
+			});
+
+			const risultati = await Promise.all(promises);
+			registro = risultati.flat();
+
+		} catch (error) {
+			console.error("Errore nel caricamento del registro DPI:", error);
+		} finally {
 			isLoading = false;
-		}, 500);
+		}
 	});
 
+	/**
+	 * Calcola lo stato in base alla data di scadenza
+	 */
+	function calcolaStato(dataScadenzaStr: string): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
+		const oggi = new Date();
+		const scadenza = new Date(dataScadenzaStr);
+		const diffGiorni = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
+
+		if (diffGiorni < 0) return 'SCADUTO';
+		if (diffGiorni <= 30) return 'DA_REVISIONARE';
+		return 'OK';
+	}
+
+	// --- LOGICA REATTIVA ---
 	const filteredRegistro = $derived(
-		registro.filter(d => {
-			const matchSearch = d.dipendente.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				d.tipoDispositivo.toLowerCase().includes(searchQuery.toLowerCase());
-			const matchFiltro = filtroAttivo === 'TUTTI' || d.stato === filtroAttivo;
-			return matchSearch && matchFiltro;
-		})
+			registro.filter(d => {
+				const matchSearch = d.nomeCompletoDipendente.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						d.nomeDpi.toLowerCase().includes(searchQuery.toLowerCase());
+				const matchFiltro = filtroAttivo === 'TUTTI' || d.statoDerivato === filtroAttivo;
+				return matchSearch && matchFiltro;
+			})
 	);
 
 	const stats = $derived({
-		scaduti: registro.filter(d => d.stato === 'SCADUTO').length
+		scaduti: registro.filter(d => d.statoDerivato === 'SCADUTO').length
 	});
 </script>
 
@@ -63,21 +98,22 @@
 				</div>
 			</div>
 
-			<button
-				class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
+			<a
+					href="/dashboard/azienda/dipendenti"
+					class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
 			>
 				<Plus size={18} />
 				Assegna Nuovo DPI
-			</button>
+			</a>
 		</div>
 	</div>
 
 	<div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
 		<div class="flex gap-2">
-			{#each ['TUTTI', 'OK', 'DA_REVISIONARE', 'SCADUTO'] as f}
+			{#each ['TUTTI', 'OK', 'DA_REVISIONARE', 'SCADUTO'] as f (f)}
 				<button
-					onclick={() => filtroAttivo = f}
-					class="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all {filtroAttivo === f ? 'bg-[#1B4B6B] text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
+						onclick={() => (filtroAttivo = f)}
+						class="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all {filtroAttivo === f ? 'bg-[#1B4B6B] text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 				>
 					{f.replace('_', ' ')}
 				</button>
@@ -87,10 +123,10 @@
 		<div class="relative w-full md:w-96">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
 			<input
-				bind:value={searchQuery}
-				type="text"
-				placeholder="Cerca dipendente o DPI..."
-				class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-2xl focus:ring-2 focus:ring-[#1B4B6B]/10 outline-none font-bold text-xs uppercase transition-all"
+					bind:value={searchQuery}
+					type="text"
+					placeholder="Cerca dipendente o DPI..."
+					class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-2xl focus:ring-2 focus:ring-[#1B4B6B]/10 outline-none font-bold text-xs uppercase transition-all"
 			/>
 		</div>
 	</div>
@@ -120,33 +156,36 @@
 									<HardHat size={24} />
 								</div>
 							</td>
-							<td class="px-6 py-6"><span class="font-black text-[#1B4B6B] text-xs uppercase">{item.dipendente}</span></td>
+							<td class="px-6 py-6"><span class="font-black text-[#1B4B6B] text-xs uppercase">{item.nomeCompletoDipendente}</span></td>
 							<td class="px-6 py-6">
 								<div class="flex items-center gap-2">
 									<HardHat size={14} class="text-[#1B4B6B] opacity-40" />
-									<span class="font-bold text-[#1B4B6B] text-xs uppercase">{item.tipoDispositivo}</span>
+									<span class="font-bold text-[#1B4B6B] text-xs uppercase">{item.nomeDpi}</span>
 								</div>
 							</td>
 							<td class="px-6 py-6 text-xs text-gray-400 font-medium">{item.dataConsegna}</td>
-							<td class="px-6 py-6 text-xs font-black text-[#1B4B6B]">{item.revisione}</td>
+							<td class="px-6 py-6 text-xs font-black text-[#1B4B6B]">{item.dataScadenza}</td>
 							<td class="px-6 py-6">
-								<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase {item.stato === 'OK' ? 'bg-green-50 text-green-600 border-green-100' : item.stato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' : 'bg-red-50 text-red-600 border-red-100'}">
-									{#if item.stato === 'OK'}<ShieldCheck size={12} />{:else if item.stato === 'DA_REVISIONARE'}<Clock size={12} />{:else}<AlertTriangle size={12} />{/if}
-									{item.stato.replace('_', ' ')}
+								<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase {item.statoDerivato === 'OK' ? 'bg-green-50 text-green-600 border-green-100' : item.statoDerivato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' : 'bg-red-50 text-red-600 border-red-100'}">
+									{#if item.statoDerivato === 'OK'}<ShieldCheck size={12} />{:else if item.statoDerivato === 'DA_REVISIONARE'}<Clock size={12} />{:else}<AlertTriangle size={12} />{/if}
+									{item.statoDerivato.replace('_', ' ')}
 								</div>
 							</td>
 							<td class="px-8 py-6 text-right">
 								<div class="flex justify-end gap-3 items-center">
 									<button class="p-2 text-gray-300 hover:text-[#1B4B6B] transition-colors"><Download size={18} /></button>
 
-									<button class="flex items-center gap-2 bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
+									<a href="/dashboard/azienda/dipendenti" class="flex items-center gap-2 bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
 										Gestisci
 										<ArrowRight size={14} />
-									</button>
+									</a>
 								</div>
 							</td>
 						</tr>
 					{/each}
+					{#if filteredRegistro.length === 0}
+						<tr><td colspan="7" class="px-8 py-10 text-center text-gray-400 font-bold uppercase text-xs">Nessun DPI trovato nei registri.</td></tr>
+					{/if}
 				{/if}
 				</tbody>
 			</table>
@@ -155,5 +194,5 @@
 </div>
 
 <style>
-    :global(body) { background-color: #F9FAFB; }
+	:global(body) { background-color: #F9FAFB; }
 </style>

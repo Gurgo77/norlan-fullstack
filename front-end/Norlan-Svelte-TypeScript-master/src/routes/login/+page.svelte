@@ -19,8 +19,13 @@
 		isLoading = true;
 
 		try {
-			const user = await AuthService.login(email, password);
+			// NOTA: Passiamo un UNICO OGGETTO con le proprietà email e password
+			const user = await AuthService.login({
+				email: email,
+				password: password
+			});
 
+			// Il resto della logica di reindirizzamento va bene
 			if (user.ruolo === 'ADMIN') {
 				goto('/dashboard/admin');
 			} else if (user.ruolo === 'AZIENDA') {
@@ -36,6 +41,7 @@
 		} catch (err: unknown) {
 			console.error('Errore critico durante il login:', err);
 
+			// Gestione errori corretta
 			if (isAxiosError(err)) {
 				if (err.response?.status === 401) {
 					errorMessage = 'Credenziali errate. Riprova.';
@@ -45,7 +51,7 @@
 					errorMessage = 'Errore di comunicazione col server. Riprova più tardi.';
 				}
 			} else {
-				errorMessage = 'Errore tecnico. Controlla la console (F12).';
+				errorMessage = 'Errore tecnico. Controlla la console.';
 			}
 		} finally {
 			isLoading = false;

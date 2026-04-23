@@ -1,187 +1,241 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { fade, slide } from 'svelte/transition';
-	import {
-		Send, MessageSquare, User, Clock,
-		CheckCheck, Paperclip, Smile, Loader2
-	} from 'lucide-svelte';
+	import { fade, scale } from 'svelte/transition';
+	import { Send, Building2, MessageSquare, Loader2, User, Clock, Hash, ShieldCheck, Users } from 'lucide-svelte';
 
-	// 1. DEFINIZIONE INTERFACCE (Zero any!)
-	interface Messaggio {
+	// Servizi
+	import { ChatService } from '$lib/services/ChatService';
+	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
+	import { AuthService, type UserSession } from '$lib/services/AuthService';
+
+	// Modelli
+	import { Messaggio } from '$lib/models/Messaggio';
+
+	// --- INTERFACCE PER LA RUBRICA ---
+	interface Contatto {
 		id: number;
-		testo: string;
-		mittente: 'AZIENDA' | 'STAFF';
-		ora: string;
-		letto: boolean;
+		nome: string;
+		sottotitolo: string;
+		isStaff: boolean;
 	}
 
-	// 2. STATO REATTIVO
-	let messaggi = $state<Messaggio[]>([]);
-	let nuovoMessaggioTesto = $state('');
-	let isLoading = $state(true);
-	let scrollContainer = $state<HTMLDivElement | null>(null);
+	// --- STATO REATTIVO ---
+	let chatService: ChatService | null = null;
+	let currentUser: UserSession | null = $state(null);
+	let token: string = $state('');
 
-	// 3. LOGICA DI CARICAMENTO E WEBSOCKET
-	onMount(() => {
-		// Mock della cronologia messaggi
-		setTimeout(() => {
-			messaggi = [
-				{ id: 1, testo: "Buongiorno NorLan, ho caricato il nuovo verbale di sopralluogo.", mittente: 'AZIENDA', ora: '09:15', letto: true },
-				{ id: 2, testo: "Ricevuto! Lo prendiamo in carico. Entro stasera lo troverà firmato nell'area documenti.", mittente: 'STAFF', ora: '09:30', letto: true },
-				{ id: 3, testo: "Perfetto, grazie mille per la celerità.", mittente: 'AZIENDA', ora: '09:45', letto: true },
-				{ id: 4, testo: "Le confermo che è tutto in regola. Restiamo a disposizione.", mittente: 'STAFF', ora: '10:00', letto: false }
-			];
-			isLoading = false;
-			scrollToBottom();
-		}, 800);
+	let contatti: Contatto[] = $state([]);
+	let activeContact: Contatto | null = $state(null);
+	let messaggi: Messaggio[] = $state([]);
+	let newMessage: string = $state('');
+	let isLoading: boolean = $state(true);
+
+	const STAFF_ID = 1; // ID convenzionale dello Staff NorLan
+
+	onMount(async () => {
+		currentUser = AuthService.getSession(); //
+		token = AuthService.getToken() || ''; //
+
+		if (currentUser) {
+			try {
+				// 1. Carichiamo i dipendenti dell'azienda
+				const dipendentiRaw = await LavoratoreService.getByAzienda(currentUser.idUtente);
+
+				// 2. Costruiamo la lista contatti (Staff + Dipendenti)
+				const listaDipendenti: Contatto[] = dipendentiRaw.map(d => ({
+					id: d.idUtente,
+					nome: `${d.nome} ${d.cognome}`,
+					sottotitolo: d.email,
+					isStaff: false
+				}));
+
+				contatti = [
+					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Consulenza", isStaff: true },
+					...listaDipendenti
+				];
+			} catch (error) {
+				console.error("Errore nel recupero della rubrica dipendenti", error);
+			} finally {
+				isLoading = false;
+			}
+
+			// 3. Connessione al WebSocket
+			chatService = new ChatService(
+					(msg: Messaggio) => {
+						// Ricezione messaggio in tempo reale
+						if (activeContact && (msg.idMittente === activeContact.id || msg.idMittente === currentUser?.idUtente)) {
+							messaggi = [...messaggi, msg];
+							scrollToBottom();
+						}
+					},
+					(err: string) => console.error("Errore WebSocket:", err)
+			);
+			chatService.connect(token, currentUser.idUtente);
+		}
 	});
+
+	onDestroy(() => {
+		if (chatService) chatService.disconnect(); //
+	});
+
+	async function selectContact(contatto: Contatto) {
+		activeContact = contatto;
+		messaggi = [];
+		if (currentUser && activeContact) {
+			// Recupero cronologia via REST
+			messaggi = await ChatService.getCronologia(currentUser.idUtente, contatto.id);
+			scrollToBottom();
+		}
+	}
+
+	function sendMessage() {
+		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
+
+		// Invio tramite WebSocket
+		chatService.sendMessage({
+			idMittente: currentUser.idUtente,
+			idDestinatario: activeContact.id,
+			testo: newMessage
+		});
+
+		// Mock locale per feedback immediato
+		const msgMock = new Messaggio({
+			idMessaggio: Date.now(),
+			idMittente: currentUser.idUtente,
+			nomeMittente: currentUser.email,
+			idDestinatario: activeContact.id,
+			testo: newMessage,
+			timestampInvio: new Date().toISOString(),
+			letto: false
+		});
+
+		messaggi = [...messaggi, msgMock];
+		newMessage = '';
+		scrollToBottom();
+	}
 
 	function scrollToBottom() {
 		setTimeout(() => {
-			if (scrollContainer) {
-				scrollContainer.scrollTop = scrollContainer.scrollHeight;
-			}
+			const container = document.getElementById('chat-scroll-container');
+			if (container) container.scrollTop = container.scrollHeight;
 		}, 50);
-	}
-
-	function inviaMessaggio() {
-		if (!nuovoMessaggioTesto.trim()) return;
-
-		const msg: Messaggio = {
-			id: Date.now(),
-			testo: nuovoMessaggioTesto,
-			mittente: 'AZIENDA',
-			ora: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-			letto: false
-		};
-
-		// Aggiungiamo il messaggio allo stato (reattività Svelte 5)
-		messaggi = [...messaggi, msg];
-		nuovoMessaggioTesto = '';
-		scrollToBottom();
-
-		// Simuliamo risposta automatica dallo Staff dopo 2 secondi
-		setTimeout(() => {
-			const risposta: Messaggio = {
-				id: Date.now() + 1,
-				testo: "Grazie per il messaggio. Un consulente le risponderà a breve.",
-				mittente: 'STAFF',
-				ora: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-				letto: false
-			};
-			messaggi = [...messaggi, risposta];
-			scrollToBottom();
-		}, 2000);
-	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter' && !e.shiftKey) {
-			e.preventDefault();
-			inviaMessaggio();
-		}
 	}
 </script>
 
-<div class="h-[calc(100vh-160px)] flex flex-col" in:fade>
+<div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
-	<div class="mb-6 flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-		<div class="flex items-center gap-4">
-			<div class="w-12 h-12 bg-[#1B4B6B] rounded-2xl flex items-center justify-center text-white shadow-lg">
-				<User size={24} />
-			</div>
-			<div>
-				<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tight">Staff NorLan</h2>
-				<div class="flex items-center gap-2">
-					<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-					<span class="text-[10px] font-bold text-gray-400 uppercase">Consulente Online</span>
-				</div>
-			</div>
+	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
+		<div class="p-8 border-b border-gray-100 bg-white">
+			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
+				<Users size={22} class="text-[#1B4B6B]" />
+				RUBRICA CONTATTI
+			</h2>
+			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff NorLan e Dipendenti</p>
 		</div>
 
-		<div class="hidden md:flex gap-3">
-			<button class="p-3 text-gray-400 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100">
-				<Clock size={20} />
-			</button>
-		</div>
-	</div>
-
-	<div class="flex-1 bg-white rounded-3xl shadow-sm border border-gray-100 mb-6 flex flex-col overflow-hidden">
-		<div
-			bind:this={scrollContainer}
-			class="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-gray-50/30"
-		>
+		<div class="flex-1 overflow-y-auto custom-scrollbar">
 			{#if isLoading}
-				<div class="h-full flex flex-col items-center justify-center text-gray-300 gap-3">
-					<Loader2 size={32} class="animate-spin text-[#1B4B6B]" />
-					<p class="text-[10px] font-black uppercase tracking-widest">Caricamento conversazione...</p>
+				<div class="flex flex-col items-center justify-center p-20 gap-4">
+					<Loader2 class="animate-spin text-[#1B4B6B]" size={32} />
+					<p class="text-[9px] font-black text-gray-300 uppercase tracking-widest">Sincronizzazione contatti...</p>
 				</div>
 			{:else}
-				{#each messaggi as msg (msg.id)}
-					<div class="flex {msg.mittente === 'AZIENDA' ? 'justify-end' : 'justify-start'}" in:slide>
-						<div class="max-w-[70%] group">
-							<div class="flex items-center gap-2 mb-1 {msg.mittente === 'AZIENDA' ? 'justify-end' : 'justify-start'}">
-								<span class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
-									{msg.mittente === 'AZIENDA' ? 'Tu' : 'Staff NorLan'} • {msg.ora}
-								</span>
+				{#each contatti as contatto (contatto.id)}
+					<button
+							onclick={() => selectContact(contatto)}
+							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.id === contatto.id ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
+					>
+						<div class="flex items-center gap-4">
+							<div class="p-3 rounded-2xl transition-all {activeContact?.id === contatto.id ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : (contatto.isStaff ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400') }">
+								{#if contatto.isStaff} <ShieldCheck size={20} /> {:else} <User size={20} /> {/if}
 							</div>
 
-							<div class="
-								p-4 rounded-2xl shadow-sm text-sm font-medium leading-relaxed
-								{msg.mittente === 'AZIENDA'
-									? 'bg-[#1B4B6B] text-white rounded-tr-none'
-									: 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'}
-							">
-								{msg.testo}
-							</div>
-
-							{#if msg.mittente === 'AZIENDA'}
-								<div class="flex justify-end mt-1">
-									<CheckCheck size={14} class={msg.letto ? 'text-blue-500' : 'text-gray-300'} />
+							<div class="overflow-hidden">
+								<h3 class="{contatto.isStaff ? 'font-black text-blue-900' : 'font-bold text-[#1B4B6B]'} text-xs uppercase truncate tracking-tight">
+									{contatto.nome}
+								</h3>
+								<div class="flex items-center gap-1 mt-0.5">
+									<p class="text-[9px] text-gray-400 font-bold uppercase truncate tracking-tighter">{contatto.sottotitolo}</p>
 								</div>
-							{/if}
+							</div>
 						</div>
-					</div>
+					</button>
 				{/each}
 			{/if}
 		</div>
+	</div>
 
-		<div class="p-6 bg-white border-t border-gray-50">
-			<div class="relative flex items-end gap-4">
-				<div class="flex-1 relative">
-					<textarea
-						bind:value={nuovoMessaggioTesto}
-						onkeydown={handleKeydown}
-						placeholder="Scrivi un messaggio allo staff..."
-						class="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 pr-12 text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all resize-none min-h-[56px] max-h-32"
-						rows="1"
-					></textarea>
-					<button class="absolute right-4 bottom-4 text-gray-400 hover:text-[#1B4B6B] transition-colors">
-						<Smile size={20} />
-					</button>
-				</div>
-
-				<div class="flex items-center gap-2">
-					<button class="p-3.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-all">
-						<Paperclip size={20} />
-					</button>
-					<button
-						onclick={inviaMessaggio}
-						disabled={!nuovoMessaggioTesto.trim()}
-						class="p-3.5 bg-[#1B4B6B] text-white rounded-xl shadow-lg shadow-[#1B4B6B]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
-					>
-						<Send size={20} />
-					</button>
+	<div class="flex-1 flex flex-col bg-white">
+		{#if activeContact}
+			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+				<div class="flex items-center gap-5">
+					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20">
+						{#if activeContact.isStaff} <ShieldCheck size={24} /> {:else} <User size={24} /> {/if}
+					</div>
+					<div>
+						<h2 class="font-black text-[#1B4B6B] text-2xl uppercase tracking-tighter">{activeContact.nome}</h2>
+						<div class="flex items-center gap-4 mt-1">
+							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+							<span class="text-[9px] font-black text-green-600 uppercase tracking-widest">
+                          {activeContact.isStaff ? 'Consulente NorLan Disponibile' : 'Canale Aziendale Interno'}
+                      </span>
+						</div>
+					</div>
 				</div>
 			</div>
-			<p class="text-[9px] font-bold text-gray-400 uppercase mt-3 text-center tracking-widest italic">
-				I messaggi sono crittografati e visibili solo al personale autorizzato NorLan.
-			</p>
-		</div>
+
+			<div id="chat-scroll-container" class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
+				{#each messaggi as msg (msg.idMessaggio)}
+					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
+						<div class="max-w-[65%] shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-blue-900/10' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4'}">
+							<p class="text-sm font-bold leading-relaxed">{msg.testo}</p>
+							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
+								<Clock size={10} />
+								<span class="text-[9px] font-black uppercase tracking-widest">
+                            {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                         </span>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<div class="p-8 border-t border-gray-100 bg-white">
+				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
+					<input
+							bind:value={newMessage}
+							type="text"
+							placeholder="Scrivi un messaggio ufficiale..."
+							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
+					/>
+					<button
+							type="submit"
+							disabled={!newMessage.trim()}
+							class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group"
+					>
+						<Send size={20} class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+					</button>
+				</form>
+			</div>
+		{:else}
+			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-20 text-center">
+				<div class="p-10 bg-gray-50 rounded-[50px] mb-8" in:scale>
+					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
+				</div>
+				<h3 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tighter">Centro Comunicazioni</h3>
+				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">
+					Seleziona lo Staff NorLan per assistenza o un tuo dipendente per comunicazioni interne.
+				</p>
+			</div>
+		{/if}
 	</div>
 </div>
 
 <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+	.custom-scrollbar::-webkit-scrollbar { width: 3px; }
+	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(27, 75, 107, 0.1); border-radius: 10px; }
+
+	/* Layout fix */
+	:global(body) { overflow: hidden; }
 </style>
