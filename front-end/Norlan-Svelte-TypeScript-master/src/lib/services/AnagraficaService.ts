@@ -1,4 +1,5 @@
 import httpClient from '$lib/api/httpClient';
+import type { DipendenteData } from '$lib/models/Dipendente';
 
 // Payload per la registrazione unificata
 export interface AuthRequestDTO {
@@ -70,6 +71,15 @@ export class AnagraficaService {
 		);
 		return response.data;
 	}
+
+	static async hasDipendenti(idAzienda: number | string): Promise<boolean> {
+		// Metodo 2: Tipizzazione esplicita con DipendenteData[]
+		const response = await httpClient.get<DipendenteData[]>(`/api/lavoratori/azienda/${idAzienda}`);
+
+		// Restituisce true se l'array contiene almeno un dipendente
+		return response.data.length > 0;
+	}
+
 
 	static async deleteAzienda(idAzienda: number | string): Promise<void> {
 		await httpClient.delete(`${this.basePath}/aziende/${idAzienda}`);
