@@ -6,56 +6,47 @@
 		FileText, Calendar, CheckCircle2, Info
 	} from 'lucide-svelte';
 
-	// IMPORT MODELLI UFFICIALI
+	// IMPORT MODELLI E SERVIZI UFFICIALI
 	import { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
-	import { Dipendente } from '$lib/models/Dipendente';
+	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
+	import { FormazioneService } from '$lib/services/FormazioneService';
 
 	// 1. STATO CON RUNE (Svelte 5)
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
-	let utente = $state<Dipendente | null>(null);
+	let utente = $state<DipendenteDTO | null>(null);
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
 
-	onMount(() => {
-		setTimeout(() => {
-			// Recuperiamo la sessione reale
-			utente = AuthService.getSession();
+	onMount(async () => {
+		// Recuperiamo la sessione dal service senza localStorage grezzo
+		const session = AuthService.getSession();
+		if (!session) return;
 
-			// Mock dati basati sulla tua classe IscrizioneCorso
-			const mockData = [
-				{
-					idUtente: utente?.idUtente || 1,
-					idCorso: 101,
-					emailUtente: utente?.email || '',
-					titoloCorso: 'SICUREZZA SUL LAVORO - RISCHIO ALTO',
-					dataOrarioCorso: '2025-10-12T09:00:00',
-					presenzaConfermata: true,
-					pathAttestato: '/uploads/attestato_sicurezza_2025.pdf'
-				},
-				{
-					idUtente: utente?.idUtente || 1,
-					idCorso: 102,
-					emailUtente: utente?.email || '',
-					titoloCorso: 'PRIMO SOCCORSO AZIENDALE',
-					dataOrarioCorso: '2026-01-20T14:30:00',
-					presenzaConfermata: true,
-					pathAttestato: '/uploads/primo_soccorso.pdf'
-				}
-			];
+		try {
+			// Eseguiamo il fetch in parallelo dell'utente e dei suoi attestati
+			const [dipendenteData, iscrizioniData] = await Promise.all([
+				LavoratoreService.getById(session.idUtente), //
+				FormazioneService.getIscrizioniUtente(session.idUtente) //
+			]);
 
-			iscrizioni = mockData.map(d => new IscrizioneCorso(d));
+			utente = dipendenteData;
+			iscrizioni = iscrizioniData;
+		} catch (error) {
+			console.error("Errore durante il recupero dei dati degli attestati:", error);
+		} finally {
 			isLoading = false;
-		}, 600);
+		}
 	});
 
-	// 2. LOGICA REATTIVA (Filtra solo le iscrizioni che hanno un attestato)
+	// 2. LOGICA REATTIVA (Filtra solo le iscrizioni con presenza confermata, attestato presente e ricerca testuale)
 	const attestatiDisponibili = $derived(
-		iscrizioni.filter(i =>
-			i.pathAttestato !== '' &&
-			i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase())
-		)
+			iscrizioni.filter(i =>
+					i.presenzaConfermata === true &&
+					i.pathAttestato && i.pathAttestato.trim() !== '' &&
+					i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase())
+			)
 	);
 
 	function formattaData(dataIso: string) {
@@ -86,10 +77,10 @@
 	<div class="relative group max-w-md">
 		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
 		<input
-			bind:value={searchQuery}
-			type="text"
-			placeholder="CERCA PER TITOLO CORSO..."
-			class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+				bind:value={searchQuery}
+				type="text"
+				placeholder="CERCA PER TITOLO CORSO..."
+				class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
 		/>
 	</div>
 
@@ -102,8 +93,8 @@
 		<div class="grid grid-cols-1 gap-4">
 			{#each attestatiDisponibili as iscrizione (iscrizione.idCorso)}
 				<div
-					in:scale={{duration: 200}}
-					class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-xl hover:border-blue-100 transition-all group"
+						in:scale={{duration: 200}}
+						class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-xl hover:border-blue-100 transition-all group"
 				>
 					<div class="flex items-center gap-6 flex-1 min-w-0">
 						<div class="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
@@ -130,9 +121,9 @@
 							<Info size={20} />
 						</button>
 						<a
-							href={iscrizione.pathAttestato}
-							download
-							class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10"
+								href={iscrizione.pathAttestato}
+								download
+								class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10"
 						>
 							<Download size={18} /> Scarica PDF
 						</a>
@@ -144,7 +135,7 @@
 				<div class="py-32 text-center bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200">
 					<FileText size={48} class="mx-auto text-gray-200 mb-4" />
 					<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun attestato</h3>
-					<p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Completa i corsi per sbloccare i certificati</p>
+					<p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Completa i corsi e verifica la presenza per sbloccare i certificati</p>
 				</div>
 			{/if}
 		</div>
@@ -152,5 +143,5 @@
 </div>
 
 <style>
-    :global(body) { background-color: #F9FAFB; }
+	:global(body) { background-color: #F9FAFB; }
 </style>

@@ -3,40 +3,61 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		User, Mail, Building2, IdCard, Lock,
-		Bell, Save, Camera, ShieldCheck, Loader2,
+		Save, Camera, ShieldCheck, Loader2,
 		Briefcase
 	} from 'lucide-svelte';
 
-	// IMPORT MODELLI UFFICIALI
-	import { Dipendente } from '$lib/models/Dipendente';
+	// IMPORT SERVIZI E MODELLI UFFICIALI
+	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { AuthService } from '$lib/services/AuthService';
+	import { LavoratoreService } from '$lib/services/LavoratoreService';
 
+	// STATO CON RUNE SVELTE 5
 	let isLoading = $state(true);
 	let isSaving = $state(false);
-	let utente = $state<Dipendente | null>(null);
+
+	// Tipizziamo con DipendenteData che possiede sia i campi base che ragioneSocialeAzienda
+	let utente = $state<DipendenteData | null>(null);
 
 	// Stati per i feedback visivi
 	let showSuccessMessage = $state(false);
 
-	onMount(() => {
-		// Recuperiamo l'utente reale dal tuo AuthService
-		utente = AuthService.getSession();
+	onMount(async () => {
+		const session = AuthService.getSession(); // Recupero sessione sicura
 
-		setTimeout(() => {
-			isLoading = false;
-		}, 500);
+		if (session) {
+			try {
+				// Recupero dati completi dal backend e forzatura sicura al modello completo
+				utente = (await LavoratoreService.getById(session.idUtente)) as unknown as DipendenteData;
+			} catch (error) {
+				console.error("Errore durante il recupero del profilo:", error);
+			}
+		}
+
+		isLoading = false;
 	});
 
 	async function handleSave() {
-		isSaving = true;
-		// Qui andrà la chiamata al backend Spring Boot
-		// await fetch(`/api/dipendenti/${utente.idUtente}`, { method: 'PUT', ... })
+		if (!utente) return;
 
-		setTimeout(() => {
-			isSaving = false;
+		isSaving = true;
+
+		try {
+			// Chiamata reale al backend per aggiornare il profilo
+			await LavoratoreService.update(utente.idUtente, {
+				nome: utente.nome,
+				cognome: utente.cognome,
+				codiceFiscale: utente.codiceFiscale,
+				email: utente.email
+			});
+
 			showSuccessMessage = true;
 			setTimeout(() => showSuccessMessage = false, 3000);
-		}, 1000);
+		} catch (error) {
+			console.error("Errore durante il salvataggio:", error);
+		} finally {
+			isSaving = false;
+		}
 	}
 </script>
 
@@ -96,7 +117,7 @@
 							<Briefcase size={20} class="text-blue-300 shrink-0" />
 							<div>
 								<p class="text-[9px] font-bold uppercase opacity-50">Ruolo</p>
-								<p class="text-sm font-bold uppercase">{utente?.ruolo || 'DIPENDENTE'}</p>
+								<p class="text-sm font-bold uppercase">{utente?.ruolo?.replace('_', ' ') || 'DIPENDENTE'}</p>
 							</div>
 						</div>
 					</div>
@@ -143,7 +164,7 @@
 							<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B]">
 								<Lock size={24} />
 							</div>
-							<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Sicurezza & Notifiche</h3>
+							<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Sicurezza</h3>
 						</div>
 					</div>
 
@@ -153,18 +174,7 @@
 								<div class="p-2 bg-white rounded-xl shadow-sm group-hover:scale-110 transition-transform"><Lock size={18} /></div>
 								<span class="text-xs font-black text-[#1B4B6B] uppercase">Modifica Password</span>
 							</div>
-							<div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aggiornata 3 mesi fa</div>
-						</button>
-
-						<button class="w-full flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
-							<div class="flex items-center gap-4">
-								<div class="p-2 bg-white rounded-xl shadow-sm group-hover:scale-110 transition-transform"><Bell size={18} /></div>
-								<span class="text-xs font-black text-[#1B4B6B] uppercase">Preferenze Notifiche</span>
-							</div>
-							<div class="flex gap-1">
-								<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-								<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-							</div>
+							<div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aggiornata di recente</div>
 						</button>
 					</div>
 
@@ -178,9 +188,9 @@
 						{/if}
 
 						<button
-							onclick={handleSave}
-							disabled={isSaving}
-							class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50"
+								onclick={handleSave}
+								disabled={isSaving}
+								class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50"
 						>
 							{#if isSaving}
 								<Loader2 size={18} class="animate-spin" />
@@ -197,5 +207,5 @@
 </div>
 
 <style>
-    :global(body) { background-color: #F9FAFB; }
+	:global(body) { background-color: #F9FAFB; }
 </style>

@@ -2,68 +2,51 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		BookOpen, Calendar, Search, Filter, Clock, MapPin, Users, FileText, ArrowRight, Loader2
+		BookOpen, Search, Filter, Clock, MapPin, Users, FileText, ArrowRight, Loader2
 	} from 'lucide-svelte';
-	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
+
+	// IMPORT SERVIZI E MODELLI UFFICIALI
+	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { StatoCorso } from '$lib/models/Enums';
 	import { AuthService } from '$lib/services/AuthService';
+	import { FormazioneService } from '$lib/services/FormazioneService';
 
+	// STATO CON RUNE SVELTE 5
 	let isLoading = $state(true);
 	let corsi = $state<CorsoFormazione[]>([]);
 	let queryRicerca = $state('');
-	let filtroStato = $state('');
 
-	onMount(() => {
-		const session = AuthService.getSession();
+	// Tipizzato con l'enum o stringa vuota per il reset
+	let filtroStato = $state<StatoCorso | ''>('');
 
-		setTimeout(() => {
-			const mockData = [
-				{
-					idCorso: 1,
-					titolo: 'SICUREZZA SUL LAVORO - RISCHIO ALTO',
-					dataOrario: '2026-05-15T09:00:00',
-					luogoFisico: 'SEDE CENTRALE - AULA 1',
-					capacitaMassima: 25,
-					stato: StatoCorso.IN_SVOLGIMENTO,
-					idDocente: session?.idUtente || 1,
-					emailDocente: session?.email || 'docente@norlan.it'
-				},
-				{
-					idCorso: 2,
-					titolo: 'AGGIORNAMENTO ANTINCENDIO',
-					dataOrario: '2026-05-22T14:30:00',
-					luogoFisico: 'CAMPO PROVE ESTERNO',
-					capacitaMassima: 15,
-					stato: StatoCorso.PROGRAMMATO,
-					idDocente: session?.idUtente || 1,
-					emailDocente: session?.email || 'docente@norlan.it'
-				},
-				{
-					idCorso: 3,
-					titolo: 'PRIMO SOCCORSO AZIENDALE',
-					dataOrario: '2026-06-10T09:00:00',
-					luogoFisico: 'SEDE CENTRALE - LAB 3',
-					capacitaMassima: 20,
-					stato: StatoCorso.PROGRAMMATO,
-					idDocente: session?.idUtente || 1,
-					emailDocente: session?.email || 'docente@norlan.it'
-				}
-			];
+	onMount(async () => {
+		const session = AuthService.getSession(); //
+		if (!session) return;
 
-			corsi = mockData.map(item => new CorsoFormazione(item));
+		try {
+			// Recupero l'elenco completo dei corsi dal backend
+			const tuttiCorsi = await FormazioneService.getAllCorsi();
+
+			// Filtro i corsi per mostrare solo quelli assegnati al docente loggato
+			corsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
+		} catch (error) {
+			console.error("Errore durante il recupero dei corsi assegnati:", error);
+		} finally {
 			isLoading = false;
-		}, 800);
+		}
 	});
 
+	// LOGICA DI FILTRO REATTIVA
 	const corsiFiltrati = $derived(
-		corsi.filter(c => {
-			const matchTesto = c.titolo.toLowerCase().includes(queryRicerca.toLowerCase());
-			const matchStato = filtroStato === '' || c.stato === filtroStato;
-			return matchTesto && matchStato;
-		})
+			corsi.filter(c => {
+				const matchTesto = c.titolo.toLowerCase().includes(queryRicerca.toLowerCase());
+				const matchStato = filtroStato === '' || c.stato === filtroStato;
+				return matchTesto && matchStato;
+			})
 	);
 
 	function formattaData(stringaIso: string) {
+		if (!stringaIso) return 'Data non definita';
 		const d = new Date(stringaIso);
 		return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
@@ -93,17 +76,17 @@
 		<div class="relative flex-1 group">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
 			<input
-				bind:value={queryRicerca}
-				type="text"
-				placeholder="CERCA PER TITOLO CORSO..."
-				class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-xs font-bold text-[#1B4B6B] placeholder:text-gray-300 focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all uppercase outline-none"
+					bind:value={queryRicerca}
+					type="text"
+					placeholder="CERCA PER TITOLO CORSO..."
+					class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-xs font-bold text-[#1B4B6B] placeholder:text-gray-300 focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all uppercase outline-none"
 			/>
 		</div>
 		<div class="relative min-w-[240px]">
 			<Filter class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
 			<select
-				bind:value={filtroStato}
-				class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-10 text-xs font-bold text-[#1B4B6B] focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all uppercase outline-none appearance-none cursor-pointer"
+					bind:value={filtroStato}
+					class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-10 text-xs font-bold text-[#1B4B6B] focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all uppercase outline-none appearance-none cursor-pointer"
 			>
 				<option value="">TUTTI GLI STATI</option>
 				<option value={StatoCorso.PROGRAMMATO}>PROGRAMMATI</option>
@@ -116,7 +99,7 @@
 	{#if isLoading}
 		<div class="py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Caricamento registri...</span>
+			<span class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Caricamento registri didattici...</span>
 		</div>
 	{:else if corsiFiltrati.length === 0}
 		<div class="py-32 bg-white rounded-3xl border border-gray-100 border-dashed flex flex-col items-center justify-center text-center">
@@ -128,8 +111,8 @@
 		<div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-8">
 			{#each corsiFiltrati as corso (corso.idCorso)}
 				<div
-					in:scale={{duration: 400}}
-					class="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:border-[#1B4B6B]/20 transition-all duration-500 overflow-hidden group flex flex-col"
+						in:scale={{duration: 400}}
+						class="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:border-[#1B4B6B]/20 transition-all duration-500 overflow-hidden group flex flex-col"
 				>
 					<div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
 						<div class="flex items-center gap-3">
@@ -139,9 +122,9 @@
 							<span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{corso.idCorso}</span>
 						</div>
 						<div class="px-3 py-1 rounded-lg text-[9px] font-black uppercase border
-							{corso.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-amber-50 text-amber-600 border-amber-100' :
-							 corso.stato === StatoCorso.PROGRAMMATO ? 'bg-blue-50 text-blue-600 border-blue-100' :
-							 'bg-emerald-50 text-emerald-600 border-emerald-100'}"
+                      {corso.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                       corso.stato === StatoCorso.PROGRAMMATO ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                       'bg-emerald-50 text-emerald-600 border-emerald-100'}"
 						>
 							{corso.stato.replace('_', ' ')}
 						</div>
@@ -189,8 +172,8 @@
 							Materiale
 						</button>
 						<a
-							href="/dashboard/docente/corsi/{corso.idCorso}"
-							class="flex-1 bg-[#1B4B6B] py-4 rounded-2xl text-[10px] font-black text-white uppercase hover:bg-[#153a54] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#1B4B6B]/10"
+								href="/dashboard/docente/corsi/{corso.idCorso}"
+								class="flex-1 bg-[#1B4B6B] py-4 rounded-2xl text-[10px] font-black text-white uppercase hover:bg-[#153a54] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#1B4B6B]/10"
 						>
 							Gestisci
 							<ArrowRight size={16} />
@@ -201,3 +184,7 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	:global(body) { background-color: #F9FAFB; }
+</style>

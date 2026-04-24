@@ -1,7 +1,9 @@
 package it.norlan.clientportal.dto;
 
 import it.norlan.clientportal.model.Utente.Ruolo;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor  // <--- AGGIUNGI QUESTA

@@ -1,17 +1,32 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import {
-		LayoutDashboard, BookOpen, Users, Calendar, User, // Sostituito Settings con User
-		LogOut, Bell, Search, GraduationCap, MessageSquare, Home, Clock
+		LayoutDashboard, BookOpen, Users, Calendar, User,
+		LogOut, Bell, Search, MessageSquare, Home, Clock
 	} from 'lucide-svelte';
+
+	// Import Servizi e Modelli
 	import { AuthService } from '$lib/services/AuthService';
-	import { AuthResponse } from '$lib/models/AuthResponse';
+	import { SistemaService } from '$lib/services/SistemaService';
+	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import { searchState } from '$lib/searchState.svelte';
+
+	// Interfaccia locale per definire la struttura ritornata dal backend
+	interface DocenteRaw {
+		nome?: string;
+		cognome?: string;
+		titolo?: string;
+	}
 
 	let { children } = $props();
-	let currentUser = $state<AuthResponse | null>(null);
-	let searchQuery = $state('');
 
-	// Array aggiornato con l'icona User per l'Account
+	// Stato Reattivo
+	let docenteEmail = $state('Caricamento...');
+	let docenteNomeCompleto = $state('Docente');
+	let iniziale = $state('D');
+	let notificheCount = $state(0);
+
 	const menuItems = [
 		{ href: '/dashboard/docente', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/dashboard/docente/corsi', label: 'Corsi Assegnati', icon: BookOpen },
@@ -21,13 +36,38 @@
 		{ href: '/dashboard/docente/account', label: 'Il mio Account', icon: User }
 	];
 
-	$effect(() => {
-		currentUser = AuthService.getSession();
+	onMount(async () => {
+		// Recupero dati sessione tramite il service
+		const session = AuthService.getSession();
+
+		if (session) {
+			docenteEmail = session.email;
+
+			try {
+				// Caricamento parallelo delle notifiche e dei dati anagrafici dal DB
+				const [count, profile] = await Promise.all([
+					SistemaService.countNotificheNonLette(session.idUtente),
+					AnagraficaService.getDocenteById(session.idUtente)
+				]);
+
+				notificheCount = count;
+
+				const docenteData = profile as DocenteRaw;
+				if (docenteData.nome && docenteData.cognome) {
+					docenteNomeCompleto = `${docenteData.titolo ? docenteData.titolo + ' ' : ''}${docenteData.nome} ${docenteData.cognome}`;
+					iniziale = docenteData.nome.charAt(0);
+				}
+			} catch (error) {
+				console.error("Errore nel recupero dei dati del docente:", error);
+			}
+		} else {
+			docenteEmail = "Utente non loggato";
+		}
 	});
 
-	function handleLogout() {
-		AuthService.logout();
-		window.location.href = '/login';
+	async function handleLogout() {
+		// Il logout service gestisce già la pulizia locale e il redirect
+		await AuthService.logout();
 	}
 
 	function isMenuActive(href: string, currentPath: string): boolean {
@@ -42,14 +82,9 @@
 
 	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
 		<aside class="sticky top-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50">
-			<div class="p-8 shrink-0 flex items-center gap-3">
-				<div class="bg-white/10 p-2 rounded-xl text-white shadow-sm border border-white/10">
-					<GraduationCap size={24} />
-				</div>
-				<div>
-					<h2 class="text-xl font-black text-white tracking-tighter uppercase">Norlan</h2>
-					<p class="text-[9px] font-black text-white/40 uppercase mt-1 tracking-widest italic">Area Docente</p>
-				</div>
+			<div class="p-8 shrink-0">
+				<img src="/NorLan.jpg" alt="NorLan Logo" class="h-10 w-auto rounded-md shadow-sm">
+				<p class="text-[10px] font-black text-white/40 uppercase mt-2 tracking-widest italic">Area Docente</p>
 			</div>
 
 			<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
@@ -60,8 +95,8 @@
 
 				{#each menuItems as item (item.href)}
 					<a
-						href={item.href}
-						class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isMenuActive(item.href, $page.url.pathname) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
+							href={item.href}
+							class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isMenuActive(item.href, $page.url.pathname) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 					>
 						<item.icon size={20} class="shrink-0" />
 						<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>
@@ -72,7 +107,7 @@
 			<div class="p-6 border-t border-white/10 space-y-4 shrink-0">
 				<div class="px-2">
 					<p class="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Docente Attivo</p>
-					<p class="text-xs font-bold truncate text-white/90">{currentUser?.email || 'docente@norlan.it'}</p>
+					<p class="text-xs font-bold truncate text-white/90">{docenteEmail}</p>
 				</div>
 				<button onclick={handleLogout} class="w-full flex items-center gap-2 bg-red-50 text-red-600 px-5 py-2.5 rounded-lg font-bold hover:bg-red-100 transition-all border border-red-200 shadow-sm uppercase text-xs">
 					<LogOut size={18} />
@@ -87,30 +122,35 @@
 			<div class="relative w-1/3 group">
 				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={18} />
 				<input
-					bind:value={searchQuery}
-					type="text"
-					placeholder="CERCA CORSI O STUDENTI..."
-					class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold uppercase focus:ring-4 focus:ring-[#1B4B6B]/5 focus:bg-white focus:border-[#1B4B6B] outline-none transition-all tracking-wide text-[#1B4B6B] placeholder:text-gray-400"
+						bind:value={searchState.query}
+						type="text"
+						placeholder="CERCA CORSI O STUDENTI..."
+						class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-4 focus:ring-[#1B4B6B]/5 focus:bg-white focus:border-[#1B4B6B] outline-none transition-all font-medium"
 				/>
 			</div>
 
 			<div class="flex items-center gap-6">
 				<div class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 text-[10px] font-bold uppercase">
 					<Clock size={14} />
-					<span>Sistema Online</span>
+					<span>Portale Sincronizzato</span>
 				</div>
+
 				<button class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
 					<Bell size={22} />
-					<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">2</span>
+					{#if notificheCount > 0}
+						<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
+					{/if}
 				</button>
+
 				<div class="h-8 w-px bg-gray-200"></div>
+
 				<div class="flex items-center gap-4">
 					<div class="text-right hidden sm:block">
-						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">{currentUser?.nome || 'DOCENTE'}</p>
+						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">{docenteNomeCompleto}</p>
 						<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Area Didattica</p>
 					</div>
 					<div class="w-10 h-10 bg-[#1B4B6B] rounded-lg flex items-center justify-center text-white shadow-md font-black">
-						{currentUser?.nome?.charAt(0) || 'D'}
+						{iniziale}
 					</div>
 				</div>
 			</div>
@@ -124,15 +164,18 @@
 </div>
 
 <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+	/* Scrollbar Sidebar (Bianca) */
+	.custom-scrollbar::-webkit-scrollbar { width: 3px; }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-    .custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
-    .custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+	/* Scrollbar Dati (Grigia NorLan) */
+	.custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
+	.custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 
-    :global(html, body) {
-        height: auto !important;
-        overflow: auto !important;
-    }
+	/* Layout Reset */
+	:global(html, body) {
+		height: auto !important;
+		overflow: auto !important;
+	}
 </style>

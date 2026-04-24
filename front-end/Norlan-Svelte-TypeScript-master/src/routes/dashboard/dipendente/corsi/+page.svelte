@@ -2,83 +2,96 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		BookOpen, Clock, User, CheckCircle2,
-		PlayCircle, FileText, Loader2, Search,
-		Calendar, FileBadge, Download, Star, MapPin
+		BookOpen,
+		CheckCircle2,
+		PlayCircle,
+		Loader2,
+		Search,
+		Calendar,
+		FileBadge,
+		Download,
+		Star,
+		MapPin
 	} from 'lucide-svelte';
 
+	// IMPORT SERVIZI E MODELLI UFFICIALI
 	import { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
+	import { FormazioneService } from '$lib/services/FormazioneService';
 
+	// --- TIPO CUSTOM PER I FILTRI ---
+	type TipoFiltro = 'TUTTI' | 'ATTIVI' | 'COMPLETATI';
+
+	// FIX: Creiamo un array fortemente tipizzato nello script per evitare il casting nell'HTML
+	const opzioniFiltro: TipoFiltro[] = ['TUTTI', 'ATTIVI', 'COMPLETATI'];
+
+	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
-	let filtroAttivo = $state<'TUTTI' | 'ATTIVI' | 'COMPLETATI'>('TUTTI');
+	let filtroAttivo = $state<TipoFiltro>('TUTTI');
 	let searchQuery = $state('');
 
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
-	let currentUser = AuthService.getSession();
 
-	onMount(() => {
-		setTimeout(() => {
-			const mockData = [
-				{
-					idUtente: currentUser?.idUtente || 501,
-					idCorso: 1,
-					emailUtente: currentUser?.email || 'mario.rossi@norlan.it',
-					titoloCorso: 'SICUREZZA SUL LAVORO - RISCHIO ALTO',
-					dataOrarioCorso: '2026-05-15T14:30:00',
-					presenzaConfermata: true,
-					pathAttestato: ''
-				},
-				{
-					idUtente: currentUser?.idUtente || 501,
-					idCorso: 2,
-					emailUtente: currentUser?.email || 'mario.rossi@norlan.it',
-					titoloCorso: 'ANTINCENDIO LIVELLO 2',
-					dataOrarioCorso: '2026-02-10T09:00:00',
-					presenzaConfermata: true,
-					pathAttestato: '/uploads/attestati/mario_rossi_antincendio.pdf'
-				}
-			];
+	// --- CARICAMENTO DATI ---
+	onMount(async () => {
+		const session = AuthService.getSession(); //
+		if (!session) return;
 
-			iscrizioni = mockData.map(d => new IscrizioneCorso(d));
+		try {
+			// Recupero iscrizioni reali del dipendente loggato
+			iscrizioni = await FormazioneService.getIscrizioniUtente(session.idUtente);
+		} catch (error) {
+			console.error('Errore nel recupero dei corsi:', error);
+		} finally {
 			isLoading = false;
-		}, 600);
+		}
 	});
 
+	// --- LOGICA REATTIVA ---
 	const iscrizioniFiltrate = $derived(
-		iscrizioni.filter(i => {
-			const completato = i.pathAttestato !== '';
-			const matchFiltro =
-				filtroAttivo === 'TUTTI' ||
-				(filtroAttivo === 'COMPLETATI' && completato) ||
-				(filtroAttivo === 'ATTIVI' && !completato);
+			iscrizioni.filter((i) => {
+				// Consideriamo "completato" un corso se l'attestato è stato sbloccato e generato
+				const completato = !!i.pathAttestato && i.pathAttestato.trim() !== '';
 
-			const matchSearch = i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase());
-			return matchFiltro && matchSearch;
-		})
+				const matchFiltro =
+						filtroAttivo === 'TUTTI' ||
+						(filtroAttivo === 'COMPLETATI' && completato) ||
+						(filtroAttivo === 'ATTIVI' && !completato);
+
+				const matchSearch = i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase());
+				return matchFiltro && matchSearch;
+			})
 	);
 
 	function formatData(isoString: string) {
-		return new Date(isoString).toLocaleDateString('it-IT', {
-			day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit'
-		}).toUpperCase();
+		return new Date(isoString)
+				.toLocaleDateString('it-IT', {
+					day: '2-digit',
+					month: 'long',
+					hour: '2-digit',
+					minute: '2-digit'
+				})
+				.toUpperCase();
 	}
 </script>
 
-<div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
-
-	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div in:fade class="mx-auto max-w-7xl space-y-8 pb-10">
+	<div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
 		<div>
-			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei Corsi</h1>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Gestione iscrizioni e download attestati</p>
+			<h1 class="text-4xl font-black uppercase tracking-tighter text-[#1B4B6B]">I Miei Corsi</h1>
+			<p class="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+				Gestione iscrizioni e download attestati
+			</p>
 		</div>
 
-		<div class="flex bg-gray-100 p-1.5 rounded-2xl gap-1">
-			{#each ['TUTTI', 'ATTIVI', 'COMPLETATI'] as opzione (opzione)}
+		<div class="flex gap-1 rounded-2xl bg-gray-100 p-1.5">
+			{#each opzioniFiltro as opzione (opzione)}
 				<button
-					onclick={() => filtroAttivo = opzione as typeof filtroAttivo}
-					class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
-					{filtroAttivo === opzione ? 'bg-[#1B4B6B] text-white shadow-md' : 'text-gray-400 hover:text-[#1B4B6B]'}"
+						onclick={() => (filtroAttivo = opzione)}
+						class="rounded-xl px-6 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all {filtroAttivo ===
+					opzione
+						? 'bg-[#1B4B6B] text-white shadow-md'
+						: 'text-gray-400 hover:text-[#1B4B6B]'}"
 				>
 					{opzione}
 				</button>
@@ -86,48 +99,75 @@
 		</div>
 	</div>
 
-	<div class="relative group max-w-md">
-		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
+	<div class="group relative max-w-md">
+		<Search
+				class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]"
+				size={20}
+		/>
 		<input
-			bind:value={searchQuery}
-			type="text"
-			placeholder="CERCA CORSO..."
-			class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+				bind:value={searchQuery}
+				type="text"
+				placeholder="CERCA CORSO..."
+				class="w-full rounded-[1.5rem] border border-gray-100 bg-white py-4 pl-12 pr-6 text-xs font-bold uppercase shadow-sm outline-none transition-all focus:ring-4 focus:ring-[#1B4B6B]/5"
 		/>
 	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
+		<div class="flex flex-col items-center justify-center gap-4 py-32">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento registro...</span>
+			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">
+				Sincronizzazione registro corsi...
+			</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+		<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 			{#each iscrizioniFiltrate as iscrizione (iscrizione.idCorso)}
-				{@const isCompletato = iscrizione.pathAttestato !== ''}
+				{@const isCompletato = !!iscrizione.pathAttestato && iscrizione.pathAttestato.trim() !== ''}
+
 				<div
-					in:scale={{duration: 300}}
-					class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all group"
+						in:scale={{ duration: 300 }}
+						class="group flex flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl md:flex-row"
 				>
-					<div class="w-full md:w-32 flex flex-col items-center justify-center p-6 border-b md:border-b-0 md:border-r border-gray-50 {isCompletato ? 'bg-emerald-50/30' : 'bg-gray-50/30'}">
-						<div class="p-4 rounded-2xl mb-2 {isCompletato ? 'bg-emerald-500 text-white' : 'bg-[#1B4B6B] text-white'} shadow-lg">
-							{#if isCompletato} <FileBadge size={28} /> {:else} <BookOpen size={28} /> {/if}
+					<div
+							class="flex w-full flex-col items-center justify-center border-b border-gray-50 p-6 md:w-32 md:border-b-0 md:border-r {isCompletato
+							? 'bg-emerald-50/30'
+							: 'bg-gray-50/30'}"
+					>
+						<div
+								class="mb-2 rounded-2xl p-4 shadow-lg {isCompletato
+								? 'bg-emerald-500 text-white'
+								: 'bg-[#1B4B6B] text-white'}"
+						>
+							{#if isCompletato}
+								<FileBadge size={28} />
+							{:else}
+								<BookOpen size={28} />
+							{/if}
 						</div>
-						<span class="text-[8px] font-black uppercase tracking-widest text-center {isCompletato ? 'text-emerald-600' : 'text-[#1B4B6B]'}">
+						<span
+								class="text-center text-[8px] font-black uppercase tracking-widest {isCompletato
+								? 'text-emerald-600'
+								: 'text-[#1B4B6B]'}"
+						>
 							{isCompletato ? 'COMPLETATO' : 'IN CORSO'}
 						</span>
 					</div>
 
-					<div class="flex-1 p-8 flex flex-col justify-between">
+					<div class="flex flex-1 flex-col justify-between p-8">
 						<div>
-							<h3 class="text-xl font-black text-[#1B4B6B] uppercase leading-tight mb-4">{iscrizione.titoloCorso}</h3>
+							<h3 class="mb-4 text-xl font-black uppercase leading-tight text-[#1B4B6B]">
+								{iscrizione.titoloCorso}
+							</h3>
 							<div class="flex flex-wrap gap-4">
-								<div class="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase">
+								<div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
 									<Calendar size={14} class="text-[#1B4B6B]" />
 									{formatData(iscrizione.dataOrarioCorso)}
 								</div>
-								<div class="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase">
-									<CheckCircle2 size={14} class={iscrizione.presenzaConfermata ? 'text-emerald-500' : 'text-gray-300'} />
+								<div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
+									<CheckCircle2
+											size={14}
+											class={iscrizione.presenzaConfermata ? 'text-emerald-500' : 'text-gray-300'}
+									/>
 									{iscrizione.presenzaConfermata ? 'Presenza OK' : 'Da confermare'}
 								</div>
 							</div>
@@ -135,17 +175,27 @@
 
 						<div class="mt-8 flex gap-3">
 							{#if isCompletato}
-								<button class="flex-1 bg-emerald-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/10 hover:bg-emerald-600 transition-all">
+								<a
+										href={iscrizione.pathAttestato}
+										download
+										class="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-[10px] font-black uppercase text-white shadow-lg shadow-emerald-900/10 transition-all hover:bg-emerald-600"
+								>
 									<Download size={18} /> Scarica
-								</button>
-								<button class="px-6 bg-gray-50 text-[#1B4B6B] py-4 rounded-2xl hover:bg-gray-100 transition-all text-gray-400">
+								</a>
+								<button
+										class="rounded-2xl bg-gray-50 px-6 py-4 text-gray-400 transition-all hover:bg-gray-100"
+								>
 									<Star size={18} />
 								</button>
 							{:else}
-								<button class="flex-1 bg-[#1B4B6B] text-white py-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10 hover:bg-[#153a54] transition-all">
+								<button
+										class="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1B4B6B] py-4 text-[10px] font-black uppercase text-white shadow-lg shadow-blue-900/10 transition-all hover:bg-[#153a54]"
+								>
 									<PlayCircle size={18} /> Materiali
 								</button>
-								<button class="px-6 bg-gray-50 text-[#1B4B6B] py-4 rounded-2xl hover:bg-gray-100 transition-all text-gray-400">
+								<button
+										class="rounded-2xl bg-gray-50 px-6 py-4 text-gray-400 transition-all hover:bg-gray-100"
+								>
 									<MapPin size={18} />
 								</button>
 							{/if}
@@ -153,10 +203,24 @@
 					</div>
 				</div>
 			{/each}
+
+			{#if iscrizioniFiltrate.length === 0 && !isLoading}
+				<div
+						class="col-span-1 rounded-[2.5rem] border border-dashed border-gray-200 bg-gray-50 py-20 text-center lg:col-span-2"
+				>
+					<BookOpen size={48} class="mx-auto mb-4 text-gray-300" />
+					<h3 class="text-xl font-black uppercase italic text-[#1B4B6B]">Nessun corso trovato</h3>
+					<p class="mt-2 text-[10px] font-bold uppercase text-gray-400">
+						Nessuna corrispondenza per i filtri selezionati.
+					</p>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
 
 <style>
-    :global(body) { background-color: #F9FAFB; }
+	:global(body) {
+		background-color: #f9fafb;
+	}
 </style>

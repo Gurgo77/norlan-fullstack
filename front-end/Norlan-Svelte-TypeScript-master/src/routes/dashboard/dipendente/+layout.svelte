@@ -1,14 +1,21 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import {
 		LayoutDashboard, HardHat, MessageSquare, BookOpen,
 		FileBadge, User, Bell, LogOut, Home, Clock, Search
 	} from 'lucide-svelte';
+
+	// Import Servizi
 	import { AuthService } from '$lib/services/AuthService';
+	import { SistemaService } from '$lib/services/SistemaService';
 	import { searchState } from '$lib/searchState.svelte';
 
 	let { children } = $props();
-	let userEmail = $state('');
+
+	// Stato Reattivo
+	let userEmail = $state('Caricamento...');
+	let notificheCount = $state(0);
 
 	// Menu aggiornato con i percorsi corretti /dashboard/dipendente
 	const menuItems = [
@@ -20,13 +27,26 @@
 		{ href: '/dashboard/dipendente/account', label: 'Il mio Account', icon: User }
 	];
 
-	$effect(() => {
-		userEmail = localStorage.getItem('userEmail') || 'dipendente@norlan.it';
+	onMount(async () => {
+		// Recupero dati sessione tramite il service
+		const session = AuthService.getSession();
+
+		if (session) {
+			userEmail = session.email;
+			try {
+				// Recupero dinamico del badge notifiche dal backend
+				notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
+			} catch (error) {
+				console.error("Errore nel recupero notifiche:", error);
+			}
+		} else {
+			userEmail = 'Utente non loggato';
+		}
 	});
 
-	function handleLogout() {
-		AuthService.logout();
-		window.location.href = '/login';
+	async function handleLogout() {
+		// Il logout service gestisce già la pulizia locale e il redirect
+		await AuthService.logout();
 	}
 
 	// Funzione per gestire lo stato attivo del menu in modo preciso
@@ -55,8 +75,8 @@
 
 				{#each menuItems as item (item.href)}
 					<a
-						href={item.href}
-						class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isMenuActive(item.href, $page.url.pathname) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
+							href={item.href}
+							class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isMenuActive(item.href, $page.url.pathname) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 					>
 						<item.icon size={20} class="shrink-0" />
 						<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>
@@ -82,10 +102,10 @@
 			<div class="relative w-1/3 group">
 				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={18} />
 				<input
-					bind:value={searchState.query}
-					type="text"
-					placeholder="Cerca corsi, DPI o certificati..."
-					class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-4 focus:ring-[#1B4B6B]/5 focus:bg-white focus:border-[#1B4B6B] outline-none transition-all font-medium"
+						bind:value={searchState.query}
+						type="text"
+						placeholder="Cerca corsi, DPI o certificati..."
+						class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-4 focus:ring-[#1B4B6B]/5 focus:bg-white focus:border-[#1B4B6B] outline-none transition-all font-medium"
 				/>
 			</div>
 
@@ -96,7 +116,9 @@
 				</div>
 				<button class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
 					<Bell size={22} />
-					<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">2</span>
+					{#if notificheCount > 0}
+						<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
+					{/if}
 				</button>
 				<div class="h-8 w-px bg-gray-200"></div>
 				<div class="flex items-center gap-4">
@@ -119,15 +141,15 @@
 </div>
 
 <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+	.custom-scrollbar::-webkit-scrollbar { width: 3px; }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-    .custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
-    .custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+	.custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
+	.custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 
-    :global(html, body) {
-        height: auto !important;
-        overflow: auto !important;
-    }
+	:global(html, body) {
+		height: auto !important;
+		overflow: auto !important;
+	}
 </style>
