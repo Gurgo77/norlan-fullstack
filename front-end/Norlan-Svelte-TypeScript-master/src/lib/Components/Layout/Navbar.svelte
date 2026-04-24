@@ -105,7 +105,7 @@
       {:else}
         <a href="/login" in:fade class="flex items-center gap-2 bg-[#1B4B6B] text-white px-5 py-2 rounded-lg font-bold hover:bg-[#1B4B6B]/90 transition-all shadow-md uppercase text-xs">
           <LogIn size={18} />
-          ACCEDI ALLA DASHBOARD
+          ACCEDI
         </a>
       {/if}
     </div>
