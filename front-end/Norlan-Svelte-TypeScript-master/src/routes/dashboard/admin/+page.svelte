@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import {
-		Building2, FileClock, AlertCircle
+		Building2, FileClock, AlertCircle, LayoutDashboard
 	} from 'lucide-svelte';
 	import { searchState } from '$lib/searchState.svelte';
 
@@ -21,6 +21,10 @@
 	let aziende = $state<Azienda[]>([]);
 	let scadenzeImminenti = $state<ScadenzaTabella[]>([]);
 	let isLoading = $state(true);
+
+	const dataOggi = new Intl.DateTimeFormat('it-IT', {
+		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+	}).format(new Date());
 
 	onMount(async () => {
 		try {
@@ -63,7 +67,13 @@
 
 <div in:fade>
 	<div class="mb-10">
-		<h1 class="text-4xl font-extrabold text-[#1B4B6B]">Ciao! Felice di rivederti.</h1>
+		<div class="flex items-center gap-3 mb-2">
+			<div class="p-2 bg-[#1B4B6B] rounded-xl text-white">
+				<LayoutDashboard size={20} />
+			</div>
+			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
+		</div>
+		<h1 class="text-4xl font-extrabold text-[#1B4B6B]">Benvenuta Rosy</h1>
 		<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Monitoraggio attivo del portale NorLan.</p>
 	</div>
 

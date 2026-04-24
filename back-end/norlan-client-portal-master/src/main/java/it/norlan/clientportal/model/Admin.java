@@ -9,5 +9,4 @@ import lombok.*;
 @Table(name = "admin")
 @PrimaryKeyJoinColumn(name = "id_utente")
 public class Admin extends Utente {
-    // Al momento eredita solo le funzionalità base di Utente
 }

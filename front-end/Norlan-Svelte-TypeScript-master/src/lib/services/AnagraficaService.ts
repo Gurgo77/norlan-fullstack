@@ -1,5 +1,7 @@
 import httpClient from '$lib/api/httpClient';
 import type { DipendenteData } from '$lib/models/Dipendente';
+import type { AziendaData } from '$lib/models/Azienda'; // <-- AGGIUNGI QUESTO
+import type {AdminData} from '$lib/models/Admin';
 
 // Payload per la registrazione unificata
 export interface AuthRequestDTO {
@@ -12,13 +14,15 @@ export interface AuthRequestDTO {
 	partitaIva?: string;
 }
 
-/**
- * Interfacce basate sui metodi setter presenti nel controller BE
- */
 export interface AziendaUpdate {
 	ragioneSociale: string;
 	partitaIva: string;
 	email?: string;
+	sedeLegale?: string;
+	pec?: string;
+	telefono?: string;
+	cellulare?: string;
+	referenteAziendale?: string;
 }
 
 export interface DocenteUpdate {
@@ -27,40 +31,27 @@ export interface DocenteUpdate {
 }
 
 export interface AdminUpdate {
-	nome?: string;
-	cognome?: string;
-	email?: string;
+	email: string;
 }
 
 export class AnagraficaService {
 	private static readonly basePath = '/api/anagrafica';
-
-	// ==========================================
-	// SEZIONE REGISTRAZIONE
-	// ==========================================
 
 	static async registraUtente(dati: AuthRequestDTO): Promise<string> {
 		const response = await httpClient.post<string>(`${this.basePath}/registrazione`, dati);
 		return response.data;
 	}
 
-	// ==========================================
-	// SEZIONE AZIENDE
-	// ==========================================
-
 	static async getAllAziende(): Promise<unknown[]> {
 		const response = await httpClient.get<unknown[]>(`${this.basePath}/aziende`);
 		return response.data;
 	}
 
-	static async getAziendaById(idAzienda: number | string): Promise<unknown> {
-		const response = await httpClient.get<unknown>(`${this.basePath}/aziende/${idAzienda}`);
+	static async getAziendaById(idAzienda: number | string): Promise<AziendaData> {
+		const response = await httpClient.get<AziendaData>(`${this.basePath}/aziende/${idAzienda}`);
 		return response.data;
 	}
 
-	/**
-	 * @PutMapping("/aziende/{id}") - Aggiorna ragioneSociale, partitaIva ed email
-	 */
 	static async updateAzienda(
 		idAzienda: number | string,
 		datiAggiornati: AziendaUpdate
@@ -115,6 +106,16 @@ export class AnagraficaService {
 
 	static async deleteDocente(idDocente: number | string): Promise<void> {
 		await httpClient.delete(`${this.basePath}/docenti/${idDocente}`);
+	}
+
+
+	static async getAdminById(id: number | string): Promise<AdminData> {
+		const response = await httpClient.get<AdminData>(`${this.basePath}/admin/${id}`);
+		return response.data;
+	}
+
+	static async updateAdmin(id: number | string, dati: AdminUpdate): Promise<void> {
+		await httpClient.put(`${this.basePath}/admin/${id}`, dati);
 	}
 
 }

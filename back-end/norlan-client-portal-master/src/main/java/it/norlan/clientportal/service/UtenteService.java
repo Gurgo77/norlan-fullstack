@@ -3,7 +3,9 @@ package it.norlan.clientportal.service;
 import it.norlan.clientportal.dto.UtenteDTO;
 import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.repository.UtenteRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +37,21 @@ public class UtenteService {
             return passwordEncoder.matches(passwordChiara, utenteOpt.get().getPasswordHash());
         }
         return false;
+    }
+
+    @Transactional
+    public void cambiaPassword(String email, String vecchiaPassword, String nuovaPassword) {
+        Utente utente = utenteRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Utente non trovato"));
+
+        // Verifica che la vecchia password coincida con l'hash a database
+        if (!passwordEncoder.matches(vecchiaPassword, utente.getPasswordHash())) {
+            throw new BadCredentialsException("La vecchia password non è corretta");
+        }
+
+        // Codifica e salva la nuova password
+        utente.setPasswordHash(passwordEncoder.encode(nuovaPassword));
+        utenteRepository.save(utente);
     }
 
     public UtenteDTO convertToDTO(Utente utente) {

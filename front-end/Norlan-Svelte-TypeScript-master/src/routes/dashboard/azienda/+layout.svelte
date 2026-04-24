@@ -4,7 +4,7 @@
 	import {
 		LayoutDashboard, MessageSquare, GraduationCap,
 		FileText, LogOut, Home, Bell, Clock,
-		Building2, HardHat, Users, Search
+		Building2, HardHat, Users, Search, User
 	} from 'lucide-svelte';
 
 	// Import Servizi e Modelli
@@ -24,10 +24,12 @@
 	const menuItems = [
 		{ href: '/dashboard/azienda', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/dashboard/azienda/dipendenti', label: 'Elenco Dipendenti', icon: Users },
+		{ href: '/dashboard/azienda/comunicazioni', label: 'Messaggi', icon: MessageSquare },
 		{ href: '/dashboard/azienda/formazione', label: 'Corsi Formazione', icon: GraduationCap },
 		{ href: '/dashboard/azienda/dpi', label: 'Registro DPI', icon: HardHat },
 		{ href: '/dashboard/azienda/documenti', label: 'Archivio Documenti', icon: FileText },
-		{ href: '/dashboard/azienda/comunicazioni', label: 'Chat NorLan', icon: MessageSquare }
+		{ href: '/dashboard/azienda/account', label: 'Il mio account', icon: User },
+
 	];
 
 	onMount(async () => {

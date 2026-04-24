@@ -126,17 +126,17 @@ public class AnagraficaController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/admin")
-    public ResponseEntity<AdminDTO> getAdmin() {
-        return adminService.getUnicoAdmin()
+    @GetMapping("/admin/{id}")
+    public ResponseEntity<AdminDTO> getAdmin(@PathVariable Long id) {
+         return adminService.getUnicoAdmin()
                 .map(admin -> ResponseEntity.ok(adminService.convertToDTO(admin)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/admin")
-    public ResponseEntity<AdminDTO> updateAdmin(@RequestBody Admin adminDati) {
+    @PutMapping("/admin/{id}")
+    public ResponseEntity<AdminDTO> updateAdmin(@PathVariable Integer id, @RequestBody AdminDTO adminDati) {
         try {
-            Admin aggiornato = adminService.aggiornaAdmin(adminDati);
+             Admin aggiornato = adminService.aggiornaAdmin(id, adminDati);
             return ResponseEntity.ok(adminService.convertToDTO(aggiornato));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

@@ -53,15 +53,18 @@ public class AdminService {
      * Permette di aggiornare i dati dell'unico admin esistente senza crearne di nuovi.
      */
     @Transactional
-    public Admin aggiornaAdmin(Admin adminDatiNuovi) {
-        return adminRepository.findById(adminDatiNuovi.getIdUtente()).map(adminEsistente -> {
-            // Qui aggiorni solo i campi necessari (es. email o password)
-            if (adminDatiNuovi.getPasswordHash() != null) {
-                adminEsistente.setPasswordHash(passwordEncoder.encode(adminDatiNuovi.getPasswordHash()));
-            }
-            adminEsistente.setEmail(adminDatiNuovi.getEmail());
-            return adminRepository.save(adminEsistente);
-        }).orElseThrow(() -> new RuntimeException("Nessun amministratore trovato da aggiornare."));
+    public Admin aggiornaAdmin(Integer id, AdminDTO dto) {
+        // 1. Recupera l'entità esistente dal database
+        Admin adminEsistente = adminRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Amministratore non trovato"));
+
+        // 2. Aggiorna SOLO i campi consentiti (nel nostro caso, solo l'email)
+        if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
+            adminEsistente.setEmail(dto.getEmail());
+        }
+
+        // 3. Salva e restituisci l'entità aggiornata
+        return adminRepository.save(adminEsistente);
     }
 
     public AdminDTO convertToDTO(Admin admin) {

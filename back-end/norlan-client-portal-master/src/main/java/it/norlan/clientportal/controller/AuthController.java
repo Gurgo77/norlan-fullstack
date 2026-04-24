@@ -61,6 +61,27 @@ public class AuthController {
         }
     }
 
+    @Autowired
+    private it.norlan.clientportal.service.UtenteService utenteService; // Aggiungi l'injection del service
+
+    @PutMapping("/cambia-password")
+    public ResponseEntity<String> cambiaPassword(
+            Authentication authentication,
+            @RequestBody it.norlan.clientportal.dto.CambioPasswordDTO request) {
+
+        try {
+            String emailUtente = authentication.getName();
+
+            utenteService.cambiaPassword(emailUtente, request.getVecchiaPassword(), request.getNuovaPassword());
+
+            return ResponseEntity.ok("Password aggiornata con successo.");
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Errore durante l'aggiornamento della password");
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<String> logout() {
         return ResponseEntity.ok("Logout effettuato con successo. Il client deve eliminare il token.");

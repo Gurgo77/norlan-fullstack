@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
-		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog
+		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog, User
 	} from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
@@ -16,11 +16,12 @@
 
 	const menuItems = [
 		{ href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
-		{ href: '/dashboard/admin/comunicazioni', label: 'Comunicazioni', icon: MessageSquare },
+		{ href: '/dashboard/admin/comunicazioni', label: 'Messaggi', icon: MessageSquare },
 		{ href: '/dashboard/admin/aziende', label: 'Aziende Clienti', icon: Building2 },
 		{ href: '/dashboard/admin/formazione', label: 'Formazione', icon: GraduationCap },
 		{ href: '/dashboard/admin/scadenziario', label: 'Scadenziario', icon: FileClock },
-		{ href: '/dashboard/admin/report', label: 'Report & Log', icon: BarChart3 }
+		{ href: '/dashboard/admin/report', label: 'Report & Log', icon: BarChart3 },
+		{ href: '/dashboard/admin/account', label: 'Il mio Account', icon: User }
 	];
 
 	onMount(async () => {

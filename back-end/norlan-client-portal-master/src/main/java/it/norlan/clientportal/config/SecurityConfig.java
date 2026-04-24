@@ -39,17 +39,26 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers("/chat-prod.html", "/js/**", "/css/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // Permessi specifici per l'Azienda
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
+                        .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
+                         // 1. SBLOCCO ANAGRAFICA DOCENTE: Permette ai docenti di leggere e modificare se stessi
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
+                        // 2. Protezione del resto dell'anagrafica (Solo Admin)
                         .requestMatchers("/api/anagrafica/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // 3. SBLOCCO LAVORATORI
                         .requestMatchers(HttpMethod.POST, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
-                        .requestMatchers(HttpMethod.PUT, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
+                        // Permettiamo al DIPENDENTE di aggiornare il proprio profilo (aggiunto DIPENDENTE)
+                        .requestMatchers(HttpMethod.PUT, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
                         .requestMatchers(HttpMethod.DELETE, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
-                        .requestMatchers(HttpMethod.GET, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
-                        .anyRequest().authenticated()
+                        // Permettiamo al DOCENTE di fare GET per vedere la lista dei suoi studenti (aggiunto DOCENTE)
+                        .requestMatchers(HttpMethod.GET, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE", "DOCENTE") .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

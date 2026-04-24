@@ -2,217 +2,216 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		User, Mail, IdCard, Lock,
+		Mail, BookOpen, IdCard, Lock,
 		Save, Camera, ShieldCheck, Loader2,
-		Briefcase, GraduationCap
+		Award, GraduationCap
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI UFFICIALI
 	import type { DocenteData } from '$lib/models/Docente';
-	import type { DocenteUpdate } from '$lib/services/AnagraficaService';
 	import { AuthService } from '$lib/services/AuthService';
+	// IMPORT CORRETTO: Usiamo AnagraficaService per i Docenti
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 
-	// STATO CON RUNE SVELTE 5
 	let isLoading = $state(true);
 	let isSaving = $state(false);
-
-	let utente = $state<DocenteData | null>(null);
-	let form = $state<Partial<DocenteData>>({});
-
-	// Stati per i feedback visivi
+	let docente = $state<DocenteData | null>(null);
 	let showSuccessMessage = $state(false);
 
-	onMount(async () => {
-		const session = AuthService.getSession(); // Recupero sessione sicura
+	let isPasswordFormVisible = $state(false);
+	let vecchiaPassword = $state('');
+	let nuovaPassword = $state('');
+	let confermaPassword = $state('');
+	let passwordError = $state('');
+	let passwordSuccessMessage = $state('');
+	let isChangingPassword = $state(false);
 
+	onMount(async () => {
+		const session = AuthService.getSession();
 		if (session) {
 			try {
-				// Recupero dati completi dal backend
-				const data = await AnagraficaService.getDocenteById(session.idUtente) as DocenteData;
-				utente = data;
-				form = { ...data }; // Copia per l'editing
+				// CHIAMATA CORRETTA: Puntiamo ad /api/anagrafica/docenti/{id}
+				docente = (await AnagraficaService.getDocenteById(session.idUtente)) as DocenteData;
 			} catch (error) {
-				console.error("Errore durante il recupero del profilo docente:", error);
+				console.error("Errore recupero profilo docente:", error);
 			}
 		}
-
 		isLoading = false;
 	});
 
-	// UX: Il tasto salva si attiva solo se ci sono modifiche
-	let isDirty = $derived(
-			form.nome !== utente?.nome ||
-			form.cognome !== utente?.cognome ||
-			form.titolo !== utente?.titolo ||
-			form.bio !== utente?.bio ||
-			form.specializzazioneTecnica !== utente?.specializzazioneTecnica
-	);
-
 	async function handleSave() {
-		if (!utente) return;
+		if (!docente) return;
 		isSaving = true;
-
 		try {
-			// Creiamo il payload di aggiornamento.
-			// Usiamo un cast sicuro per inviare anche i campi aggiuntivi nel caso il backend li supporti in futuro,
-			// rispettando comunque l'interfaccia base richiesta dal servizio.
-			const payload = {
-				specializzazioneTecnica: form.specializzazioneTecnica || utente.specializzazioneTecnica,
-				email: utente.email, // Email in sola lettura
-				nome: form.nome,
-				cognome: form.cognome,
-				titolo: form.titolo,
-				bio: form.bio
-			} as unknown as DocenteUpdate;
-
-			// Chiamata reale al backend
-			await AnagraficaService.updateDocente(utente.idUtente, payload);
-
-			// Aggiorniamo lo stato originale per resettare l'isDirty
-			utente = { ...utente, ...form } as DocenteData;
-
+			// SALVATAGGIO CORRETTO: Invia il payload al controller Anagrafica
+			await AnagraficaService.updateDocente(docente.idUtente, {
+				specializzazioneTecnica: docente.specializzazioneTecnica || '',
+				email: docente.email
+			});
 			showSuccessMessage = true;
-			setTimeout(() => showSuccessMessage = false, 3000);
+			setTimeout(() => (showSuccessMessage = false), 3000);
 		} catch (error) {
 			console.error("Errore durante il salvataggio:", error);
 		} finally {
 			isSaving = false;
 		}
 	}
+
+	async function handlePasswordChange() {
+		passwordError = '';
+		passwordSuccessMessage = '';
+
+		if (!vecchiaPassword || !nuovaPassword || !confermaPassword) {
+			passwordError = 'Compila tutti i campi obbligatori.';
+			return;
+		}
+
+		if (nuovaPassword !== confermaPassword) {
+			passwordError = 'Le nuove password non coincidono.';
+			return;
+		}
+
+		isChangingPassword = true;
+
+		try {
+			await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
+			passwordSuccessMessage = 'Password aggiornata con successo!';
+
+			// Reset
+			vecchiaPassword = '';
+			nuovaPassword = '';
+			confermaPassword = '';
+
+			setTimeout(() => {
+				isPasswordFormVisible = false;
+				passwordSuccessMessage = '';
+			}, 2500);
+		} catch (error: any) {
+			passwordError = error.response?.data || 'Errore. Controlla la password attuale.';
+		} finally {
+			isChangingPassword = false;
+		}
+	}
 </script>
 
-<div in:fade class="max-w-6xl mx-auto space-y-8 pb-20">
-
-	<header>
-		<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Il mio Account</h1>
-		<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-			Gestisci le tue informazioni professionali e le credenziali di accesso
-		</p>
-	</header>
+<div class="p-8 max-w-5xl mx-auto pb-24">
+	<div class="mb-10">
+		<h1 class="text-3xl font-black text-[#1B4B6B] tracking-tight text-uppercase">PROFILO DOCENTE</h1>
+		<p class="text-gray-400 text-sm font-medium mt-1">Gestisci le tue competenze e le credenziali di sicurezza</p>
+	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
-			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento profilo didattico...</span>
+		<div class="flex flex-col items-center justify-center py-20 gap-4">
+			<Loader2 class="animate-spin text-[#1B4B6B]" size={40} />
+			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione dati...</p>
 		</div>
-	{:else}
+	{:else if docente}
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-			<div class="space-y-6">
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 text-center">
-					<div class="relative w-32 h-32 mx-auto mb-6">
-						<div class="w-full h-full bg-[#1B4B6B] rounded-[2rem] flex items-center justify-center text-white shadow-xl overflow-hidden">
-							<User size={64} strokeWidth={1.5} />
+			<div class="space-y-8">
+				<div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
+					<div class="relative group">
+						<div class="w-32 h-32 bg-gray-100 rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
+							<GraduationCap size={50} class="text-gray-300" />
 						</div>
-						<button class="absolute -bottom-2 -right-2 p-3 bg-white border border-gray-100 rounded-xl shadow-lg text-[#1B4B6B] hover:scale-110 transition-transform">
-							<Camera size={18} />
+						<button class="absolute -bottom-2 -right-2 p-3 bg-[#1B4B6B] text-white rounded-2xl shadow-lg hover:scale-110 transition-transform">
+							<Camera size={16} />
 						</button>
 					</div>
-
-					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tight leading-none">
-						{utente?.titolo} {utente?.nome} {utente?.cognome}
-					</h2>
-					<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">
-						ID Docente: #{utente?.idUtente}
-					</p>
-
-					<div class="mt-8 pt-8 border-t border-gray-50 flex items-center justify-center gap-3">
-						<div class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
-							<ShieldCheck size={14} /> Docente Verificato
-						</div>
-					</div>
+					<h2 class="mt-6 text-xl font-black text-[#1B4B6B] uppercase tracking-tight text-center">{docente.nome} {docente.cognome}</h2>
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Formatore Certificato</p>
 				</div>
 
-				<div class="bg-[#1B4B6B] rounded-[2.5rem] p-8 text-white shadow-xl">
-					<h3 class="text-sm font-black uppercase tracking-widest mb-4 opacity-60">Dettagli Professionali</h3>
-					<div class="space-y-6">
-						<div class="flex items-start gap-4">
-							<GraduationCap size={20} class="text-blue-300 shrink-0" />
-							<div>
-								<p class="text-[9px] font-bold uppercase opacity-50">Specializzazione</p>
-								<p class="text-sm font-bold uppercase leading-tight mt-0.5">{utente?.specializzazioneTecnica || 'N/D'}</p>
-							</div>
-						</div>
-						<div class="flex items-start gap-4">
-							<Briefcase size={20} class="text-blue-300 shrink-0" />
-							<div>
-								<p class="text-[9px] font-bold uppercase opacity-50">Ruolo Portale</p>
-								<p class="text-sm font-bold uppercase mt-0.5">DOCENTE</p>
-							</div>
-						</div>
+				<div class="bg-[#1B4B6B] p-8 rounded-[40px] text-white shadow-xl">
+					<div class="flex items-center gap-3 mb-6">
+						<Award size={20} class="opacity-60" />
+						<span class="text-[10px] font-black uppercase tracking-widest opacity-60">Specializzazione Tecnica</span>
 					</div>
+					<p class="text-lg font-bold leading-tight">{docente.specializzazioneTecnica || 'Area Sicurezza sul Lavoro'}</p>
 				</div>
 			</div>
 
-			<div class="lg:col-span-2 space-y-6">
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
-					<div class="flex items-center gap-4 mb-10">
-						<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B]">
-							<IdCard size={24} />
-						</div>
-						<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Anagrafica Docente</h3>
+			<div class="lg:col-span-2 space-y-8">
+				<div class="bg-white p-10 rounded-[40px] shadow-sm border border-gray-100">
+					<div class="flex items-center gap-3 mb-10">
+						<IdCard size={20} class="text-[#1B4B6B]" />
+						<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Informazioni Contatto</h3>
 					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 						<div class="space-y-2">
-							<label for="titolo" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Titolo (Es: Prof., Dott.)</label>
-							<input id="titolo" type="text" bind:value={form.titolo} class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
-						</div>
-						<div class="space-y-2">
-							<label for="email" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email (Sola Lettura)</label>
-							<div class="relative">
-								<Mail class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-								<input id="email" type="email" value={utente?.email} readonly class="w-full pl-12 bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-400 outline-none cursor-not-allowed" />
+							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Istituzionale</label>
+							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+								<Mail size={18} class="text-gray-400" />
+								<input type="email" bind:value={docente.email} class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full" />
 							</div>
 						</div>
-						<div class="space-y-2">
-							<label for="nome" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nome</label>
-							<input id="nome" type="text" bind:value={form.nome} class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
-						</div>
-						<div class="space-y-2">
-							<label for="cognome" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Cognome</label>
-							<input id="cognome" type="text" bind:value={form.cognome} class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
-						</div>
-					</div>
-
-					<div class="space-y-8">
-						<div class="space-y-2">
-							<label for="spec" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Materia / Specializzazione Tecnica</label>
-							<input id="spec" type="text" bind:value={form.specializzazioneTecnica} class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
-						</div>
 
 						<div class="space-y-2">
-							<label for="bio" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Bio Breve (Esperienza)</label>
-							<textarea id="bio" bind:value={form.bio} rows="3" class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all resize-none"></textarea>
-						</div>
-					</div>
-				</div>
-
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
-					<div class="flex items-center justify-between mb-10">
-						<div class="flex items-center gap-4">
-							<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B]">
-								<Lock size={24} />
+							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Area di Insegnamento</label>
+							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-60">
+								<BookOpen size={18} class="text-gray-400" />
+								<span class="text-sm font-bold text-[#1B4B6B] uppercase">D.Lgs 81/08</span>
 							</div>
-							<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Sicurezza</h3>
 						</div>
 					</div>
 
-					<div class="space-y-4">
-						<button class="w-full flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
+					<div class="mt-12 pt-10 border-t border-gray-50 space-y-4">
+						<button
+								onclick={() => isPasswordFormVisible = !isPasswordFormVisible}
+								class="w-full flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
 							<div class="flex items-center gap-4">
 								<div class="p-2 bg-white rounded-xl shadow-sm group-hover:scale-110 transition-transform"><Lock size={18} /></div>
-								<span class="text-xs font-black text-[#1B4B6B] uppercase">Modifica Password</span>
+								<span class="text-xs font-black text-[#1B4B6B] uppercase">Cambia password account</span>
 							</div>
-							<div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Protezione end-to-end</div>
+							<div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+								{isPasswordFormVisible ? 'Chiudi' : 'Modifica'}
+							</div>
 						</button>
+
+						{#if isPasswordFormVisible}
+							<div in:fade class="p-8 bg-gray-50 rounded-[30px] border border-gray-100 space-y-6 mt-4">
+								<div class="space-y-4">
+									<div class="space-y-2">
+										<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Vecchia Password</label>
+										<input type="password" bind:value={vecchiaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+									</div>
+									<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div class="space-y-2">
+											<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nuova Password</label>
+											<input type="password" bind:value={nuovaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+										</div>
+										<div class="space-y-2">
+											<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Conferma Nuova</label>
+											<input type="password" bind:value={confermaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+										</div>
+									</div>
+								</div>
+
+								{#if passwordError}
+									<p class="text-red-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordError}</p>
+								{/if}
+								{#if passwordSuccessMessage}
+									<p class="text-emerald-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordSuccessMessage}</p>
+								{/if}
+
+								<button
+										onclick={handlePasswordChange}
+										disabled={isChangingPassword}
+										class="w-full bg-[#1B4B6B] text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all disabled:opacity-50">
+									{#if isChangingPassword}
+										<Loader2 size={16} class="animate-spin" /> Inviando richiesta...
+									{:else}
+										<Save size={16} /> Salva Nuova Password
+									{/if}
+								</button>
+							</div>
+						{/if}
 					</div>
 
 					<div class="mt-10 flex items-center justify-between">
 						{#if showSuccessMessage}
 							<p in:scale class="text-emerald-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-								<ShieldCheck size={16} /> Impostazioni salvate con successo
+								<ShieldCheck size={16} /> Informazioni salvate correttamente
 							</p>
 						{:else}
 							<div></div>
@@ -220,15 +219,12 @@
 
 						<button
 								onclick={handleSave}
-								disabled={!isDirty || isSaving}
-								class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all shadow-lg
-                      {(!isDirty || isSaving) ? 'opacity-50 grayscale cursor-not-allowed shadow-none' : 'hover:bg-[#153a54] shadow-blue-900/20'}"
-						>
+								disabled={isSaving}
+								class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50">
 							{#if isSaving}
-								<Loader2 size={18} class="animate-spin" />
-								Salvataggio...
+								<Loader2 size={18} class="animate-spin" /> Salvataggio...
 							{:else}
-								<Save size={18} /> Salva Modifiche
+								<Save size={18} /> Aggiorna Profilo
 							{/if}
 						</button>
 					</div>
@@ -237,7 +233,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	:global(body) { background-color: #F9FAFB; }
-</style>

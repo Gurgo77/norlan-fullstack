@@ -20,10 +20,10 @@
 	// Menu aggiornato con i percorsi corretti /dashboard/dipendente
 	const menuItems = [
 		{ href: '/dashboard/dipendente', label: 'Dashboard', icon: LayoutDashboard },
+		{ href: '/dashboard/dipendente/messaggi', label: 'Messaggi', icon: MessageSquare },
 		{ href: '/dashboard/dipendente/corsi', label: 'I miei Corsi', icon: BookOpen },
 		{ href: '/dashboard/dipendente/dpi', label: 'I miei DPI', icon: HardHat },
 		{ href: '/dashboard/dipendente/attestati', label: 'Attestati e Doc', icon: FileBadge },
-		{ href: '/dashboard/dipendente/messaggi', label: 'Comunicazioni', icon: MessageSquare },
 		{ href: '/dashboard/dipendente/account', label: 'Il mio Account', icon: User }
 	];
 

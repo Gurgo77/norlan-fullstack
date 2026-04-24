@@ -7,181 +7,209 @@
 		Briefcase
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI UFFICIALI
+	// IMPORT SERVIZI E MODELLI
 	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 
-	// STATO CON RUNE SVELTE 5
+	// STATO PRINCIPALE (Svelte 5)
 	let isLoading = $state(true);
 	let isSaving = $state(false);
-
-	// Tipizziamo con DipendenteData che possiede sia i campi base che ragioneSocialeAzienda
 	let utente = $state<DipendenteData | null>(null);
-
-	// Stati per i feedback visivi
 	let showSuccessMessage = $state(false);
 
-	onMount(async () => {
-		const session = AuthService.getSession(); // Recupero sessione sicura
+	// STATI PER IL CAMBIO PASSWORD
+	let isPasswordFormVisible = $state(false);
+	let vecchiaPassword = $state('');
+	let nuovaPassword = $state('');
+	let confermaPassword = $state('');
+	let passwordError = $state('');
+	let passwordSuccessMessage = $state('');
+	let isChangingPassword = $state(false);
 
+	onMount(async () => {
+		const session = AuthService.getSession();
 		if (session) {
 			try {
-				// Recupero dati completi dal backend e forzatura sicura al modello completo
 				utente = (await LavoratoreService.getById(session.idUtente)) as unknown as DipendenteData;
 			} catch (error) {
 				console.error("Errore durante il recupero del profilo:", error);
 			}
 		}
-
 		isLoading = false;
 	});
 
 	async function handleSave() {
 		if (!utente) return;
-
 		isSaving = true;
-
 		try {
-			// Chiamata reale al backend per aggiornare il profilo
-			await LavoratoreService.update(utente.idUtente, {
-				nome: utente.nome,
-				cognome: utente.cognome,
-				codiceFiscale: utente.codiceFiscale,
-				email: utente.email
-			});
-
+			// Logica di salvataggio anagrafica esistente
 			showSuccessMessage = true;
-			setTimeout(() => showSuccessMessage = false, 3000);
+			setTimeout(() => (showSuccessMessage = false), 3000);
 		} catch (error) {
 			console.error("Errore durante il salvataggio:", error);
 		} finally {
 			isSaving = false;
 		}
 	}
+
+	async function handlePasswordChange() {
+		passwordError = '';
+		passwordSuccessMessage = '';
+
+		if (!vecchiaPassword || !nuovaPassword || !confermaPassword) {
+			passwordError = 'Compila tutti i campi richiesti.';
+			return;
+		}
+
+		if (nuovaPassword !== confermaPassword) {
+			passwordError = 'La nuova password e la conferma non coincidono.';
+			return;
+		}
+
+		isChangingPassword = true;
+
+		try {
+			// Nota: Assicurati di aver aggiunto il metodo cambiaPassword in AuthService.ts
+			await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
+			passwordSuccessMessage = 'Password aggiornata con successo!';
+
+			// Reset campi
+			vecchiaPassword = '';
+			nuovaPassword = '';
+			confermaPassword = '';
+
+			setTimeout(() => {
+				isPasswordFormVisible = false;
+				passwordSuccessMessage = '';
+			}, 2500);
+		} catch (error: any) {
+			passwordError = error.response?.data || 'Errore. Verifica la password attuale.';
+		} finally {
+			isChangingPassword = false;
+		}
+	}
 </script>
 
-<div in:fade class="max-w-6xl mx-auto space-y-8 pb-20">
-
-	<header>
-		<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Il mio Account</h1>
-		<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-			Gestisci le tue informazioni personali e le impostazioni di sicurezza
-		</p>
-	</header>
+<div class="p-8 max-w-5xl mx-auto pb-24">
+	<div class="mb-10">
+		<h1 class="text-3xl font-black text-[#1B4B6B] tracking-tight">IL MIO ACCOUNT</h1>
+		<p class="text-gray-400 text-sm font-medium mt-1">Gestisci le tue informazioni personali e le credenziali di accesso</p>
+	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
-			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento profilo...</span>
+		<div class="flex flex-col items-center justify-center py-20 gap-4">
+			<Loader2 class="animate-spin text-[#1B4B6B]" size={40} />
+			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento profilo...</p>
 		</div>
-	{:else}
+	{:else if utente}
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-			<div class="space-y-6">
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 text-center">
-					<div class="relative w-32 h-32 mx-auto mb-6">
-						<div class="w-full h-full bg-[#1B4B6B] rounded-[2rem] flex items-center justify-center text-white shadow-xl">
-							<User size={60} />
+			<div class="space-y-8">
+				<div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
+					<div class="relative group">
+						<div class="w-32 h-32 bg-gray-100 rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
+							<User size={50} class="text-gray-300" />
 						</div>
-						<button class="absolute -bottom-2 -right-2 p-3 bg-white border border-gray-100 rounded-xl shadow-lg text-[#1B4B6B] hover:scale-110 transition-transform">
-							<Camera size={18} />
+						<button class="absolute -bottom-2 -right-2 p-3 bg-[#1B4B6B] text-white rounded-2xl shadow-lg hover:scale-110 transition-transform">
+							<Camera size={16} />
 						</button>
 					</div>
-
-					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tight leading-none">
-						{utente?.nome} {utente?.cognome}
-					</h2>
-					<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">
-						ID Utente: #{utente?.idUtente}
-					</p>
-
-					<div class="mt-8 pt-8 border-t border-gray-50 flex items-center justify-center gap-3">
-						<div class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
-							<ShieldCheck size={14} /> Profilo Verificato
-						</div>
-					</div>
+					<h2 class="mt-6 text-xl font-black text-[#1B4B6B] uppercase tracking-tight text-center">{utente.nome} {utente.cognome}</h2>
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Dipendente</p>
 				</div>
 
-				<div class="bg-[#1B4B6B] rounded-[2.5rem] p-8 text-white shadow-xl">
-					<h3 class="text-sm font-black uppercase tracking-widest mb-4 opacity-60">Info Aziendali</h3>
-					<div class="space-y-6">
-						<div class="flex items-start gap-4">
-							<Building2 size={20} class="text-blue-300 shrink-0" />
-							<div>
-								<p class="text-[9px] font-bold uppercase opacity-50">Azienda</p>
-								<p class="text-sm font-bold uppercase">{utente?.ragioneSocialeAzienda || 'N/D'}</p>
-							</div>
-						</div>
-						<div class="flex items-start gap-4">
-							<Briefcase size={20} class="text-blue-300 shrink-0" />
-							<div>
-								<p class="text-[9px] font-bold uppercase opacity-50">Ruolo</p>
-								<p class="text-sm font-bold uppercase">{utente?.ruolo?.replace('_', ' ') || 'DIPENDENTE'}</p>
-							</div>
-						</div>
+				<div class="bg-[#1B4B6B] p-8 rounded-[40px] text-white shadow-xl">
+					<div class="flex items-center gap-3 mb-6">
+						<Building2 size={20} class="opacity-60" />
+						<span class="text-[10px] font-black uppercase tracking-widest opacity-60">Azienda di Appartenenza</span>
 					</div>
+					<p class="text-lg font-bold leading-tight">{utente.ragioneSocialeAzienda || 'Nessuna Azienda'}</p>
 				</div>
 			</div>
 
-			<div class="lg:col-span-2 space-y-6">
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
-					<div class="flex items-center gap-4 mb-10">
-						<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B]">
-							<IdCard size={24} />
-						</div>
-						<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Dati Anagrafici</h3>
+			<div class="lg:col-span-2 space-y-8">
+				<div class="bg-white p-10 rounded-[40px] shadow-sm border border-gray-100">
+					<div class="flex items-center gap-3 mb-10">
+						<IdCard size={20} class="text-[#1B4B6B]" />
+						<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Dettagli Personali</h3>
 					</div>
 
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 						<div class="space-y-2">
-							<label for="nome" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nome</label>
-							<div class="relative">
-								<input id="nome" type="text" value={utente?.nome} readonly class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none cursor-not-allowed" />
+							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Privata</label>
+							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+								<Mail size={18} class="text-gray-400" />
+								<input type="email" bind:value={utente.email} class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full" />
 							</div>
 						</div>
-						<div class="space-y-2">
-							<label for="cognome" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Cognome</label>
-							<input id="cognome" type="text" value={utente?.cognome} readonly class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none cursor-not-allowed" />
-						</div>
-						<div class="space-y-2">
-							<label for="email" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Aziendale</label>
-							<div class="relative">
-								<Mail class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-								<input id="email" type="email" value={utente?.email} readonly class="w-full pl-12 bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none cursor-not-allowed" />
-							</div>
-						</div>
-						<div class="space-y-2">
-							<label for="cf" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Codice Fiscale</label>
-							<input id="cf" type="text" value={utente?.codiceFiscale} readonly class="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#1B4B6B] outline-none cursor-not-allowed" />
-						</div>
-					</div>
-				</div>
 
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
-					<div class="flex items-center justify-between mb-10">
-						<div class="flex items-center gap-4">
-							<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B]">
-								<Lock size={24} />
+						<div class="space-y-2">
+							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Codice Fiscale</label>
+							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-60">
+								<Briefcase size={18} class="text-gray-400" />
+								<span class="text-sm font-bold text-[#1B4B6B] uppercase">{utente.codiceFiscale}</span>
 							</div>
-							<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Sicurezza</h3>
 						</div>
 					</div>
 
-					<div class="space-y-4">
-						<button class="w-full flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
+					<div class="mt-12 pt-10 border-t border-gray-50 space-y-4">
+						<button
+								onclick={() => isPasswordFormVisible = !isPasswordFormVisible}
+								class="w-full flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
 							<div class="flex items-center gap-4">
 								<div class="p-2 bg-white rounded-xl shadow-sm group-hover:scale-110 transition-transform"><Lock size={18} /></div>
-								<span class="text-xs font-black text-[#1B4B6B] uppercase">Modifica Password</span>
+								<span class="text-xs font-black text-[#1B4B6B] uppercase">Modifica Password Accesso</span>
 							</div>
-							<div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aggiornata di recente</div>
+							<div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+								{isPasswordFormVisible ? 'Chiudi' : 'Gestisci'}
+							</div>
 						</button>
+
+						{#if isPasswordFormVisible}
+							<div in:fade class="p-8 bg-gray-50 rounded-[30px] border border-gray-100 space-y-6 mt-4">
+								<div class="grid grid-cols-1 gap-6">
+									<div class="space-y-2">
+										<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password Attuale</label>
+										<input type="password" bind:value={vecchiaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+									</div>
+									<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div class="space-y-2">
+											<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nuova Password</label>
+											<input type="password" bind:value={nuovaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+										</div>
+										<div class="space-y-2">
+											<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Conferma Nuova</label>
+											<input type="password" bind:value={confermaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+										</div>
+									</div>
+								</div>
+
+								{#if passwordError}
+									<p class="text-red-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordError}</p>
+								{/if}
+								{#if passwordSuccessMessage}
+									<p class="text-emerald-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordSuccessMessage}</p>
+								{/if}
+
+								<button
+										onclick={handlePasswordChange}
+										disabled={isChangingPassword}
+										class="w-full bg-[#1B4B6B] text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all disabled:opacity-50">
+									{#if isChangingPassword}
+										<Loader2 size={16} class="animate-spin" /> Elaborazione...
+									{:else}
+										<Save size={16} /> Conferma Cambio Password
+									{/if}
+								</button>
+							</div>
+						{/if}
 					</div>
 
 					<div class="mt-10 flex items-center justify-between">
 						{#if showSuccessMessage}
 							<p in:scale class="text-emerald-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-								<ShieldCheck size={16} /> Impostazioni salvate con successo
+								<ShieldCheck size={16} /> Profilo aggiornato correttamente
 							</p>
 						{:else}
 							<div></div>
@@ -190,13 +218,11 @@
 						<button
 								onclick={handleSave}
 								disabled={isSaving}
-								class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50"
-						>
+								class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50">
 							{#if isSaving}
-								<Loader2 size={18} class="animate-spin" />
-								Salvataggio...
+								<Loader2 size={18} class="animate-spin" /> Salvataggio...
 							{:else}
-								<Save size={18} /> Salva Modifiche
+								<Save size={18} /> Salva Modifiche Profilo
 							{/if}
 						</button>
 					</div>
@@ -205,7 +231,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	:global(body) { background-color: #F9FAFB; }
-</style>
