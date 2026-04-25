@@ -70,7 +70,13 @@ public class RegistrazioneService {
 
         // 3. Innesco dello Strategy Pattern per l'invio della mail
         String messaggioBenvenuto = "Benvenuto nel portale Norlan! La tua registrazione come "
-                + dto.getRuolo() + " è stata completata con successo.";
+                + dto.getRuolo() + " è stata completata con successo.<br><br>"
+                + "Di seguito le tue credenziali temporanee per effettuare il primo accesso:<br>"
+                + "<ul>"
+                + "<li><b>Email:</b> " + dto.getEmail() + "</li>"
+                + "<li><b>Password:</b> " + dto.getPassword() + "</li>"
+                + "</ul><br>"
+                + "<i>Nota di Sicurezza: Al primo accesso il sistema ti chiederà obbligatoriamente di cambiare questa password.</i>";
 
         notificaService.inviaNotifica(
                 utenteSalvato,

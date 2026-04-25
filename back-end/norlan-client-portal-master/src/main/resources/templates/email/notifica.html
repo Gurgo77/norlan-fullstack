@@ -9,7 +9,7 @@
         .email-header h1 { margin: 0; font-size: 24px; font-weight: 600; }
         .email-body { padding: 40px 30px; color: #333333; line-height: 1.6; font-size: 16px; }
         .email-footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee; }
-        .btn-action { display: inline-block; margin-top: 20px; padding: 12px 25px; background-color: #0056b3; color: rgba(0, 0, 0); text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .btn-action { display: inline-block; margin-top: 20px; padding: 12px 25px; background-color: #0056b3; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -20,10 +20,10 @@
     <div class="email-body">
         <p>Gentile utente,</p>
 
-        <p th:text="${messaggioCorpo}">Qui comparirà il messaggio della notifica</p>
+        <p th:utext="${messaggioCorpo}">Qui comparirà il messaggio della notifica</p>
 
         <p>Puoi accedere al portale in qualsiasi momento cliccando sul pulsante qui sotto:</p>
-        <a href="http://localhost:8080" class="btn-action">Accedi al Portale</a>
+        <a href="http://localhost:5173/login" class="btn-action">Accedi al Portale</a>
     </div>
     <div class="email-footer">
         <p>&copy; 2026 Norlan S.p.A. Tutti i diritti riservati.</p>
