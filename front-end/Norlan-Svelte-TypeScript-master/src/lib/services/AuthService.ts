@@ -83,4 +83,15 @@ export class AuthService {
 		const response = await httpClient.put<string>(`${this.basePath}/cambia-password`, payload);
 		return response.data;
 	}
+
+	static getDashboardRouteByRole(ruolo?: string): string {
+		switch (ruolo) {
+			case 'ADMIN': return '/dashboard/admin';
+			case 'AZIENDA': return '/dashboard/azienda';
+			case 'DOCENTE': return '/dashboard/docente';
+			case 'LAVORATORE':
+			case 'DIPENDENTE': return '/dashboard/dipendente';
+			default: return '/login';
+		}
+	}
 }

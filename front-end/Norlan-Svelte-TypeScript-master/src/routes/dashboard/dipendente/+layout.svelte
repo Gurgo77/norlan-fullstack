@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation'; // <-- Import per il redirect di sicurezza
 	import {
 		LayoutDashboard, HardHat, MessageSquare, BookOpen,
 		FileBadge, User, Bell, LogOut, Home, Clock, Search
@@ -31,16 +32,28 @@
 		// Recupero dati sessione tramite il service
 		const session = AuthService.getSession();
 
-		if (session) {
-			userEmail = session.email;
-			try {
-				// Recupero dinamico del badge notifiche dal backend
-				notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
-			} catch (error) {
-				console.error("Errore nel recupero notifiche:", error);
-			}
-		} else {
-			userEmail = 'Utente non loggato';
+		// --- ROLE GUARD INIZIO ---
+		if (!session) {
+			// Utente non autenticato -> Rimbalzato al login
+			goto('/login', { replaceState: true });
+			return;
+		}
+
+		// A seconda di come l'enum è definito in Java, controlliamo i ruoli ammessi
+		if (session.ruolo !== 'DIPENDENTE' && session.ruolo !== 'LAVORATORE') {
+			// Se ha un ruolo diverso (es. ADMIN o AZIENDA), lo rimandiamo alla sua specifica dashboard
+			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			return;
+		}
+		// --- ROLE GUARD FINE ---
+
+		// Passati i controlli di sicurezza, popoliamo i dati
+		userEmail = session.email;
+		try {
+			// Recupero dinamico del badge notifiche dal backend
+			notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
+		} catch (error) {
+			console.error("Errore nel recupero notifiche:", error);
 		}
 	});
 

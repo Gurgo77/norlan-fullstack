@@ -4,6 +4,7 @@
 	import { Mail, Lock, Loader2, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { isAxiosError } from 'axios';
+	import { onMount } from 'svelte'; // <-- Import per il ciclo di vita
 
 	let email = $state('');
 	let password = $state('');
@@ -12,6 +13,16 @@
 
 	// Nuovo stato per gestire la visibilità della password
 	let showPassword = $state(false);
+
+	// --- CONTROLLO ANTI-BOUNCE ---
+	onMount(() => {
+		const session = AuthService.getSession();
+		if (session) {
+			// Se ha già una sessione, skippa il login e vai dritto alla sua dashboard
+			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+		}
+	});
+	// ----------------------------
 
 	async function handleLogin(e: Event) {
 		e.preventDefault();
@@ -27,14 +38,19 @@
 
 			// Il resto della logica di reindirizzamento va bene
 			if (user.ruolo === 'ADMIN') {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard/admin');
 			} else if (user.ruolo === 'AZIENDA') {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard/azienda');
 			} else if (user.ruolo === 'DOCENTE') {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard/docente');
 			} else if (user.ruolo === 'DIPENDENTE') {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard/dipendente');
 			} else {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				goto('/dashboard');
 			}
 
@@ -78,12 +94,12 @@
 							<Mail size={18} />
 						</div>
 						<input
-							id="email"
-							type="email"
-							bind:value={email}
-							placeholder="nome@esempio.it"
-							required
-							class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#1B4B6B] focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all font-bold text-sm"
+								id="email"
+								type="email"
+								bind:value={email}
+								placeholder="nome@esempio.it"
+								required
+								class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#1B4B6B] focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all font-bold text-sm"
 						/>
 					</div>
 				</div>
@@ -96,19 +112,19 @@
 						</div>
 
 						<input
-							id="password"
-							type={showPassword ? "text" : "password"}
-							bind:value={password}
-							placeholder="••••••••"
-							required
-							class="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#1B4B6B] focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all font-bold text-sm"
+								id="password"
+								type={showPassword ? "text" : "password"}
+								bind:value={password}
+								placeholder="••••••••"
+								required
+								class="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#1B4B6B] focus:ring-4 focus:ring-[#1B4B6B]/5 transition-all font-bold text-sm"
 						/>
 
 						<button
-							type="button"
-							onclick={() => showPassword = !showPassword}
-							class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1B4B6B] transition-colors focus:outline-none"
-							aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+								type="button"
+								onclick={() => showPassword = !showPassword}
+								class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1B4B6B] transition-colors focus:outline-none"
+								aria-label={showPassword ? "Nascondi password" : "Mostra password"}
 						>
 							{#if showPassword}
 								<EyeOff size={18} />
@@ -128,9 +144,9 @@
 				{/if}
 
 				<button
-					type="submit"
-					disabled={isLoading}
-					class="w-full bg-[#1B4B6B] text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-lg shadow-blue-900/10 hover:shadow-blue-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+						type="submit"
+						disabled={isLoading}
+						class="w-full bg-[#1B4B6B] text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-lg shadow-blue-900/10 hover:shadow-blue-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
 				>
 					{#if isLoading}
 						<Loader2 size={20} class="animate-spin" />

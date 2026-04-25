@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation'; // <-- Import per il redirect
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
 		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog, User
@@ -27,16 +28,28 @@
 	onMount(async () => {
 		// Recupero dati sessione tramite il service
 		const session = AuthService.getSession();
-		if (session) {
-			userEmail = session.email;
-			try {
-				// Recupero dinamico del badge notifiche
-				notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
-			} catch (error) {
-				console.error("Errore nel recupero notifiche", error);
-			}
-		} else {
-			userEmail = 'Utente non loggato';
+
+		// --- ROLE GUARD INIZIO ---
+		if (!session) {
+			// Se non c'è sessione, redirect forzato al login
+			goto('/login', { replaceState: true });
+			return; // Interrompe l'esecuzione successiva
+		}
+
+		if (session.ruolo !== 'ADMIN') {
+			// Se è loggato ma non è ADMIN, redirect alla sua dashboard di competenza
+			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			return;
+		}
+		// --- ROLE GUARD FINE ---
+
+		// Se arriva qui, l'utente è un ADMIN verificato.
+		userEmail = session.email;
+		try {
+			// Recupero dinamico del badge notifiche
+			notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
+		} catch (error) {
+			console.error("Errore nel recupero notifiche", error);
 		}
 	});
 

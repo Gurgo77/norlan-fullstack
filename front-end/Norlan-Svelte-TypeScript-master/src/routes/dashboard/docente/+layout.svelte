@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation'; // <-- Import per il redirect di sicurezza
 	import {
 		LayoutDashboard, BookOpen, Users, Calendar, User,
 		LogOut, Bell, Search, MessageSquare, Home, Clock
@@ -40,28 +41,39 @@
 		// Recupero dati sessione tramite il service
 		const session = AuthService.getSession();
 
-		if (session) {
-			docenteEmail = session.email;
+		// --- ROLE GUARD INIZIO ---
+		if (!session) {
+			// Se non c'è sessione, redirect forzato al login
+			goto('/login', { replaceState: true });
+			return;
+		}
 
-			try {
-				// Caricamento parallelo delle notifiche e dei dati anagrafici dal DB
-				const [count, profile] = await Promise.all([
-					SistemaService.countNotificheNonLette(session.idUtente),
-					AnagraficaService.getDocenteById(session.idUtente)
-				]);
+		if (session.ruolo !== 'DOCENTE') {
+			// Se è loggato ma non è DOCENTE, redirect alla dashboard di competenza
+			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			return;
+		}
+		// --- ROLE GUARD FINE ---
 
-				notificheCount = count;
+		// Passati i controlli di sicurezza, l'utente è un Docente autorizzato
+		docenteEmail = session.email;
 
-				const docenteData = profile as DocenteRaw;
-				if (docenteData.nome && docenteData.cognome) {
-					docenteNomeCompleto = `${docenteData.titolo ? docenteData.titolo + ' ' : ''}${docenteData.nome} ${docenteData.cognome}`;
-					iniziale = docenteData.nome.charAt(0);
-				}
-			} catch (error) {
-				console.error("Errore nel recupero dei dati del docente:", error);
+		try {
+			// Caricamento parallelo delle notifiche e dei dati anagrafici dal DB
+			const [count, profile] = await Promise.all([
+				SistemaService.countNotificheNonLette(session.idUtente),
+				AnagraficaService.getDocenteById(session.idUtente)
+			]);
+
+			notificheCount = count;
+
+			const docenteData = profile as DocenteRaw;
+			if (docenteData.nome && docenteData.cognome) {
+				docenteNomeCompleto = `${docenteData.titolo ? docenteData.titolo + ' ' : ''}${docenteData.nome} ${docenteData.cognome}`;
+				iniziale = docenteData.nome.charAt(0);
 			}
-		} else {
-			docenteEmail = "Utente non loggato";
+		} catch (error) {
+			console.error("Errore nel recupero dei dati del docente:", error);
 		}
 	});
 

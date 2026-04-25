@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation'; // <-- Import per il redirect
 	import {
 		LayoutDashboard, MessageSquare, GraduationCap,
 		FileText, LogOut, Home, Bell, Clock,
@@ -36,32 +37,43 @@
 		// Recupero i dati base della sessione dal servizio dedicato
 		const session = AuthService.getSession();
 
-		if (session) {
-			aziendaEmail = session.email;
+		// --- ROLE GUARD INIZIO ---
+		if (!session) {
+			// Se non c'è sessione, redirect forzato al login
+			goto('/login', { replaceState: true });
+			return;
+		}
 
-			try {
-				// Caricamento in parallelo delle notifiche e dei dati profilo dal DB [cite: 17]
-				const [count, profile] = await Promise.all([
-					SistemaService.countNotificheNonLette(session.idUtente),
-					AnagraficaService.getAziendaById(session.idUtente)
-				]);
+		if (session.ruolo !== 'AZIENDA') {
+			// Se è loggato ma non è AZIENDA, lo rimandiamo alla sua area corretta
+			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			return;
+		}
+		// --- ROLE GUARD FINE ---
 
-				notificheCount = count;
+		// L'utente è un'Azienda autorizzata, procediamo col caricamento dei dati
+		aziendaEmail = session.email;
 
-				// Cast sicuro dei dati unknown a AziendaData per accedere alla ragione sociale [cite: 17]
-				const aziendaData = profile as AziendaData;
-				aziendaNome = aziendaData.ragioneSociale;
-			} catch (error) {
-				console.error("Errore nel recupero dei dati aziendali per il layout:", error);
-				aziendaNome = "Area Azienda";
-			}
-		} else {
-			aziendaNome = "Utente non loggato";
+		try {
+			// Caricamento in parallelo delle notifiche e dei dati profilo dal DB
+			const [count, profile] = await Promise.all([
+				SistemaService.countNotificheNonLette(session.idUtente),
+				AnagraficaService.getAziendaById(session.idUtente)
+			]);
+
+			notificheCount = count;
+
+			// Cast sicuro dei dati a AziendaData per accedere alla ragione sociale
+			const aziendaData = profile as AziendaData;
+			aziendaNome = aziendaData.ragioneSociale;
+		} catch (error) {
+			console.error("Errore nel recupero dei dati aziendali per il layout:", error);
+			aziendaNome = "Area Azienda";
 		}
 	});
 
 	async function handleLogout() {
-		// Il servizio gestisce la chiamata al BE e la pulizia della sessione [cite: 6, 42]
+		// Il servizio gestisce la chiamata al BE e la pulizia della sessione
 		await AuthService.logout();
 	}
 </script>
