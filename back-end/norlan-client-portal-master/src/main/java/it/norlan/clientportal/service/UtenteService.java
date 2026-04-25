@@ -44,13 +44,12 @@ public class UtenteService {
         Utente utente = utenteRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Utente non trovato"));
 
-        // Verifica che la vecchia password coincida con l'hash a database
         if (!passwordEncoder.matches(vecchiaPassword, utente.getPasswordHash())) {
             throw new BadCredentialsException("La vecchia password non è corretta");
         }
 
-        // Codifica e salva la nuova password
         utente.setPasswordHash(passwordEncoder.encode(nuovaPassword));
+        utente.setRichiedeCambioPassword(false); // SBLOCCO DELL'UTENTE
         utenteRepository.save(utente);
     }
 

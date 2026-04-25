@@ -44,6 +44,11 @@
 			return;
 		}
 
+		if (session.richiedeCambioPassword) {
+			goto('/dashboard/cambio-obbligatorio', { replaceState: true });
+			return;
+		}
+
 		if (session.ruolo !== 'AZIENDA') {
 			// Se è loggato ma non è AZIENDA, lo rimandiamo alla sua area corretta
 			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });

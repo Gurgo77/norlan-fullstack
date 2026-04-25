@@ -39,6 +39,11 @@
 			return;
 		}
 
+		if (session.richiedeCambioPassword) {
+			goto('/dashboard/cambio-obbligatorio', { replaceState: true });
+			return;
+		}
+
 		// A seconda di come l'enum è definito in Java, controlliamo i ruoli ammessi
 		if (session.ruolo !== 'DIPENDENTE' && session.ruolo !== 'LAVORATORE') {
 			// Se ha un ruolo diverso (es. ADMIN o AZIENDA), lo rimandiamo alla sua specifica dashboard

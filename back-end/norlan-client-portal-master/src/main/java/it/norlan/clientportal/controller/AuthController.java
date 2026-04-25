@@ -51,7 +51,8 @@ public class AuthController {
                     token,
                     utente.getIdUtente(),
                     utente.getEmail(),
-                    utente.getRuolo().name()
+                    utente.getRuolo().name(),
+                    utente.getRichiedeCambioPassword()
             );
 
             return ResponseEntity.ok(response);

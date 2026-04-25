@@ -48,6 +48,11 @@
 			return;
 		}
 
+		if (session.richiedeCambioPassword) {
+			goto('/dashboard/cambio-obbligatorio', { replaceState: true });
+			return;
+		}
+
 		if (session.ruolo !== 'DOCENTE') {
 			// Se è loggato ma non è DOCENTE, redirect alla dashboard di competenza
 			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });

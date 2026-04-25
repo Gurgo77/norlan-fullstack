@@ -10,4 +10,5 @@ public class AuthResponseDTO {
     private Integer idUtente;
     private String email;
     private String ruolo;
+    private Boolean richiedeCambioPassword;
 }

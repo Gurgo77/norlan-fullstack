@@ -24,6 +24,9 @@ public abstract class Utente {
     @Column(nullable = false)
     private Ruolo ruolo;
 
+    @Column(name = "richiede_cambio_password", nullable = false)
+    private Boolean richiedeCambioPassword = true;
+
     public enum Ruolo{
         ADMIN,
         DOCENTE,

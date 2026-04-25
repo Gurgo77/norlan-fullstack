@@ -36,6 +36,11 @@
 				password: password
 			});
 
+			if (user.richiedeCambioPassword) {
+				goto('/dashboard/cambio-obbligatorio');
+				return;
+			}
+
 			// Il resto della logica di reindirizzamento va bene
 			if (user.ruolo === 'ADMIN') {
 				// eslint-disable-next-line svelte/no-navigation-without-resolve

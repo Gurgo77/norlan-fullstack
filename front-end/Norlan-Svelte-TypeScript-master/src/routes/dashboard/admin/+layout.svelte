@@ -36,6 +36,11 @@
 			return; // Interrompe l'esecuzione successiva
 		}
 
+		if (session.richiedeCambioPassword) {
+			goto('/dashboard/cambio-obbligatorio', { replaceState: true });
+			return;
+		}
+
 		if (session.ruolo !== 'ADMIN') {
 			// Se è loggato ma non è ADMIN, redirect alla sua dashboard di competenza
 			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
