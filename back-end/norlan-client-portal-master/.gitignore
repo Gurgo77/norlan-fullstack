@@ -32,3 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 
+### Local Config (SENSITIVE) ###
+# Ignora il file delle proprietà locali per evitare di caricare password su Git
+src/main/resources/application-local.properties

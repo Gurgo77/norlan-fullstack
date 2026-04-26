@@ -1,21 +1,26 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
+	import { goto } from '$app/navigation';
 	import {
-		Building2, Plus, Trash2,
-		ShieldCheck, ChevronRight, ChevronLeft, Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin
+		Building2, Plus, Trash2, ShieldCheck, ChevronRight, ChevronLeft,
+		Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin,
+		FileText, Download, Calendar, X, AlertTriangle, Upload, UserPlus,
+		Mail, MessageSquare
 	} from 'lucide-svelte';
 
-	// Modelli
+	// Modelli e Servizi
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
-
-	// Servizi (Utilizziamo AnagraficaService come richiesto)
+	import { Documento } from '$lib/models/Documento';
 	import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
-	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
+	import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
+	import { DocumentoService } from '$lib/services/DocumentoService';
+	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 
 	// --- STATO REATTIVO (Svelte 5) ---
 	let aziende = $state<Azienda[]>([]);
-	let dipendentiCorrenti = $state<DipendenteDTO[]>([]); // Tipizzazione forte, no any
+	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
+	let documentiCorrenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
@@ -24,131 +29,144 @@
 	let showModal = $state(false);
 	let isSaving = $state(false);
 
-	// Stato per il form di creazione (Mappato su AuthRequestDTO del Backend)
-	let formAzienda = $state({
-		email: '',
-		password: '',
-		ragioneSociale: '',
-		partitaIva: '',
-		sedeLegale: '',
-		pec: '',
-		telefono: '',
-		cellulare: '',
-		referenteAziendale: '',
-		hasDipendenti: false
-	});
+	// Stato Documenti
+	let showUploadModal = $state(false);
+	let isUploading = $state(false);
+	let uploadFile = $state<File | null>(null);
+	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataScadenza: '' });
 
+	// Stato Personale
+	let showDipendenteModal = $state(false);
+	let isSavingDipendente = $state(false);
+	let formDipendente = $state<DipendenteRequest>({ nome: '', cognome: '', codiceFiscale: '', email: '' });
+
+	// Modali eliminazione
+	let showDeleteDocModal = $state(false);
+	let docDaEliminare = $state<Documento | null>(null);
+	let showDeleteDipModal = $state(false);
+	let dipDaEliminare = $state<DipendenteDTO | null>(null);
+
+	// Stato Anagrafica Azienda
+	let formAzienda = $state({ email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false });
 	let showDeleteModal = $state(false);
 	let aziendaDaEliminare = $state<Azienda | null>(null);
 	let confermaTesto = $state('');
 
 	// --- LOGICA DERIVATA ---
-	const isFormValid = $derived(
-			formAzienda.ragioneSociale.trim() !== '' &&
-			formAzienda.partitaIva.length === 11 &&
-			formAzienda.email.trim() !== '' &&
-			formAzienda.password.trim() !== ''
-	);
-
-	const filteredAziende = $derived(
-			aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase()))
-	);
+	const isFormValid = $derived(formAzienda.ragioneSociale.trim() !== '' && formAzienda.partitaIva.length === 11 && formAzienda.email.trim() !== '' && formAzienda.password.trim() !== '');
+	const isDipendenteValid = $derived(formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' && formDipendente.codiceFiscale.length === 16);
+	const filteredAziende = $derived(aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase())));
+	const isConfermaValida = $derived(confermaTesto.trim().toUpperCase() === 'ELIMINA');
 
 	// --- AZIONI ---
+
 	onMount(async () => {
 		try {
-			// Recupero iniziale di tutte le aziende tramite AnagraficaService
 			const res = await AnagraficaService.getAllAziende();
-			// Cast sicuro dei dati unknown[] a AziendaData[] per inizializzare la classe
 			const data = res as AziendaData[];
 			aziende = data.map(item => new Azienda(item));
-		} catch (error) {
-			console.error("Errore caricamento dati aziende:", error);
-		} finally {
-			isLoading = false;
-		}
+			await Promise.all(aziende.map(async (a, i) => {
+				aziende[i].hasDipendenti = await AnagraficaService.hasDipendenti(a.idUtente);
+			}));
+		} catch { console.error("Errore onMount"); } finally { isLoading = false; }
 	});
 
-	/**
-	 * Apre il dettaglio di un'azienda e carica i dipendenti associati.
-	 */
-	async function apriDettaglio(azienda: Azienda) {
-		selectedAzienda = azienda;
+	async function apriDettaglio(aziendaPreview: Azienda) {
+		selectedAzienda = aziendaPreview;
 		try {
-			// Verifica se l'azienda ha dipendenti usando il metodo dedicato nel service
-			dynamicHasDipendenti = await AnagraficaService.hasDipendenti(azienda.idUtente);
-
-			if (dynamicHasDipendenti) {
-				// Scarica i dettagli dei dipendenti
-				dipendentiCorrenti = await LavoratoreService.getByAzienda(azienda.idUtente);
-			} else {
-				dipendentiCorrenti = [];
-			}
-		} catch (error) {
-			console.error("Errore nel recupero dei dettagli:", error);
-		}
+			const fullData = await AnagraficaService.getAziendaById(aziendaPreview.idUtente);
+			selectedAzienda = new Azienda(fullData);
+			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(aziendaPreview.idUtente);
+			const hasDip = await AnagraficaService.hasDipendenti(aziendaPreview.idUtente);
+			dynamicHasDipendenti = hasDip;
+			const idx = aziende.findIndex(a => a.idUtente === aziendaPreview.idUtente);
+			if (idx !== -1) aziende[idx].hasDipendenti = hasDip;
+			dipendentiCorrenti = await LavoratoreService.getByAzienda(aziendaPreview.idUtente);
+		} catch { console.error("Errore dettaglio"); }
 	}
 
-	async function salvaNuovaAzienda() {
-		if (!isFormValid) return;
-		isSaving = true;
+	// --- NAVIGAZIONE AL DETTAGLIO DIPENDENTE (FIX ESLINT) ---
+	async function vaiADettaglioDipendente(idUtente: string | number) {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		return await goto(`/dashboard/admin/dipendenti?id=${idUtente}`);
+	}
+
+	function apreGmail(email: string) {
+		if (!email) return;
+		window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, '_blank');
+	}
+
+	// --- NAVIGAZIONE IN CHAT (FIX ESLINT) ---
+	async function vaiInChat(idUtente: string | number | undefined) {
+		if (!idUtente) return;
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		return await goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
+	}
+
+	function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }
+
+	async function confermaEliminaDoc() {
+		if (!docDaEliminare) return;
 		try {
-			// Prepariamo il DTO per il controller di registrazione del backend
-			const payload: AuthRequestDTO = {
-				email: formAzienda.email,
-				password: formAzienda.password,
-				ruolo: 'AZIENDA',
-				ragioneSociale: formAzienda.ragioneSociale,
-				partitaIva: formAzienda.partitaIva
-			};
-
-			// Eseguiamo la registrazione
-			await AnagraficaService.registraUtente(payload);
-
-			// Ricarichiamo la lista per vedere l'azienda appena creata con il suo ID reale
-			const res = await AnagraficaService.getAllAziende();
-			const data = res as AziendaData[];
-			aziende = data.map(item => new Azienda(item));
-
-			showModal = false;
-			// Reset form
-			formAzienda = {
-				email: '', password: '', ragioneSociale: '', partitaIva: '',
-				sedeLegale: '', pec: '', telefono: '', cellulare: '',
-				referenteAziendale: '', hasDipendenti: false
-			};
-		} catch (error) {
-			console.error("Errore nel salvataggio:", error);
-			alert("Errore durante la creazione dell'azienda.");
-		} finally {
-			isSaving = false;
-		}
+			await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
+			documentiCorrenti = documentiCorrenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
+			showDeleteDocModal = false; docDaEliminare = null;
+		} catch { alert("Errore eliminazione documento."); }
 	}
 
-	function preparaEliminazione(azienda: Azienda | null) {
-		if (!azienda) return;
-		aziendaDaEliminare = azienda;
-		confermaTesto = '';
-		showDeleteModal = true;
-	}
+	function preparaEliminaDip(dip: DipendenteDTO) { dipDaEliminare = dip; showDeleteDipModal = true; }
 
-	async function confermaEliminazione() {
-		if (confermaTesto === 'ELIMINA' && aziendaDaEliminare) {
-			try {
-				// Eliminazione tramite AnagraficaService
-				await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente);
-				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
-				showDeleteModal = false;
-				selectedAzienda = null;
-			} catch (error) {
-				console.error("Errore eliminazione:", error);
-				alert("Impossibile eliminare l'azienda.");
+	async function confermaEliminaDip() {
+		if (!dipDaEliminare || !selectedAzienda) return;
+		try {
+			await LavoratoreService.delete(dipDaEliminare.idUtente);
+			dipendentiCorrenti = dipendentiCorrenti.filter(d => d.idUtente !== dipDaEliminare?.idUtente);
+			if (dipendentiCorrenti.length === 0) {
+				dynamicHasDipendenti = false;
+				const idx = aziende.findIndex(a => a.idUtente === selectedAzienda?.idUtente);
+				if (idx !== -1) aziende[idx].hasDipendenti = false;
 			}
-		}
+			showDeleteDipModal = false; dipDaEliminare = null;
+		} catch { alert("Errore eliminazione dipendente."); }
 	}
+
+	async function salvaNuovoDipendente() {
+		if (!isDipendenteValid || !selectedAzienda) return;
+		isSavingDipendente = true;
+		try {
+			const nuovo = await LavoratoreService.create(selectedAzienda.idUtente, formDipendente);
+			dipendentiCorrenti = [...dipendentiCorrenti, nuovo];
+			if (!dynamicHasDipendenti) {
+				dynamicHasDipendenti = true;
+				const idx = aziende.findIndex(a => a.idUtente === selectedAzienda?.idUtente);
+				if (idx !== -1) aziende[idx].hasDipendenti = true;
+			}
+			showDipendenteModal = false;
+			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '' };
+		} catch { alert("Errore aggiunta dipendente."); } finally { isSavingDipendente = false; }
+	}
+
+	async function gestisciUpload() {
+		if (!uploadFile || !selectedAzienda || !formDocumento.dataScadenza) return;
+		isUploading = true;
+		try {
+			const fd = new FormData();
+			fd.append('file', uploadFile); fd.append('modulo', formDocumento.modulo);
+			fd.append('tipologia', formDocumento.tipologia); fd.append('dataScadenzaStr', formDocumento.dataScadenza);
+			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
+			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedAzienda.idUtente);
+			showUploadModal = false; uploadFile = null;
+		} catch { alert("Errore upload."); } finally { isUploading = false; }
+	}
+
+	function preparaAggiornamento(doc: Documento) { formDocumento.modulo = doc.modulo; formDocumento.tipologia = doc.tipologia; showUploadModal = true; }
+	async function scaricaDoc(doc: Documento) { try { const b = await DocumentoService.downloadDocumento(doc.idDocumento); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = doc.filePath.split('/').pop() || 'doc.pdf'; a.click(); URL.revokeObjectURL(u); } catch { alert("Errore download."); } }
+	async function salvaNuovaAzienda() { if (!isFormValid) return; isSaving = true; try { const payload: AuthRequestDTO & { sedeLegale?: string; pec?: string; telefono?: string; cellulare?: string; referenteAziendale?: string; hasDipendenti?: boolean; } = { ...formAzienda, ruolo: 'AZIENDA' }; await AnagraficaService.registraUtente(payload); const res = await AnagraficaService.getAllAziende(); aziende = (res as AziendaData[]).map(item => new Azienda(item)); showModal = false; formAzienda = { email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false }; } catch { alert("Errore creazione."); } finally { isSaving = false; } }
+	function preparaEliminazione(a: Azienda | null) { if (!a) return; aziendaDaEliminare = a; confermaTesto = ''; showDeleteModal = true; }
+	async function confermaEliminazione() { if (isConfermaValida && aziendaDaEliminare) { try { await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente); aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente); showDeleteModal = false; selectedAzienda = null; } catch { alert("Errore eliminazione azienda."); } } }
 </script>
 
-<div in:fade>
+<div in:fade class="max-w-7xl mx-auto p-6">
 	{#if !selectedAzienda}
 		<div class="mb-10 flex justify-between items-start">
 			<div>
@@ -180,8 +198,8 @@
 							<div class="flex items-center gap-2 mb-4">
 								<p class="text-[10px] text-gray-400 font-bold uppercase">P.IVA: {a.partitaIva}</p>
 								<span class="text-[8px] font-black px-2 py-0.5 rounded border {a.hasDipendenti ? 'border-purple-100 bg-purple-50 text-purple-600' : 'border-blue-100 bg-blue-50 text-blue-600'} uppercase">
-									{a.hasDipendenti ? 'Con Personale' : 'Individuale'}
-								</span>
+                            {a.hasDipendenti ? 'Con Personale' : 'Individuale'}
+                         </span>
 							</div>
 						</div>
 						<button onclick={() => apriDettaglio(a)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
@@ -192,6 +210,7 @@
 				{/each}
 			</div>
 		{/if}
+
 	{:else}
 		<div in:fade>
 			<button onclick={() => (selectedAzienda = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco</button>
@@ -208,7 +227,18 @@
 						</div>
 						<h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedAzienda.ragioneSociale}</h1>
 					</div>
-					<button onclick={() => preparaEliminazione(selectedAzienda)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl"><Trash2 size={16} /> Elimina Anagrafica</button>
+
+					<div class="flex items-center gap-3">
+						<button onclick={() => apreGmail(selectedAzienda?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100">
+							<Mail size={16} /> Manda Mail
+						</button>
+						<button onclick={() => vaiInChat(selectedAzienda?.idUtente || '')} class="flex items-center gap-2 bg-blue-500 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-blue-600">
+							<MessageSquare size={16} /> Contatta Azienda
+						</button>
+						<button onclick={() => preparaEliminazione(selectedAzienda)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl hover:bg-red-700">
+							<Trash2 size={16} /> Elimina
+						</button>
+					</div>
 				</div>
 
 				<div class="p-12 grid grid-cols-1 lg:grid-cols-3 gap-16 bg-gray-50/30">
@@ -219,7 +249,6 @@
 							<div><p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><MapPin size={10}/> Sede Legale</p><p class="text-sm font-bold text-[#1B4B6B] uppercase leading-relaxed">{selectedAzienda.sedeLegale || 'N.D.'}</p></div>
 						</div>
 					</div>
-
 					<div class="space-y-8">
 						<h2 class="text-[#1B4B6B] font-black uppercase text-xs tracking-widest border-b border-gray-200 pb-4 flex items-center gap-2"><Phone size={16} /> Recapiti</h2>
 						<div class="space-y-6">
@@ -231,7 +260,6 @@
 							</div>
 						</div>
 					</div>
-
 					<div class="space-y-8">
 						<h2 class="text-[#1B4B6B] font-black uppercase text-xs tracking-widest border-b border-gray-200 pb-4 flex items-center gap-2"><UserCheck size={16} /> Responsabile</h2>
 						<div class="space-y-6">
@@ -241,132 +269,244 @@
 				</div>
 			</div>
 
-			{#if dynamicHasDipendenti}
-				<div in:slide class="space-y-8 mb-20">
+			<div in:slide class="space-y-8 mb-16">
+				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
-						<div class="p-3 bg-purple-100 text-purple-600 rounded-2xl shadow-inner"><Users size={24} /></div>
-						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale Aziendale ({dipendentiCorrenti.length})</h2>
+						<div class="p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner"><FileText size={24} /></div>
+						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiCorrenti.length})</h2>
 					</div>
+					<button onclick={() => (showUploadModal = true)} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
+						<Plus size={16} /> Carica Documento
+					</button>
+				</div>
 
-					{#if dipendentiCorrenti.length > 0}
-						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-							{#each dipendentiCorrenti as d (d.idUtente)}
-								<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all">
-									<div class="flex items-center gap-4 mb-4">
-										<div class="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#1B4B6B] font-black text-sm">{d.nome[0]}{d.cognome[0]}</div>
-										<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{d.nome}<br>{d.cognome}</h4>
+				{#if documentiCorrenti.length > 0}
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						{#each documentiCorrenti as doc (doc.idDocumento)}
+							<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+								<div class="flex justify-between items-start mb-4">
+									<div class="flex items-center gap-4">
+										<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white transition-all"><FileText size={20} /></div>
+										<div><h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4><p class="text-[9px] text-gray-400 font-bold uppercase">{doc.modulo}</p></div>
 									</div>
-									<div class="space-y-2 pt-4 border-t border-gray-50">
-										<p class="text-[8px] text-gray-300 font-black uppercase">Codice Fiscale</p>
-										<p class="text-[10px] font-mono font-bold text-gray-600">{d.codiceFiscale}</p>
+									<div class="flex gap-2">
+										<button onclick={() => scaricaDoc(doc)} class="p-2 text-gray-400 hover:text-[#1B4B6B] transition-all" title="Scarica"><Download size={18} /></button>
+										<button onclick={() => preparaEliminaDoc(doc)} class="p-2 text-gray-400 hover:text-red-600 transition-all" title="Elimina"><Trash2 size={18} /></button>
 									</div>
 								</div>
+								<div class="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
+									<div class="flex items-center gap-2 text-gray-400"><Calendar size={12} /><span class="text-[9px] font-bold uppercase italic">Scadenza: {new Date(doc.dataScadenza).toLocaleDateString()}</span></div>
+									{#if doc.scaduto}
+										<button onclick={() => preparaAggiornamento(doc)} class="text-[8px] font-black px-4 py-1.5 bg-[#1B4B6B] text-white rounded-lg uppercase shadow-md hover:bg-[#1B4B6B]/80 transition-all hover:scale-105 hover:shadow-lg">Aggiorna Scaduto</button>
+									{:else}
+										<span class="text-[8px] font-black px-2 py-1 bg-green-50 text-green-600 border border-green-100 rounded-lg uppercase">Valido</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-xs italic">Nessun documento caricato</div>
+				{/if}
+			</div>
+
+			<div in:slide class="space-y-8 mb-20">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-4">
+						<div class="p-3 bg-purple-100 text-purple-600 rounded-2xl shadow-inner"><Users size={24} /></div>
+						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale ({dipendentiCorrenti.length})</h2>
+					</div>
+					<button onclick={() => (showDipendenteModal = true)} class="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 shadow-md hover:bg-purple-700 transition-all">
+						<UserPlus size={16} /> Aggiungi Dipendente
+					</button>
+				</div>
+
+				{#if dipendentiCorrenti.length > 0}
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+						{#each dipendentiCorrenti as d (d.idUtente)}
+							<div
+									role="button"
+									tabindex="0"
+									onclick={() => vaiADettaglioDipendente(d.idUtente)}
+									onkeydown={(e) => e.key === 'Enter' && vaiADettaglioDipendente(d.idUtente)}
+									class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all relative group cursor-pointer hover:border-purple-600/30"
+							>
+								<button onclick={(e) => { e.stopPropagation(); preparaEliminaDip(d); }} class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10" title="Elimina"><Trash2 size={16} /></button>
+								<div class="flex items-center gap-4 mb-4">
+									<div class="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#1B4B6B] font-black text-sm group-hover:bg-purple-600 group-hover:text-white transition-all">{d.nome[0]}{d.cognome[0]}</div>
+									<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{d.nome}<br>{d.cognome}</h4>
+								</div>
+								<div class="space-y-2 pt-4 border-t border-gray-50">
+									<p class="text-[8px] text-gray-300 font-black uppercase">Codice Fiscale</p>
+									<p class="text-[10px] font-mono font-bold text-gray-600">{d.codiceFiscale}</p>
+								</div>
+								<div class="mt-4 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+									<span class="text-[9px] font-black text-purple-600 uppercase tracking-tighter">Vedi Profilo</span>
+									<ChevronRight size={14} class="text-purple-600" />
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-xs italic">Nessun dipendente registrato</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
+	{#if showDipendenteModal}
+		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[120] p-4" transition:fade>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+				<div class="bg-purple-600 p-6 text-white flex justify-between items-center">
+					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Dipendente</h2>
+					<button onclick={() => (showDipendenteModal = false)}><X size={24}/></button>
+				</div>
+				<div class="p-8 space-y-4">
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nome *</label><input bind:value={formDipendente.nome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cognome *</label><input bind:value={formDipendente.cognome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Codice Fiscale *</label><input bind:value={formDipendente.codiceFiscale} maxlength="16" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso</label><input bind:value={formDipendente.email} type="email" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+				</div>
+				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
+					<button onclick={() => (showDipendenteModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
+					<button onclick={salvaNuovoDipendente} disabled={!isDipendenteValid || isSavingDipendente} class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
+						{#if isSavingDipendente}<Loader2 size={14} class="animate-spin" />{/if} {isSavingDipendente ? 'Salvataggio...' : 'Conferma e Salva'}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showUploadModal}
+		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
+				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
+					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><FileText size={20}/> Carica Documento</h2>
+					<button onclick={() => (showUploadModal = false)}><X size={24}/></button>
+				</div>
+				<div class="p-8 space-y-6">
+					<div class="grid grid-cols-2 gap-4">
+						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label><select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}</select></div>
+						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label><select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}</select></div>
+					</div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label><input type="date" bind:value={formDocumento.dataScadenza} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" /></div>
+					<div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group"><input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} /><label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3"><div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div><span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span></label></div>
+				</div>
+				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t"><button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button><button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}</button></div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showModal}
+		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
+				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
+					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><Building2 size={20}/> Nuova Anagrafica Aziendale</h2>
+					<button onclick={() => (showModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
+				</div>
+				<div class="p-8 max-h-[80vh] overflow-y-auto">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+						<div class="col-span-full mb-2">
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-3">Tipo di Organizzazione *</label>
+							<div class="grid grid-cols-2 gap-4">
+								<button type="button" onclick={() => formAzienda.hasDipendenti = false} class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all {!formAzienda.hasDipendenti ? 'border-[#1B4B6B] bg-[#1B4B6B]/5' : 'border-gray-100 hover:border-gray-200'}">
+									<User size={20} class={!formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'} />
+									<span class="text-[10px] font-black uppercase {!formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'}">Ditta Individuale</span>
+								</button>
+								<button type="button" onclick={() => formAzienda.hasDipendenti = true} class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all {formAzienda.hasDipendenti ? 'border-purple-600 bg-purple-50' : 'border-gray-100 hover:border-gray-200'}">
+									<Users size={20} class={formAzienda.hasDipendenti ? 'text-purple-600' : 'text-gray-400'} />
+									<span class="text-[10px] font-black uppercase {formAzienda.hasDipendenti ? 'text-purple-600' : 'text-gray-400'}">Azienda con Personale</span>
+								</button>
+							</div>
+						</div>
+						<div class="space-y-4">
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Ragione Sociale *</label><input bind:value={formAzienda.ragioneSociale} placeholder="Es: Norlan Srl" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Partita IVA (11 cifre) *</label><input bind:value={formAzienda.partitaIva} maxlength="11" placeholder="01234567890" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">PEC Certificata</label><input bind:value={formAzienda.pec} placeholder="azienda@pec.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Sede Legale</label><input bind:value={formAzienda.sedeLegale} placeholder="Indirizzo completo" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+						</div>
+						<div class="space-y-4">
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label><input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Referente Aziendale</label><input bind:value={formAzienda.referenteAziendale} placeholder="Nome e Cognome" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div class="grid grid-cols-2 gap-3">
+								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Telefono</label><input bind:value={formAzienda.telefono} placeholder="Fisso" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cellulare</label><input bind:value={formAzienda.cellulare} placeholder="Mobile" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
+					<button onclick={() => (showModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
+					<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg flex items-center gap-2">
+						{#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<Plus size={14}/>{/if} Salva Azienda
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showDeleteModal}
+		<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+				<div class="p-8 text-center">
+					<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40}/></div>
+					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare l'azienda?</h2>
+					<p class="text-sm text-gray-400 mb-8">Questa azione è irreversibile. Digita <span class="font-black text-red-600">ELIMINA</span> per confermare la cancellazione di <span class="font-bold text-[#1B4B6B]">{aziendaDaEliminare?.ragioneSociale}</span>.</p>
+
+					<div class="relative w-full mb-6 group">
+						<input
+								bind:value={confermaTesto}
+								maxlength="7"
+								class="absolute inset-0 w-full h-full opacity-0 z-10 cursor-text uppercase"
+						/>
+						<div class="w-full p-4 bg-gray-50 border-2 border-transparent group-focus-within:border-red-600 rounded-2xl text-center font-black uppercase transition-all flex justify-center items-center text-2xl tracking-[0.3em] pl-[0.3em]">
+							{#each 'ELIMINA'.split('') as char, i}
+                         <span class={confermaTesto.length > i ? (confermaTesto.toUpperCase()[i] === char ? 'text-red-600' : 'text-orange-600') : 'text-gray-300 transition-colors'}>
+                            {confermaTesto.toUpperCase()[i] || char}
+                         </span>
 							{/each}
 						</div>
-					{:else}
-						<div class="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-xs">Nessun dipendente censito</div>
-					{/if}
+					</div>
+
+					<div class="flex flex-col gap-3">
+						<button onclick={confermaEliminazione} disabled={!isConfermaValida} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 disabled:opacity-30 disabled:shadow-none transition-all">Sì, elimina definitivamente</button>
+						<button onclick={() => { showDeleteModal = false; confermaTesto = ''; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla l'operazione</button>
+					</div>
 				</div>
-			{/if}
+			</div>
+		</div>
+	{/if}
+
+	{#if showDeleteDocModal}
+		<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+				<div class="p-8 text-center">
+					<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il documento?</h2>
+					<p class="text-sm text-gray-400 mb-8">Stai per rimuovere definitivamente: <br><span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span></p>
+					<div class="flex flex-col gap-3">
+						<button onclick={confermaEliminaDoc} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Eliminazione</button>
+						<button onclick={() => (showDeleteDocModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showDeleteDipModal}
+		<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+				<div class="p-8 text-center">
+					<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Users size={40}/></div>
+					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere dipendente?</h2>
+					<p class="text-sm text-gray-400 mb-8">Il lavoratore <span class="font-bold text-[#1B4B6B]">{dipDaEliminare?.nome} {dipDaEliminare?.cognome}</span> verrà rimosso dall'anagrafica aziendale.</p>
+					<div class="flex flex-col gap-3">
+						<button onclick={confermaEliminaDip} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Rimuovi Dipendente</button>
+						<button onclick={() => (showDeleteDipModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+					</div>
+				</div>
+			</div>
 		</div>
 	{/if}
 </div>
-
-{#if showModal}
-	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" transition:fade>
-		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]" transition:scale={{ start: 0.95 }}>
-
-			<div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-				<div>
-					<h3 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Registra Nuova Azienda</h3>
-					<p class="text-xs font-bold text-gray-400 uppercase mt-1">Inserisci i dati per creare il profilo cliente</p>
-				</div>
-				<button onclick={() => (showModal = false)} class="text-gray-400 hover:text-red-500 font-bold text-xl transition-colors px-4 py-2">&times;</button>
-			</div>
-
-			<div class="p-8 overflow-y-auto custom-scrollbar-data grid grid-cols-1 md:grid-cols-2 gap-6">
-				<div class="md:col-span-2 space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ragione Sociale *</label>
-					<input bind:value={formAzienda.ragioneSociale} type="text" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold uppercase" placeholder="Es. NorLan S.R.L.">
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Partita IVA *</label>
-					<input bind:value={formAzienda.partitaIva} type="text" maxlength="11" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold" placeholder="11 cifre">
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sede Legale</label>
-					<input bind:value={formAzienda.sedeLegale} type="text" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold uppercase">
-				</div>
-
-				<div class="md:col-span-2 border-t border-gray-100 pt-6 mt-2">
-					<h4 class="text-[#1B4B6B] font-black uppercase text-xs mb-4">Credenziali di Accesso</h4>
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Email Accesso *</label>
-					<input bind:value={formAzienda.email} type="email" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold lowercase" placeholder="email@azienda.it">
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Password Temporanea *</label>
-					<input bind:value={formAzienda.password} type="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold" placeholder="*******">
-				</div>
-
-				<div class="md:col-span-2 border-t border-gray-100 pt-6 mt-2">
-					<h4 class="text-[#1B4B6B] font-black uppercase text-xs mb-4">Recapiti e Struttura</h4>
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">PEC</label>
-					<input bind:value={formAzienda.pec} type="email" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold lowercase">
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Referente Aziendale</label>
-					<input bind:value={formAzienda.referenteAziendale} type="text" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold uppercase">
-				</div>
-
-				<div class="md:col-span-2 mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between cursor-pointer" onclick={() => (formAzienda.hasDipendenti = !formAzienda.hasDipendenti)}>
-					<div>
-						<p class="font-bold text-[#1B4B6B] text-sm uppercase">Ha dipendenti a carico?</p>
-						<p class="text-[10px] text-gray-500 font-bold">Attiva se l'azienda deve gestire lavoratori e DPI.</p>
-					</div>
-					<div class="w-12 h-6 bg-gray-300 rounded-full relative transition-colors duration-300 {formAzienda.hasDipendenti ? 'bg-green-500' : ''}">
-						<div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-transform duration-300 {formAzienda.hasDipendenti ? 'translate-x-6' : ''}"></div>
-					</div>
-				</div>
-			</div>
-
-			<div class="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-4 shrink-0">
-				<button onclick={() => (showModal = false)} class="px-6 py-3 font-bold text-gray-500 hover:text-gray-700 uppercase text-xs">Annulla</button>
-				<button
-						onclick={salvaNuovaAzienda}
-						disabled={!isFormValid || isSaving}
-						class="px-8 py-3 bg-[#1B4B6B] text-white rounded-xl font-black uppercase text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1B4B6B]/90 transition-all flex items-center gap-2"
-				>
-					{#if isSaving} <Loader2 size={16} class="animate-spin" /> Salvataggio... {:else} Registra Azienda {/if}
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
-{#if showDeleteModal && aziendaDaEliminare}
-	<div class="fixed inset-0 bg-red-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" transition:fade>
-		<div class="bg-white rounded-3xl shadow-2xl w-full max-md overflow-hidden text-center" transition:scale={{ start: 0.95 }}>
-			<div class="p-10">
-				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-					<Trash2 size={32} />
-				</div>
-				<h3 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Sei sicuro?</h3>
-				<p class="text-sm font-bold text-gray-500 mb-8">Stai per eliminare <span class="text-red-600"> {aziendaDaEliminare.ragioneSociale} </span>. L'operazione rimuoverà anche i dipendenti associati. Non è reversibile.</p>
-
-				<div class="text-left space-y-2 mb-8">
-					<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Digita "ELIMINA" per confermare</label>
-					<input bind:value={confermaTesto} type="text" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-sm focus:ring-2 focus:ring-red-500 outline-none font-black uppercase text-red-600">
-				</div>
-
-				<div class="flex gap-4">
-					<button onclick={() => (showDeleteModal = false)} class="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold uppercase text-xs hover:bg-gray-200 transition-colors">Annulla</button>
-					<button onclick={confermaEliminazione} disabled={confermaTesto !== 'ELIMINA'} class="flex-1 py-3.5 bg-red-600 text-white rounded-xl font-black uppercase text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-colors">Conferma</button>
-				</div>
-			</div>
-		</div>
-	</div>
-{/if}

@@ -40,8 +40,8 @@ httpClient.interceptors.request.use(
 httpClient.interceptors.response.use(
 	(response: AxiosResponse) => response,
 	(error) => {
-		// Se il server risponde 401 (Unauthorized), il token è scaduto, contraffatto o assente
-		if (error.response && error.response.status === 401) {
+		// Se il server risponde 401 (Unauthorized) MA NON siamo sulla chiamata di login
+		if (error.response && error.response.status === 401 && error.config && !error.config.url?.includes('login')) {
 			console.warn('Sessione scaduta o non valida. Disconnessione di sicurezza in corso...');
 
 			// Controllo SSR per manipolazione DOM/Storage

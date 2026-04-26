@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores'; // <-- Aggiunto import per leggere l'URL
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { Send, Building2, MessageSquare, Loader2, Clock, Hash } from 'lucide-svelte';
@@ -32,6 +33,19 @@
 			// 2. Scarichiamo le aziende tramite AnagraficaService e le mappiamo senza usare 'any'
 			const rawData = await AnagraficaService.getAllAziende() as AziendaData[];
 			aziende = rawData.map(dati => new Azienda(dati));
+
+			// --- NUOVA LOGICA: LETTURA URL E SELEZIONE AUTOMATICA ---
+			const chatIdDaUrl = $page.url.searchParams.get('chatId');
+			if (chatIdDaUrl) {
+				const aziendaRichiesta = aziende.find(
+						(a) => String(a.idUtente) === String(chatIdDaUrl)
+				);
+				if (aziendaRichiesta) {
+					await selectContact(aziendaRichiesta);
+				}
+			}
+			// --------------------------------------------------------
+
 		} catch (error) {
 			console.error("Errore nel recupero della rubrica", error);
 		} finally {

@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation'; // <-- Import per il redirect
+	import { goto } from '$app/navigation';
+	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
-		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog, User
+		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog, User,
+		Users, UserSquare2, ShieldCheck, FileText, ChevronDown, ChevronRight
 	} from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
@@ -15,43 +17,73 @@
 	let userEmail = $state('Caricamento...');
 	let notificheCount = $state(0);
 
+	// Stato per i sottomenu aperti
+	let openMenus = $state<Record<string, boolean>>({
+		utenti: false,
+		documenti: false
+	});
+
+	function toggleMenu(id: string) {
+		openMenus[id] = !openMenus[id];
+	}
+
+	// Funzioni Helper per risolvere il crash di Tailwind v4
+	function isActive(href: string) {
+		return $page.url.pathname === href;
+	}
+
+	function isSubMenuActive(subItems: any[]) {
+		if (!subItems) return false;
+		return subItems.some((sub) => $page.url.pathname.includes(sub.href));
+	}
+
+	// Configurazione dinamica dei menu
 	const menuItems = [
 		{ href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
-		{ href: '/dashboard/admin/comunicazioni', label: 'Messaggi', icon: MessageSquare },
-		{ href: '/dashboard/admin/aziende', label: 'Aziende Clienti', icon: Building2 },
+		{ id: 'utenti', label: 'Utenti', icon: Users, subItems: [
+				{ href: '/dashboard/admin/aziende', label: 'Aziende Clienti', icon: Building2 },
+				{ href: '/dashboard/admin/dipendenti', label: 'Dipendenti', icon: Users },
+				{ href: '/dashboard/admin/docenti', label: 'Docenti', icon: UserSquare2 }
+			]},
+		{ id: 'documenti', label: 'Documenti e DPI', icon: ShieldCheck, subItems: [
+				{ href: '/dashboard/admin/documenti', label: 'Documenti', icon: FileText },
+				{ href: '/dashboard/admin/dpi', label: 'DPI', icon: ShieldCheck }
+			]},
 		{ href: '/dashboard/admin/formazione', label: 'Formazione', icon: GraduationCap },
 		{ href: '/dashboard/admin/scadenziario', label: 'Scadenziario', icon: FileClock },
+		{ href: '/dashboard/admin/comunicazioni', label: 'Messaggi', icon: MessageSquare },
 		{ href: '/dashboard/admin/report', label: 'Report & Log', icon: BarChart3 },
 		{ href: '/dashboard/admin/account', label: 'Il mio Account', icon: User }
 	];
 
 	onMount(async () => {
-		// Recupero dati sessione tramite il service
+		// Espande in automatico i sottomenu
+		if ($page.url.pathname.includes('/admin/aziende') || $page.url.pathname.includes('/admin/dipendenti') || $page.url.pathname.includes('/admin/docenti')) {
+			openMenus.utenti = true;
+		}
+		if ($page.url.pathname.includes('/admin/documenti') || $page.url.pathname.includes('/admin/dpi')) {
+			openMenus.documenti = true;
+		}
+
 		const session = AuthService.getSession();
 
-		// --- ROLE GUARD INIZIO ---
 		if (!session) {
-			// Se non c'è sessione, redirect forzato al login
-			goto('/login', { replaceState: true });
-			return; // Interrompe l'esecuzione successiva
+			await goto('/login', { replaceState: true });
+			return;
 		}
 
 		if (session.richiedeCambioPassword) {
-			goto('/dashboard/cambio-obbligatorio', { replaceState: true });
+			await goto('/dashboard/cambio-obbligatorio', { replaceState: true });
 			return;
 		}
 
 		if (session.ruolo !== 'ADMIN') {
-			// Se è loggato ma non è ADMIN, redirect alla sua dashboard di competenza
-			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			await goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
 			return;
 		}
-		// --- ROLE GUARD FINE ---
 
-		// Se arriva qui, l'utente è un ADMIN verificato.
 		userEmail = session.email;
 		try {
-			// Recupero dinamico del badge notifiche
 			notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
 		} catch (error) {
 			console.error("Errore nel recupero notifiche", error);
@@ -59,7 +91,6 @@
 	});
 
 	async function handleLogout() {
-		// Il logout service gestisce già la pulizia locale e il redirect
 		await AuthService.logout();
 	}
 </script>
@@ -78,14 +109,46 @@
 					Home Sito
 				</a>
 
-				{#each menuItems as item (item.href)}
-					<a
-							href={item.href}
-							class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {$page.url.pathname === item.href ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
-					>
-						<item.icon size={20} class="shrink-0" />
-						<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>
-					</a>
+				{#each menuItems as item (item.id || item.href)}
+					{#if item.subItems}
+						<button
+								onclick={() => toggleMenu(item.id)}
+								class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 group {isSubMenuActive(item.subItems) ? 'text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
+						>
+							<div class="flex items-center gap-3">
+								<item.icon size={20} class="shrink-0" />
+								<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>
+							</div>
+							{#if openMenus[item.id]}
+								<ChevronDown size={16} />
+							{:else}
+								<ChevronRight size={16} />
+							{/if}
+						</button>
+
+						{#if openMenus[item.id]}
+							<div transition:slide class="ml-4 mt-1 mb-2 space-y-1 border-l border-white/10 pl-2">
+								{#each item.subItems as subItem (subItem.href)}
+									<a
+											href={subItem.href}
+											class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group {isActive(subItem.href) ? 'bg-white/10 text-white shadow-sm border-l-2 border-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}"
+									>
+										<subItem.icon size={16} class="shrink-0" />
+										<span class="font-bold text-[11px] uppercase tracking-tight">{subItem.label}</span>
+									</a>
+								{/each}
+							</div>
+						{/if}
+
+					{:else}
+						<a
+								href={item.href}
+								class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isActive(item.href) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
+						>
+							<item.icon size={20} class="shrink-0" />
+							<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>
+						</a>
+					{/if}
 				{/each}
 			</nav>
 

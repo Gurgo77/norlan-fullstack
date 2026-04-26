@@ -19,10 +19,11 @@ public class AziendaDTO {
     private String ragioneSociale;
     private String partitaIva;
 
-    // Possiamo aggiungere campi extra che servono a Nicolò (es. per la UI)
+    // Campo per la UI
     private String etichettaDisplay;
+    private boolean hasDipendenti; // <--- AGGIUNTO
 
-    // ... altri campi esistenti
+    // Campi extra
     private String sedeLegale;
     private String pec;
     private String telefono;
