@@ -6,16 +6,23 @@
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
 		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog, User,
-		Users, UserSquare2, ShieldCheck, FileText, ChevronDown, ChevronRight
+		Users, UserSquare2, ShieldCheck, FileText, ChevronDown, ChevronRight, Loader2
 	} from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
 	import { searchState } from '$lib/searchState.svelte';
+	import type { Notifica } from '$lib/models/Notifica';
 
 	let { children } = $props();
 
 	let userEmail = $state('Caricamento...');
-	let notificheCount = $state(0);
+
+	// --- VARIABILI DI STATO PER LA TENDINA NOTIFICHE ---
+	let notificheCount = $state<number>(0);
+	let showNotifiche = $state(false);
+	let listaNotifiche = $state<Notifica[]>([]);
+	let isLoadingNotifiche = $state(false);
+	// ----------------------------------------------------
 
 	// Stato per i sottomenu aperti
 	let openMenus = $state<Record<string, boolean>>({
@@ -84,16 +91,66 @@
 
 		userEmail = session.email;
 		try {
-			notificheCount = await SistemaService.countNotificheNonLette(session.idUtente);
+			// MODIFICA QUI: forziamo la conversione in Number per distruggere eventuali "[object Object]"
+			const rawCount = await SistemaService.countNotificheNonLette(session.idUtente);
+
+			// Se per qualche motivo rawCount è un oggetto (es. { data: 2 }), estraiamo il valore
+			if (typeof rawCount === 'object' && rawCount !== null) {
+				// Estrae il primo valore dall'oggetto, oppure la proprietà 'data' se Axios non l'ha spacchettata
+				notificheCount = Number(Object.values(rawCount)[0] || rawCount.data || 0);
+			} else {
+				notificheCount = Number(rawCount || 0);
+			}
+
 		} catch (error) {
 			console.error("Errore nel recupero notifiche", error);
+			notificheCount = 0; // Fallback di sicurezza
 		}
 	});
+
+	// --- FUNZIONI LOGICHE PER TENDINA NOTIFICHE ---
+	async function handleToggleNotifiche(event: Event) {
+		event.stopPropagation(); // Evita che il click chiuda subito la tendina tramite l'event listener su window
+		showNotifiche = !showNotifiche;
+
+		if (showNotifiche) {
+			isLoadingNotifiche = true;
+			const session = AuthService.getSession();
+			if (session) {
+				try {
+					listaNotifiche = await SistemaService.getNotificheNonLette(session.idUtente);
+				} catch (error) {
+					console.error("Errore durante il caricamento delle notifiche:", error);
+				} finally {
+					isLoadingNotifiche = false;
+				}
+			}
+		}
+	}
+
+	async function handleLeggiNotifica(idNotifica: number) {
+		try {
+			await SistemaService.segnaLetta(idNotifica);
+			// Rimuove la notifica dalla lista localmente per aggiornamento immediato
+			listaNotifiche = listaNotifiche.filter(n => n.idNotifica !== idNotifica);
+			// Decrementa il counter stando attenti a non scendere sotto lo zero
+			notificheCount = Math.max(0, notificheCount - 1);
+		} catch (error) {
+			console.error("Errore nel segnare la notifica come letta:", error);
+		}
+	}
+
+	function closeNotifiche() {
+		if (showNotifiche) showNotifiche = false;
+	}
+	// ----------------------------------------------
 
 	async function handleLogout() {
 		await AuthService.logout();
 	}
 </script>
+
+<svelte:window onclick={closeNotifiche} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
 	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
@@ -182,12 +239,51 @@
 					<Clock size={14} />
 					<span>Sistema Online</span>
 				</div>
-				<button class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
-					<Bell size={22} />
-					{#if notificheCount > 0}
-						<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
+
+				<div class="relative" onclick={(e) => e.stopPropagation()}>
+					<button
+							onclick={handleToggleNotifiche}
+							class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors focus:outline-none">
+						<Bell size={22} />
+						{#if notificheCount > 0}
+							<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
+						{/if}
+					</button>
+
+					{#if showNotifiche}
+						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
+							<div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">
+								<h3 class="font-black text-[#1B4B6B] uppercase text-xs">Notifiche</h3>
+								<span class="text-[10px] font-bold text-gray-400 uppercase">{notificheCount} Da leggere</span>
+							</div>
+
+							<div class="max-h-96 overflow-y-auto custom-scrollbar-data">
+								{#if isLoadingNotifiche}
+									<div class="p-8 flex justify-center items-center">
+										<Loader2 class="animate-spin text-[#1B4B6B]" size={24} />
+									</div>
+								{:else if listaNotifiche.length > 0}
+									{#each listaNotifiche as notifica (notifica.idNotifica)}
+										<div class="p-4 border-b border-gray-50 hover:bg-blue-50/50 transition-colors cursor-pointer group" onclick={() => handleLeggiNotifica(notifica.idNotifica)}>
+											<div class="flex items-start gap-3">
+												<div class="w-2 h-2 rounded-full bg-[#1B4B6B] mt-1.5 shrink-0"></div>
+												<div>
+													<p class="text-xs font-bold text-gray-700 leading-tight mb-1 group-hover:text-[#1B4B6B] transition-colors">{notifica.messaggio}</p>
+													<p class="text-[9px] font-black text-gray-400 uppercase tracking-wide">{new Date(notifica.dataInvio).toLocaleString('it-IT')}</p>
+												</div>
+											</div>
+										</div>
+									{/each}
+								{:else}
+									<div class="p-8 text-center text-gray-400">
+										<Bell size={24} class="mx-auto mb-2 opacity-50" />
+										<p class="text-[10px] font-bold uppercase tracking-widest">Nessuna notifica</p>
+									</div>
+								{/if}
+							</div>
+						</div>
 					{/if}
-				</button>
+				</div>
 				<div class="h-8 w-px bg-gray-200"></div>
 				<div class="flex items-center gap-4">
 					<div class="text-right hidden sm:block">

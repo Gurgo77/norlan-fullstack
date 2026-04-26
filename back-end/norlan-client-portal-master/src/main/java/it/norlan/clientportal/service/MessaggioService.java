@@ -49,11 +49,21 @@ public class MessaggioService {
         m.setTesto(testo);
         m.setTimestampInvio(LocalDateTime.now());
 
+        String testoNotificaInApp = "Hai ricevuto un nuovo messaggio da " + mittente.getEmail();
+        String testoNotificaEmail = "" + mittente.getEmail() + "|" + testo;
+
         notificaService.inviaNotifica(
                 destinatario,
-                "Hai ricevuto un nuovo messaggio da " + mittente.getEmail(),
+                testoNotificaInApp,
                 Notifica.Priorita.MEDIA,
                 Notifica.CanaleNotifica.IN_APP
+        );
+
+        notificaService.inviaNotifica(
+                destinatario,
+                testoNotificaEmail,
+                Notifica.Priorita.ALTA,
+                Notifica.CanaleNotifica.EMAIL
         );
 
         return messaggioRepository.save(m);

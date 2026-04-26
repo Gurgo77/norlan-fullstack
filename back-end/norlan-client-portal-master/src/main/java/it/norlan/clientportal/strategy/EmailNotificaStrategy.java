@@ -29,18 +29,46 @@ public class EmailNotificaStrategy implements NotificaStrategy {
 
         try {
             Context context = new Context();
-            context.setVariable("messaggioCorpo", notifica.getMessaggio());
+            String payload = notifica.getMessaggio();
+            String htmlBody;
+            String subject;
 
-             String htmlBody = templateEngine.process("email/notifica", context);
+            // CONTROLLO TEMPLATE: Se il messaggio inizia con il marker della chat
+            if (payload != null && payload.startsWith("")) {
+
+                // Rimuoviamo il marker per ottenere solo i dati (email|testo)
+                String data = payload.replace("", "");
+                int separatorIndex = data.indexOf("|");
+
+                String mittenteEmail = "Sistema";
+                String contenutoMessaggio = data;
+
+                // Dividiamo la stringa: a sinistra l'email, a destra il testo del messaggio
+                if (separatorIndex != -1) {
+                    mittenteEmail = data.substring(0, separatorIndex);
+                    contenutoMessaggio = data.substring(separatorIndex + 1);
+                }
+
+                // Iniettiamo i dati specifici per il template della chat
+                context.setVariable("mittenteEmail", mittenteEmail);
+                context.setVariable("contenutoMessaggio", contenutoMessaggio);
+
+                htmlBody = templateEngine.process("email/messaggio-chat", context);
+                subject = "NorLan Portal - Nuovo Messaggio in Chat";
+
+            } else {
+                // COMPORTAMENTO STANDARD: Per tutte le altre notifiche
+                context.setVariable("messaggioCorpo", payload);
+                htmlBody = templateEngine.process("email/notifica", context);
+                subject = "Norlan - Aggiornamento Importante";
+            }
 
             MimeMessage message = mailSender.createMimeMessage();
-
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(mittente);
             helper.setTo(emailDestinatario);
-            helper.setSubject("Norlan - Aggiornamento Importante");
-
+            helper.setSubject(subject);
             helper.setText(htmlBody, true);
 
             mailSender.send(message);

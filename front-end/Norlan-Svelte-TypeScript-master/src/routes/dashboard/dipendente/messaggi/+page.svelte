@@ -64,16 +64,20 @@
 			const rubrica: ContattoChat[] = [];
 
 			// 2a. Aggiungiamo l'Azienda (Datore di Lavoro) usando l'idAzienda ora riconosciuto
-			if (utente.idAzienda) {
+			const idAzienda = utente.idAzienda || (utente as any).azienda?.idUtente || (utente as any).azienda_id;
+
+			if (idAzienda) {
 				try {
-					const aziendaData = await AnagraficaService.getAziendaById(utente.idAzienda) as AziendaRaw;
+					const aziendaData = await AnagraficaService.getAziendaById(idAzienda) as AziendaRaw;
 					rubrica.push({
-						idUtente: utente.idAzienda,
+						idUtente: idAzienda,
 						nome: aziendaData.ragioneSociale || 'LA TUA AZIENDA',
 						ruolo: 'AZIENDA',
 						sottotitolo: 'Datore di Lavoro'
 					});
 				} catch(e) { console.warn("Errore caricamento azienda:", e); }
+			} else {
+				console.warn("Nessun ID Azienda trovato nel profilo dell'utente:", utente);
 			}
 
 			// 2b. Recupero Iscrizioni e raggruppamento per Docente

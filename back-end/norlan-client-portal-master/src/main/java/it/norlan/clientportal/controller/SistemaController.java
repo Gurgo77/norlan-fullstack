@@ -41,6 +41,16 @@ public class SistemaController {
         return ResponseEntity.ok(notifiche);
     }
 
+    @GetMapping("/notifiche/utente/{idUtente}/non-lette")
+    public ResponseEntity<List<NotificaDTO>> getNotificheNonLette(@PathVariable Integer idUtente) {
+        // Recupera solo le notifiche con letta = false
+        List<NotificaDTO> notifiche = notificaService.getNotificheNonLette(idUtente)
+                .stream()
+                .map(notificaService::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(notifiche);
+    }
+
     @GetMapping("/notifiche/utente/{idUtente}/non-lette/count")
     public ResponseEntity<Long> contaNotificheNonLette(@PathVariable Integer idUtente) {
         long conteggio = notificaService.contaNonLette(idUtente);

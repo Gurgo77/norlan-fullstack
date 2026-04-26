@@ -2,15 +2,17 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation'; // <-- Import per il redirect di sicurezza
+	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, BookOpen, Users, Calendar, User,
-		LogOut, Bell, Search, MessageSquare, Home, Clock
+		LogOut, Bell, Search, MessageSquare, Home, Clock, Loader2
 	} from 'lucide-svelte';
 
 	// Import Servizi e Modelli
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import type { Notifica } from '$lib/models/Notifica';
 	import { searchState } from '$lib/searchState.svelte';
 
 	// Interfaccia locale per definire la struttura ritornata dal backend
@@ -26,7 +28,13 @@
 	let docenteEmail = $state('Caricamento...');
 	let docenteNomeCompleto = $state('Docente');
 	let iniziale = $state('D');
-	let notificheCount = $state(0);
+
+	// --- VARIABILI DI STATO PER LA TENDINA NOTIFICHE ---
+	let notificheCount = $state<number>(0);
+	let showNotifiche = $state(false);
+	let listaNotifiche = $state<Notifica[]>([]);
+	let isLoadingNotifiche = $state(false);
+	// ----------------------------------------------------
 
 	const menuItems = [
 		{ href: '/dashboard/docente', label: 'Dashboard', icon: LayoutDashboard },
@@ -43,7 +51,6 @@
 
 		// --- ROLE GUARD INIZIO ---
 		if (!session) {
-			// Se non c'è sessione, redirect forzato al login
 			goto('/login', { replaceState: true });
 			return;
 		}
@@ -54,17 +61,15 @@
 		}
 
 		if (session.ruolo !== 'DOCENTE') {
-			// Se è loggato ma non è DOCENTE, redirect alla dashboard di competenza
 			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
 			return;
 		}
 		// --- ROLE GUARD FINE ---
 
-		// Passati i controlli di sicurezza, l'utente è un Docente autorizzato
 		docenteEmail = session.email;
 
 		try {
-			// Caricamento parallelo delle notifiche e dei dati anagrafici dal DB
+			// Caricamento parallelo
 			const [count, profile] = await Promise.all([
 				SistemaService.countNotificheNonLette(session.idUtente),
 				AnagraficaService.getDocenteById(session.idUtente)
@@ -79,11 +84,46 @@
 			}
 		} catch (error) {
 			console.error("Errore nel recupero dei dati del docente:", error);
+			notificheCount = 0;
 		}
 	});
 
+	// --- FUNZIONI LOGICHE PER TENDINA NOTIFICHE ---
+	async function handleToggleNotifiche(event: Event) {
+		event.stopPropagation();
+		showNotifiche = !showNotifiche;
+
+		if (showNotifiche) {
+			isLoadingNotifiche = true;
+			const session = AuthService.getSession();
+			if (session) {
+				try {
+					listaNotifiche = await SistemaService.getNotificheNonLette(session.idUtente);
+				} catch (error) {
+					console.error("Errore caricamento notifiche:", error);
+				} finally {
+					isLoadingNotifiche = false;
+				}
+			}
+		}
+	}
+
+	async function handleLeggiNotifica(idNotifica: number) {
+		try {
+			await SistemaService.segnaLetta(idNotifica);
+			listaNotifiche = listaNotifiche.filter(n => n.idNotifica !== idNotifica);
+			notificheCount = Math.max(0, notificheCount - 1);
+		} catch (error) {
+			console.error("Errore lettura notifica:", error);
+		}
+	}
+
+	function closeNotifiche() {
+		if (showNotifiche) showNotifiche = false;
+	}
+	// ----------------------------------------------
+
 	async function handleLogout() {
-		// Il logout service gestisce già la pulizia locale e il redirect
 		await AuthService.logout();
 	}
 
@@ -95,8 +135,9 @@
 	}
 </script>
 
-<div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
+<svelte:window onclick={closeNotifiche} />
 
+<div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
 	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
 		<aside class="sticky top-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50">
 			<div class="p-8 shrink-0">
@@ -152,13 +193,50 @@
 					<span>Portale Sincronizzato</span>
 				</div>
 
-				<button class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
-					<Bell size={22} />
-					{#if notificheCount > 0}
-						<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
-					{/if}
-				</button>
+				<div class="relative" onclick={(e) => e.stopPropagation()}>
+					<button
+							onclick={handleToggleNotifiche}
+							class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors focus:outline-none">
+						<Bell size={22} />
+						{#if notificheCount > 0}
+							<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
+						{/if}
+					</button>
 
+					{#if showNotifiche}
+						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
+							<div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">
+								<h3 class="font-black text-[#1B4B6B] uppercase text-xs">Notifiche</h3>
+								<span class="text-[10px] font-bold text-gray-400 uppercase">{notificheCount} Da leggere</span>
+							</div>
+
+							<div class="max-h-96 overflow-y-auto custom-scrollbar-data">
+								{#if isLoadingNotifiche}
+									<div class="p-8 flex justify-center items-center">
+										<Loader2 class="animate-spin text-[#1B4B6B]" size={24} />
+									</div>
+								{:else if listaNotifiche.length > 0}
+									{#each listaNotifiche as notifica (notifica.idNotifica)}
+										<div class="p-4 border-b border-gray-50 hover:bg-blue-50/50 transition-colors cursor-pointer group" onclick={() => handleLeggiNotifica(notifica.idNotifica)}>
+											<div class="flex items-start gap-3">
+												<div class="w-2 h-2 rounded-full bg-[#1B4B6B] mt-1.5 shrink-0"></div>
+												<div>
+													<p class="text-xs font-bold text-gray-700 leading-tight mb-1 group-hover:text-[#1B4B6B] transition-colors">{notifica.messaggio}</p>
+													<p class="text-[9px] font-black text-gray-400 uppercase tracking-wide">{new Date(notifica.dataInvio).toLocaleString('it-IT')}</p>
+												</div>
+											</div>
+										</div>
+									{/each}
+								{:else}
+									<div class="p-8 text-center text-gray-400">
+										<Bell size={24} class="mx-auto mb-2 opacity-50" />
+										<p class="text-[10px] font-bold uppercase tracking-widest">Nessuna notifica</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
 				<div class="h-8 w-px bg-gray-200"></div>
 
 				<div class="flex items-center gap-4">

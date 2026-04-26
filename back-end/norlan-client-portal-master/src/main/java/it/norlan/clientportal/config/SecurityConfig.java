@@ -44,7 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         // Permessi specifici per l'Azienda
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
                          // 1. SBLOCCO ANAGRAFICA DOCENTE: Permette ai docenti di leggere e modificare se stessi
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
@@ -75,6 +75,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

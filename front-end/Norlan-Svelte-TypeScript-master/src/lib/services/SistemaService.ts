@@ -18,7 +18,7 @@ export class SistemaService {
 	// ==========================================
 
 	/**
-	 * Recupera tutte le notifiche di un determinato utente (Lavoratore o Admin).
+	 * Recupera tutte le notifiche (lette e non lette) di un determinato utente.
 	 * BE: GET /api/sistema/notifiche/utente/{idUtente}
 	 */
 	static async getNotificheUtente(idUtente: number | string): Promise<Notifica[]> {
@@ -29,15 +29,28 @@ export class SistemaService {
 	}
 
 	/**
-	 * Conta quante notifiche non lette ha un utente. Perfetto per il badge rosso sull'icona della campanella!
+	 * NUOVO METODO: Recupera SOLO le notifiche NON LETTE di un determinato utente.
+	 * Ideale per popolare il menu a tendina della campanella in modo veloce e leggero.
+	 * BE: GET /api/sistema/notifiche/utente/{idUtente}/non-lette
+	 */
+	static async getNotificheNonLette(idUtente: number | string): Promise<Notifica[]> {
+		const response = await httpClient.get<NotificaData[]>(
+			`${this.basePath}/notifiche/utente/${idUtente}/non-lette`
+		);
+		return response.data.map((item) => new Notifica(item));
+	}
+
+	/**
+	 * Conta quante notifiche non lette ha un utente. Perfetto per il badge rosso.
 	 * BE: GET /api/sistema/notifiche/utente/{idUtente}/non-lette/count
 	 */
 	static async countNotificheNonLette(idUtente: number | string): Promise<number> {
-		// Aggiunto il tipo <number> alla chiamata Axios per evitare any impliciti
-		const response = await httpClient.get<number>(
+		const response = await httpClient.get(
 			`${this.basePath}/notifiche/utente/${idUtente}/non-lette/count`
 		);
-		return response.data;
+
+		const count = Number(response.data);
+		return isNaN(count) ? 0 : count;
 	}
 
 	/**

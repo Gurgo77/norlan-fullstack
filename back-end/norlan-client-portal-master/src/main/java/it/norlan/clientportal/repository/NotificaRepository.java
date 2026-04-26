@@ -11,4 +11,4 @@ public interface NotificaRepository extends JpaRepository<Notifica, Integer> {
     List<Notifica> findByDestinatarioIdUtenteAndLettaFalse(Integer idUtente);
     List<Notifica> findByDestinatarioIdUtenteOrderByDataInvioDesc(Integer idUtente);
     long countByDestinatarioIdUtenteAndLettaFalse(Integer idUtente);
-}
+    List<Notifica> findByDestinatarioIdUtenteAndLettaFalseOrderByDataInvioDesc(Integer idUtente);}

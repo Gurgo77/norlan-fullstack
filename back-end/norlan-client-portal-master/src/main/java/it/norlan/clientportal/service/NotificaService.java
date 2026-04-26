@@ -32,6 +32,10 @@ public class NotificaService {
         notificaRepository.deleteById(id);
     }
 
+    public List<Notifica> getNotificheNonLette(Integer idUtente) {
+        return notificaRepository.findByDestinatarioIdUtenteAndLettaFalseOrderByDataInvioDesc(idUtente);
+    }
+
     @Async("notificheExecutor")
     @Transactional
     public void inviaNotifica(Utente destinatario, String messaggio, Notifica.Priorita priorita, Notifica.CanaleNotifica canale) {

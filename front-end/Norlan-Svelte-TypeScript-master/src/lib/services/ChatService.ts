@@ -29,29 +29,42 @@ export class ChatService {
 	 * Avvia la connessione WebSocket
 	 */
 	connect(token: string, userId: number | string): void {
-		const baseUrl = httpClient.defaults.baseURL || 'http://localhost:8080';
+		// 1. PATCH PER VITE E SOCKJS: Risolve l'errore "global is not defined"
+		if (typeof window !== 'undefined' && !(window as any).global) {
+			(window as any).global = window;
+		}
+
+		// Rimuoviamo eventuali slash finali per evitare errori di routing (/ws al posto di //ws)
+		const baseUrl = (httpClient.defaults.baseURL || 'http://localhost:8080').replace(/\/$/, '');
 
 		this.client = new Client({
+			// Disabilitiamo il debug in produzione, attiviamolo in locale se serve
+			debug: (str) => console.log('STOMP: ' + str),
+
 			webSocketFactory: () => new SockJS(`${baseUrl}/ws`),
 			connectHeaders: {
 				Authorization: `Bearer ${token}`
 			},
 			onConnect: () => {
+				console.log('✅ Connessione Chat STOMP Stabilita con successo!');
+
 				// Sottoscrizione ai messaggi in entrata
-				// BE: messagingTemplate.convertAndSendToUser(idDestinatario, "/queue/messages", dto)
 				this.client?.subscribe(`/user/${userId}/queue/messages`, (message) => {
 					const data: MessaggioData = JSON.parse(message.body);
 					this.onMessageReceived(new Messaggio(data));
 				});
 
-				// Sottoscrizione alla coda degli errori (AccessDeniedException)
-				// BE: messagingTemplate.convertAndSendToUser(principal.getName(), "/queue/errors", e.getMessage())
+				// Sottoscrizione alla coda degli errori
 				this.client?.subscribe(`/user/queue/errors`, (message) => {
 					this.onError(message.body);
 				});
 			},
 			onStompError: (frame) => {
-				this.onError(frame.headers['message'] || 'Errore di connessione STOMP');
+				console.error('❌ STOMP Error:', frame.headers['message']);
+				this.onError(frame.headers['message'] || 'Errore di connessione STOMP al server');
+			},
+			onWebSocketError: (event) => {
+				console.error('❌ Errore critico WebSocket:', event);
 			}
 		});
 
