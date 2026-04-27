@@ -1,11 +1,12 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { page } from '$app/stores'; // <-- 1. AGGIUNTO: Necessario per leggere l'ID dall'URL
+    import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
     import { fade, scale, slide } from 'svelte/transition';
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Plus, Calendar
+        FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare, Upload
     } from 'lucide-svelte';
 
     // Servizi e Modelli
@@ -14,7 +15,8 @@
     import { DocumentoService } from '$lib/services/DocumentoService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
     import { Documento } from '$lib/models/Documento';
-
+    import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
+    import { ModuloServizio, TipoDocumento, TipoDPI } from '$lib/models/Enums';
     // Interfaccia estesa
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -28,7 +30,7 @@
 
     let selectedDipendente = $state<DipendenteEsteso | null>(null);
     let documentiCorrenti = $state<Documento[]>([]);
-    let dpiCorrenti = $state<any[]>([]);
+    let dpiCorrenti = $state<AssegnazioneDPI[]>([]);
     let isLoadingDettaglio = $state(false);
 
     let showAddModal = $state(false);
@@ -39,6 +41,25 @@
     let formDipendente = $state({
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: ''
     });
+
+    // --- STATI DOCUMENTI ---
+    let showUploadModal = $state(false);
+    let isUploading = $state(false);
+    let uploadFile = $state<File | null>(null);
+    let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.ATTESTATO_FORMAZIONE, dataScadenza: '' });
+
+    let showDeleteDocModal = $state(false);
+    let docDaEliminare = $state<Documento | null>(null);
+
+    // --- STATI DPI ---
+    // --- STATI DPI ---
+    let showDpiModal = $state(false);
+    let isSavingDpi = $state(false);
+    // Inizializziamo il form con campi coerenti al modello
+    let formDpi = $state({ tipo: '' as unknown as TipoDPI, dataConsegna: '' });
+
+    let showDeleteDpiModal = $state(false);
+    let dpiDaEliminare = $state<AssegnazioneDPI | null>(null);
 
     // --- LOGICA DERIVATA ---
     const filteredLavoratori = $derived(
@@ -69,23 +90,20 @@
 
             lavoratori = resLavoratori.map((l: DipendenteDTO) => {
                 const item = l as DipendenteDTO & { idAzienda?: number | string };
-                const aziendaAssoc = aziendeList.find(a => a.idUtente === item.idAzienda);
+                const aziendaAssoc = aziendeList.find(a => String(a.idUtente) === String(item.idAzienda));
                 return {
                     ...l,
                     nomeAzienda: aziendaAssoc ? aziendaAssoc.ragioneSociale : "Azienda non specificata"
                 };
             });
 
-            // --- 2. AGGIUNTO: LOGICA DI APERTURA AUTOMATICA ---
             const idDaUrl = $page.url.searchParams.get('id');
             if (idDaUrl) {
-                const dipendenteTrovato = lavoratori.find(l => String(l.idUtente) === String(idDaUrl));
+                const dipendenteTrovato = lavoratori.find(l => String(l.idUtente) === idDaUrl);
                 if (dipendenteTrovato) {
                     await apriDettaglio(dipendenteTrovato);
                 }
             }
-            // --------------------------------------------------
-
         } catch (error) {
             console.error("Errore caricamento dati:", error);
         } finally {
@@ -98,11 +116,26 @@
         isLoadingDettaglio = true;
         try {
             documentiCorrenti = await DocumentoService.getDocumentiByAzienda(lavoratore.idUtente);
+            // dpiCorrenti = await LavoratoreService.getDpiByLavoratore(lavoratore.idUtente); // Decommenta quando integrato col backend
         } catch {
             console.error("Errore dettaglio dipendente");
         } finally {
             isLoadingDettaglio = false;
         }
+    }
+
+    function apreGmail(email: string) {
+        if (!email) {
+            alert("Nessuna email registrata per questo dipendente.");
+            return;
+        }
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, '_blank');
+    }
+
+    async function vaiInChat(idUtente: string | number | undefined) {
+        if (!idUtente) return;
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
+        return await goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
     }
 
     async function salvaDipendente() {
@@ -138,9 +171,9 @@
         if (!dipendenteDaEliminare) return;
         try {
             await LavoratoreService.delete(dipendenteDaEliminare.idUtente);
-            lavoratori = lavoratori.filter(l => l.idUtente !== dipendenteDaEliminare?.idUtente);
+            lavoratori = lavoratori.filter(l => String(l.idUtente) !== String(dipendenteDaEliminare?.idUtente));
             showDeleteModal = false;
-            if (selectedDipendente?.idUtente === dipendenteDaEliminare.idUtente) {
+            if (selectedDipendente && String(selectedDipendente.idUtente) === String(dipendenteDaEliminare.idUtente)) {
                 selectedDipendente = null;
             }
             dipendenteDaEliminare = null;
@@ -149,6 +182,7 @@
         }
     }
 
+    // --- LOGICA DOCUMENTI ---
     async function scaricaDoc(doc: Documento) {
         try {
             const b = await DocumentoService.downloadDocumento(doc.idDocumento);
@@ -160,6 +194,84 @@
             URL.revokeObjectURL(u);
         } catch {
             alert("Errore download.");
+        }
+    }
+
+    function preparaAggiornamento(doc: Documento) {
+        formDocumento.modulo = doc.modulo;
+        formDocumento.tipologia = doc.tipologia;
+        showUploadModal = true;
+    }
+
+    async function gestisciUpload() {
+        if (!uploadFile || !selectedDipendente || !formDocumento.dataScadenza) return;
+        isUploading = true;
+        try {
+            const fd = new FormData();
+            fd.append('file', uploadFile);
+            fd.append('modulo', formDocumento.modulo);
+            fd.append('tipologia', formDocumento.tipologia);
+            fd.append('dataScadenzaStr', formDocumento.dataScadenza);
+
+            await DocumentoService.uploadDocumento(selectedDipendente.idUtente, fd);
+            documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedDipendente.idUtente);
+            showUploadModal = false;
+            uploadFile = null;
+        } catch {
+            alert("Errore upload.");
+        } finally {
+            isUploading = false;
+        }
+    }
+
+    function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }
+
+    async function confermaEliminaDoc() {
+        if (!docDaEliminare) return;
+        try {
+            await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
+            documentiCorrenti = documentiCorrenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
+            showDeleteDocModal = false;
+            docDaEliminare = null;
+        } catch {
+            alert("Errore eliminazione documento.");
+        }
+    }
+
+    // --- LOGICA DPI ---
+    async function salvaDPI() {
+        if (!formDpi.tipo || !formDpi.dataConsegna || !selectedDipendente) return;
+        isSavingDpi = true;
+        try {
+            const nuovoDpi: AssegnazioneDPI = {
+                idAssegnazione: Date.now(),
+                idDipendente: selectedDipendente.idUtente, // Campo obbligatorio
+                tipo: formDpi.tipo,                        // Campo obbligatorio Enum
+                dataConsegna: formDpi.dataConsegna,        // Campo obbligatorio string
+                dataScadenzaRevisione: '',                 // Campo obbligatorio string
+                daRevisionare: false                       // Campo obbligatorio boolean
+            };
+
+            dpiCorrenti = [...dpiCorrenti, nuovoDpi];
+            showDpiModal = false;
+            formDpi = { tipo: '' as unknown as TipoDPI, dataConsegna: '' };
+        } catch {
+            alert("Errore salvataggio DPI.");
+        } finally {
+            isSavingDpi = false;
+        }
+    }
+    function preparaEliminaDPI(dpi: AssegnazioneDPI) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
+
+    async function confermaEliminaDPI() {
+        if (!dpiDaEliminare) return;
+        try {
+            // Simulazione eliminazione
+            dpiCorrenti = dpiCorrenti.filter(d => d !== dpiDaEliminare);
+            showDeleteDpiModal = false;
+            dpiDaEliminare = null;
+        } catch {
+            alert("Errore eliminazione DPI.");
         }
     }
 </script>
@@ -257,7 +369,13 @@
                         </div>
                     </div>
 
-                    <div>
+                    <div class="flex items-center gap-3">
+                        <button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-purple-600 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
+                            <Mail size={16} /> Manda Mail
+                        </button>
+                        <button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-[#1B4B6B] text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-[#1B4B6B]/90 hover:scale-105">
+                            <MessageSquare size={16} /> Contatta
+                        </button>
                         <button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600/90 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-white/10 shadow-xl hover:bg-red-700 hover:scale-105">
                             <Trash2 size={16} /> Rimuovi
                         </button>
@@ -280,33 +398,45 @@
                 <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-purple-600" /></div>
             {:else}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
                     <div class="space-y-6">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="p-2.5 bg-blue-100 text-blue-600 rounded-xl shadow-inner"><FileText size={20} /></div>
                                 <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documenti ({documentiCorrenti.length})</h2>
                             </div>
+                            <button onclick={() => (showUploadModal = true)} class="bg-[#1B4B6B] text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
+                                <Plus size={14} /> Aggiungi
+                            </button>
                         </div>
 
                         {#if documentiCorrenti.length > 0}
                             <div class="space-y-4">
                                 {#each documentiCorrenti as doc (doc.idDocumento)}
-                                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex justify-between items-center group">
-                                        <div class="flex items-center gap-4">
-                                            <div class="p-2 bg-gray-50 rounded-xl text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white transition-all"><FileText size={18} /></div>
-                                            <div>
-                                                <h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4>
-                                                <div class="flex items-center gap-2 mt-1">
-                                                    <Calendar size={10} class="text-gray-400"/>
-                                                    <span class="text-[9px] font-bold text-gray-400 uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
+                                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div class="flex items-center gap-3">
+                                                <div class="p-2 bg-gray-50 rounded-xl text-[#1B4B6B]"><FileText size={16} /></div>
+                                                <div>
+                                                    <h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4>
+                                                    <p class="text-[9px] text-gray-400 font-bold uppercase mt-0.5">{doc.modulo}</p>
                                                 </div>
                                             </div>
+                                            <div class="flex gap-1">
+                                                <button onclick={() => scaricaDoc(doc)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-gray-50 rounded-lg hover:bg-gray-100"><Download size={14} /></button>
+                                                <button onclick={() => preparaEliminaDoc(doc)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
+                                            </div>
                                         </div>
-                                        <div class="flex gap-2 items-center">
+                                        <div class="flex items-center justify-between pt-3 border-t border-gray-50">
+                                            <div class="flex items-center gap-1.5 text-gray-400">
+                                                <Calendar size={10} />
+                                                <span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
+                                            </div>
                                             {#if doc.scaduto}
-                                                <span class="text-[8px] font-black px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded-md uppercase">Scaduto</span>
+                                                <button onclick={() => preparaAggiornamento(doc)} class="text-[8px] font-black px-3 py-1 bg-[#1B4B6B] text-white rounded-md uppercase shadow-sm hover:bg-[#1B4B6B]/80 hover:scale-105 transition-all">Aggiorna</button>
+                                            {:else}
+                                                <span class="text-[8px] font-black px-2 py-1 bg-green-50 text-green-600 border border-green-100 rounded-md uppercase">Valido</span>
                                             {/if}
-                                            <button onclick={() => scaricaDoc(doc)} class="p-2 text-gray-400 hover:text-[#1B4B6B] transition-all bg-gray-50 rounded-lg hover:bg-gray-100"><Download size={16} /></button>
                                         </div>
                                     </div>
                                 {/each}
@@ -322,15 +452,41 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="p-2.5 bg-green-100 text-green-600 rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
-                                <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati (0)</h2>
+                                <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
                             </div>
+                            <button onclick={() => (showDpiModal = true)} class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-green-700 transition-all shadow-md">
+                                <Plus size={14} /> Assegna DPI
+                            </button>
                         </div>
 
-                        <div class="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-[10px] italic">
-                            <ShieldCheck size={32} class="mx-auto mb-3 opacity-20"/>
-                            Nessun DPI registrato per il lavoratore
-                        </div>
+                        {#if dpiCorrenti.length > 0}
+                            <div class="space-y-4">
+                                {#each dpiCorrenti as dpi (dpi.idAssegnazione)}
+                                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div class="flex items-center gap-3">
+                                                <div class="p-2 bg-green-50 rounded-xl text-green-600"><ShieldCheck size={16} /></div>
+                                                <div>
+                                                    <h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{dpi.tipo.replace(/_/g, ' ')}</h4>
+                                                </div>
+                                            </div>
+                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 pt-3 border-t border-gray-50 text-gray-400">
+                                            <Calendar size={10} />
+                                            <span class="text-[9px] font-bold uppercase">Consegnato: {new Date(dpi.dataConsegna).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {:else}
+                            <div class="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-[10px] italic">
+                                <ShieldCheck size={32} class="mx-auto mb-3 opacity-20"/>
+                                Nessun DPI registrato per il lavoratore
+                            </div>
+                        {/if}
                     </div>
+
                 </div>
             {/if}
         </div>
@@ -343,7 +499,6 @@
                     <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Nuovo Lavoratore</h2>
                     <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
                 </div>
-
                 <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-4">
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Azienda di Appartenenza *</label>
@@ -353,23 +508,18 @@
                                 <option value={a.idUtente}>{a.ragioneSociale}</option>
                             {/each}
                         </select>
-
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
                         <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
-
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
                         <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
                     </div>
-
                     <div class="space-y-4">
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso</label>
                         <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
-
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
                         <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA80A01H501W" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-purple-600 outline-none" />
                     </div>
                 </div>
-
                 <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
                     <button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
                     <button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
@@ -395,4 +545,113 @@
             </div>
         </div>
     {/if}
+
+    {#if showUploadModal}
+        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
+                <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
+                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><FileText size={20}/> Carica Documento Lavoratore</h2>
+                    <button onclick={() => (showUploadModal = false)}><X size={24}/></button>
+                </div>
+                <div class="p-8 space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label>
+                            <select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
+                                {#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label>
+                            <select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
+                                {#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
+                        <input type="date" bind:value={formDocumento.dataScadenza} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
+                    </div>
+                    <div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group">
+                        <input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} />
+                        <label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3">
+                            <div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div>
+                            <span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
+                    <button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button>
+                    <button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
+                        {#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    {#if showDeleteDocModal}
+        <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+                <div class="p-8 text-center">
+                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il documento?</h2>
+                    <p class="text-sm text-gray-400 mb-8">Stai per rimuovere definitivamente: <br><span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span></p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick={confermaEliminaDoc} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Eliminazione</button>
+                        <button onclick={() => (showDeleteDocModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    {#if showDpiModal}
+        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
+                <div class="bg-green-600 p-6 text-white flex justify-between items-center">
+                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><ShieldCheck size={20}/> Registra Consegna DPI</h2>
+                    <button onclick={() => (showDpiModal = false)}><X size={24}/></button>
+                </div>
+                <div class="p-8 space-y-6">
+                    <div>
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia DPI *</label>
+                        <select bind:value={formDpi.tipo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
+                            <option value="">Seleziona DPI...</option>
+                            {#each Object.values(TipoDPI) as tipoDpi (tipoDpi)}
+                                <option value={tipoDpi}>{tipoDpi.replace(/_/g, ' ')}</option>
+                            {/each}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Consegna *</label>
+                        <input type="date" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
+                    </div>
+                </div>
+                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
+                    <button onclick={() => (showDpiModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button>
+                    <button onclick={salvaDPI} disabled={isSavingDpi || !formDpi.tipo || !formDpi.dataConsegna} class="bg-green-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
+                        {#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    {#if showDeleteDpiModal}
+        <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+                <div class="p-8 text-center">
+                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere DPI?</h2>
+                    <p class="text-sm text-gray-400 mb-8">Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo.replace(/_/g, ' ')}</span></p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick={confermaEliminaDPI} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Rimozione</button>
+                        <button onclick={() => (showDeleteDpiModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
 </div>

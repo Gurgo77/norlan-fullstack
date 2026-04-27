@@ -31,7 +31,7 @@ public class LavoratoreController {
     // ==========================================
 
     /**
-     * Recupera tutti i dipendenti del sistema (Utile per dashboard globale)
+     * Recupera tutti i dipendenti del sistema
      */
     @GetMapping
     public ResponseEntity<List<DipendenteDTO>> getAllDipendenti() {
@@ -74,7 +74,8 @@ public class LavoratoreController {
             Dipendente salvato = dipendenteService.salvaDipendente(dipendente, idAzienda);
             return new ResponseEntity<>(dipendenteService.convertToDTO(salvato), HttpStatus.CREATED);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build(); // Ritorna 400 se l'azienda non esiste o il CF è errato
+            // Ritorna 400 se l'azienda non esiste o il CF è errato, senza sporcare i log
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -84,17 +85,14 @@ public class LavoratoreController {
     @PutMapping("/{id}")
     public ResponseEntity<DipendenteDTO> updateDipendente(@PathVariable Integer id, @RequestBody Dipendente dipendenteDati) {
         return dipendenteService.findById(id).map(dipendenteEsistente -> {
-            // Aggiornamento campi anagrafici (Dati specifici di Dipendente)
             dipendenteEsistente.setNome(dipendenteDati.getNome());
             dipendenteEsistente.setCognome(dipendenteDati.getCognome());
             dipendenteEsistente.setCodiceFiscale(dipendenteDati.getCodiceFiscale());
 
-            // Aggiornamento email (Dato ereditato da Utente)
             if (dipendenteDati.getEmail() != null) {
                 dipendenteEsistente.setEmail(dipendenteDati.getEmail());
             }
 
-            // Salvataggio tramite Service (mantenendo l'associazione con l'azienda attuale)
             Dipendente aggiornato = dipendenteService.salvaDipendente(
                     dipendenteEsistente,
                     dipendenteEsistente.getAzienda().getIdUtente()
@@ -119,9 +117,6 @@ public class LavoratoreController {
     // SEZIONE DPI (Sotto-risorsa nidificata)
     // ==========================================
 
-    /**
-     * Recupera tutti i DPI assegnati a un lavoratore specifico
-     */
     @GetMapping("/{idDipendente}/dpi")
     public ResponseEntity<List<AssegnazioneDPIDTO>> getDpiByDipendente(@PathVariable Integer idDipendente) {
         List<AssegnazioneDPIDTO> dpi = dpiService.trovaPerDipendente(idDipendente)
@@ -131,25 +126,17 @@ public class LavoratoreController {
         return ResponseEntity.ok(dpi);
     }
 
-    /**
-     * Assegna un nuovo DPI a un lavoratore specifico
-     */
     @PostMapping("/{idDipendente}/dpi")
     public ResponseEntity<AssegnazioneDPIDTO> assignDpiToDipendente(@PathVariable Integer idDipendente, @RequestBody AssegnazioneDPI assegnazione) {
         return dipendenteService.findById(idDipendente).map(dipendente -> {
-            assegnazione.setDipendente(dipendente); // Colleghiamo fisicamente l'entità
+            assegnazione.setDipendente(dipendente);
             AssegnazioneDPI salvata = dpiService.salvaAssegnazione(assegnazione);
             return new ResponseEntity<>(dpiService.convertToDTO(salvata), HttpStatus.CREATED);
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Endpoint di monitoraggio: Restituisce tutti i DPI in scadenza entro X giorni
-     */
     @GetMapping("/dpi/in-scadenza")
-    public ResponseEntity<List<AssegnazioneDPIDTO>> getDpiInScadenza(
-            @RequestParam(defaultValue = "30") int giorni) { // Se non specificato, cerca quelli in scadenza nei prossimi 30 giorni
-
+    public ResponseEntity<List<AssegnazioneDPIDTO>> getDpiInScadenza(@RequestParam(defaultValue = "30") int giorni) {
         List<AssegnazioneDPIDTO> dpiInScadenza = dpiService.trovaInScadenzaRevisione(giorni)
                 .stream()
                 .map(dpiService::convertToDTO)
@@ -157,9 +144,6 @@ public class LavoratoreController {
         return ResponseEntity.ok(dpiInScadenza);
     }
 
-    /**
-     * Rimuove o invalida un'assegnazione DPI errata
-     */
     @DeleteMapping("/dpi/{idDpi}")
     public ResponseEntity<Void> deleteDpiAssignment(@PathVariable Integer idDpi) {
         return dpiService.findById(idDpi).map(dpi -> {

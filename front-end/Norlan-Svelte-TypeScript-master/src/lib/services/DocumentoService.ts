@@ -72,11 +72,20 @@ export class DocumentoService {
 	 * ATTENZIONE: Il FormData deve contenere i campi: 'file', 'modulo', 'tipologia', 'dataScadenzaStr'
 	 * BE: POST /api/documenti/azienda/{idAzienda}/upload
 	 */
+	// Nel file src/lib/services/DocumentoService.ts
+
+
+
 	static async uploadDocumento(idAzienda: number | string, formData: FormData): Promise<Documento> {
 		const response = await httpClient.post<DocumentoData>(
 			`${this.basePath}/azienda/${idAzienda}/upload`,
 			formData,
-			{ headers: { 'Content-Type': 'multipart/form-data' } }
+			{
+				headers: {
+					// Sovrascriviamo l'impostazione globale 'application/json' del file httpClient.ts
+					'Content-Type': 'multipart/form-data'
+				}
+			}
 		);
 		return new Documento(response.data);
 	}

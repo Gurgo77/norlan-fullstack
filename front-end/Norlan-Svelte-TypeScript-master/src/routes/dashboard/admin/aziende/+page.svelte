@@ -38,7 +38,7 @@
 	// Stato Personale
 	let showDipendenteModal = $state(false);
 	let isSavingDipendente = $state(false);
-	let formDipendente = $state<DipendenteRequest>({ nome: '', cognome: '', codiceFiscale: '', email: '' });
+	let formDipendente = $state({ nome: '', cognome: '', codiceFiscale: '', email: '', password: '' });
 
 	// Modali eliminazione
 	let showDeleteDocModal = $state(false);
@@ -54,7 +54,16 @@
 
 	// --- LOGICA DERIVATA ---
 	const isFormValid = $derived(formAzienda.ragioneSociale.trim() !== '' && formAzienda.partitaIva.length === 11 && formAzienda.email.trim() !== '' && formAzienda.password.trim() !== '');
-	const isDipendenteValid = $derived(formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' && formDipendente.codiceFiscale.length === 16);
+
+	// Validazione dipendente: Richiede Email e Password
+	const isDipendenteValid = $derived(
+			formDipendente.nome.trim() !== '' &&
+			formDipendente.cognome.trim() !== '' &&
+			formDipendente.codiceFiscale.length === 16 &&
+			formDipendente.email.trim() !== '' &&
+			formDipendente.password.trim() !== ''
+	);
+
 	const filteredAziende = $derived(aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase())));
 	const isConfermaValida = $derived(confermaTesto.trim().toUpperCase() === 'ELIMINA');
 
@@ -85,7 +94,6 @@
 		} catch { console.error("Errore dettaglio"); }
 	}
 
-	// --- NAVIGAZIONE AL DETTAGLIO DIPENDENTE (FIX ESLINT) ---
 	async function vaiADettaglioDipendente(idUtente: string | number) {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		return await goto(`/dashboard/admin/dipendenti?id=${idUtente}`);
@@ -96,7 +104,6 @@
 		window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, '_blank');
 	}
 
-	// --- NAVIGAZIONE IN CHAT (FIX ESLINT) ---
 	async function vaiInChat(idUtente: string | number | undefined) {
 		if (!idUtente) return;
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
@@ -134,16 +141,36 @@
 		if (!isDipendenteValid || !selectedAzienda) return;
 		isSavingDipendente = true;
 		try {
-			const nuovo = await LavoratoreService.create(selectedAzienda.idUtente, formDipendente);
+			const idAz = selectedAzienda.idUtente;
+
+			// Sostituisci la creazione del payload alla riga 153 con questo:
+			// All'interno di salvaNuovoDipendente in +page.svelte
+			const payload = {
+				nome: formDipendente.nome,
+				cognome: formDipendente.cognome,
+				codiceFiscale: formDipendente.codiceFiscale,
+				email: formDipendente.email.trim(),
+				passwordHash: formDipendente.password, // <--- QUESTO DEVE ESSERE UGUALE AL CAMPO JAVA
+				richiedeCambioPassword: true           // <--- AGGIUNGILO PER SICUREZZA (visto che è nullable=false)
+			} as unknown as DipendenteRequest;
+
+			const nuovo = await LavoratoreService.create(idAz, payload);
 			dipendentiCorrenti = [...dipendentiCorrenti, nuovo];
+
 			if (!dynamicHasDipendenti) {
 				dynamicHasDipendenti = true;
-				const idx = aziende.findIndex(a => a.idUtente === selectedAzienda?.idUtente);
+				const idx = aziende.findIndex(a => a.idUtente === idAz);
 				if (idx !== -1) aziende[idx].hasDipendenti = true;
 			}
+
 			showDipendenteModal = false;
-			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '' };
-		} catch { alert("Errore aggiunta dipendente."); } finally { isSavingDipendente = false; }
+			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', password: '' };
+		} catch (error) {
+			console.error("Errore Creazione Dipendente:", error);
+			alert("Ops! Creazione fallita. Assicurati che l'email o il Codice Fiscale non siano già registrati a sistema.");
+		} finally {
+			isSavingDipendente = false;
+		}
 	}
 
 	async function gestisciUpload() {
@@ -151,19 +178,64 @@
 		isUploading = true;
 		try {
 			const fd = new FormData();
-			fd.append('file', uploadFile); fd.append('modulo', formDocumento.modulo);
-			fd.append('tipologia', formDocumento.tipologia); fd.append('dataScadenzaStr', formDocumento.dataScadenza);
+			fd.append('file', uploadFile);
+			fd.append('modulo', formDocumento.modulo);
+			fd.append('tipologia', formDocumento.tipologia);
+			fd.append('dataScadenza', formDocumento.dataScadenza);
+
 			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
 			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedAzienda.idUtente);
-			showUploadModal = false; uploadFile = null;
-		} catch { alert("Errore upload."); } finally { isUploading = false; }
+			showUploadModal = false;
+			uploadFile = null;
+		} catch (error) {
+			console.error("Errore Dettagliato Upload:", error);
+			const err = error as { response?: { data?: Record<string, unknown> | string }, message?: string };
+			const data = err.response?.data;
+			const messaggioServer = (typeof data === 'string' ? data : data?.message) || err.message || "Errore sconosciuto";
+			alert("Ops! L'upload è fallito. Il server dice: " + JSON.stringify(messaggioServer));
+		} finally {
+			isUploading = false;
+		}
 	}
 
 	function preparaAggiornamento(doc: Documento) { formDocumento.modulo = doc.modulo; formDocumento.tipologia = doc.tipologia; showUploadModal = true; }
-	async function scaricaDoc(doc: Documento) { try { const b = await DocumentoService.downloadDocumento(doc.idDocumento); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = doc.filePath.split('/').pop() || 'doc.pdf'; a.click(); URL.revokeObjectURL(u); } catch { alert("Errore download."); } }
-	async function salvaNuovaAzienda() { if (!isFormValid) return; isSaving = true; try { const payload: AuthRequestDTO & { sedeLegale?: string; pec?: string; telefono?: string; cellulare?: string; referenteAziendale?: string; hasDipendenti?: boolean; } = { ...formAzienda, ruolo: 'AZIENDA' }; await AnagraficaService.registraUtente(payload); const res = await AnagraficaService.getAllAziende(); aziende = (res as AziendaData[]).map(item => new Azienda(item)); showModal = false; formAzienda = { email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false }; } catch { alert("Errore creazione."); } finally { isSaving = false; } }
+
+	async function scaricaDoc(doc: Documento) {
+		try {
+			const b = await DocumentoService.downloadDocumento(doc.idDocumento);
+			const u = URL.createObjectURL(b);
+			const a = document.createElement('a');
+			a.href = u;
+			a.download = doc.filePath.split('/').pop() || 'doc.pdf';
+			a.click();
+			URL.revokeObjectURL(u);
+		} catch { alert("Errore download."); }
+	}
+
+	async function salvaNuovaAzienda() {
+		if (!isFormValid) return;
+		isSaving = true;
+		try {
+			const payload: AuthRequestDTO & { sedeLegale?: string; pec?: string; telefono?: string; cellulare?: string; referenteAziendale?: string; hasDipendenti?: boolean; } = { ...formAzienda, ruolo: 'AZIENDA' };
+			await AnagraficaService.registraUtente(payload);
+			const res = await AnagraficaService.getAllAziende();
+			aziende = (res as AziendaData[]).map(item => new Azienda(item));
+			showModal = false;
+			formAzienda = { email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
+		} catch { alert("Errore creazione."); } finally { isSaving = false; }
+	}
+
 	function preparaEliminazione(a: Azienda | null) { if (!a) return; aziendaDaEliminare = a; confermaTesto = ''; showDeleteModal = true; }
-	async function confermaEliminazione() { if (isConfermaValida && aziendaDaEliminare) { try { await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente); aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente); showDeleteModal = false; selectedAzienda = null; } catch { alert("Errore eliminazione azienda."); } } }
+
+	async function confermaEliminazione() {
+		if (isConfermaValida && aziendaDaEliminare) {
+			try {
+				await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente);
+				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
+				showDeleteModal = false; selectedAzienda = null;
+			} catch { alert("Errore eliminazione azienda."); }
+		}
+	}
 </script>
 
 <div in:fade class="max-w-7xl mx-auto p-6">
@@ -283,11 +355,23 @@
 				{#if documentiCorrenti.length > 0}
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{#each documentiCorrenti as doc (doc.idDocumento)}
-							<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+							<div class="bg-white p-6 rounded-3xl border transition-all group relative overflow-hidden
+                            {doc.scaduto ? 'border-red-200 shadow-md shadow-red-50' : 'border-gray-100 shadow-sm hover:shadow-xl'}">
+
+								{#if doc.scaduto}
+									<div class="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
+								{/if}
+
 								<div class="flex justify-between items-start mb-4">
 									<div class="flex items-center gap-4">
-										<div class="p-3 bg-gray-50 rounded-2xl text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white transition-all"><FileText size={20} /></div>
-										<div><h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4><p class="text-[9px] text-gray-400 font-bold uppercase">{doc.modulo}</p></div>
+										<div class="p-3 rounded-2xl transition-all
+                                     {doc.scaduto ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white'}">
+											<FileText size={20} />
+										</div>
+										<div>
+											<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4>
+											<p class="text-[9px] text-gray-400 font-bold uppercase">{doc.modulo}</p>
+										</div>
 									</div>
 									<div class="flex gap-2">
 										<button onclick={() => scaricaDoc(doc)} class="p-2 text-gray-400 hover:text-[#1B4B6B] transition-all" title="Scarica"><Download size={18} /></button>
@@ -295,9 +379,13 @@
 									</div>
 								</div>
 								<div class="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-									<div class="flex items-center gap-2 text-gray-400"><Calendar size={12} /><span class="text-[9px] font-bold uppercase italic">Scadenza: {new Date(doc.dataScadenza).toLocaleDateString()}</span></div>
+									<div class="flex items-center gap-2 {doc.scaduto ? 'text-red-500 font-black' : 'text-gray-400'}">
+										<Calendar size={12} />
+										<span class="text-[9px] font-bold uppercase italic">Scadenza: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
+									</div>
+
 									{#if doc.scaduto}
-										<button onclick={() => preparaAggiornamento(doc)} class="text-[8px] font-black px-4 py-1.5 bg-[#1B4B6B] text-white rounded-lg uppercase shadow-md hover:bg-[#1B4B6B]/80 transition-all hover:scale-105 hover:shadow-lg">Aggiorna Scaduto</button>
+										<button onclick={() => preparaAggiornamento(doc)} class="text-[8px] font-black px-4 py-1.5 bg-red-600 text-white rounded-lg uppercase shadow-md hover:bg-red-700 transition-all hover:scale-105">Aggiorna Ora</button>
 									{:else}
 										<span class="text-[8px] font-black px-2 py-1 bg-green-50 text-green-600 border border-green-100 rounded-lg uppercase">Valido</span>
 									{/if}
@@ -365,7 +453,13 @@
 					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nome *</label><input bind:value={formDipendente.nome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
 					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cognome *</label><input bind:value={formDipendente.cognome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
 					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Codice Fiscale *</label><input bind:value={formDipendente.codiceFiscale} maxlength="16" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono" /></div>
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso</label><input bind:value={formDipendente.email} type="email" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+
+					<div>
+						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password Temporanea *</label>
+						<input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" />
+					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
 					<button onclick={() => (showDipendenteModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
@@ -389,7 +483,16 @@
 						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label><select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}</select></div>
 						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label><select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}</select></div>
 					</div>
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label><input type="date" bind:value={formDocumento.dataScadenza} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" /></div>
+					<div>
+						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
+						<input
+								type="date"
+								min="1000-01-01"
+								max="9999-12-31"
+								bind:value={formDocumento.dataScadenza}
+								class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold"
+						/>
+					</div>
 					<div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group"><input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} /><label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3"><div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div><span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span></label></div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t"><button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button><button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}</button></div>
@@ -461,7 +564,7 @@
 								class="absolute inset-0 w-full h-full opacity-0 z-10 cursor-text uppercase"
 						/>
 						<div class="w-full p-4 bg-gray-50 border-2 border-transparent group-focus-within:border-red-600 rounded-2xl text-center font-black uppercase transition-all flex justify-center items-center text-2xl tracking-[0.3em] pl-[0.3em]">
-							{#each 'ELIMINA'.split('') as char, i}
+							{#each 'ELIMINA'.split('') as char, i (i)}
                          <span class={confermaTesto.length > i ? (confermaTesto.toUpperCase()[i] === char ? 'text-red-600' : 'text-orange-600') : 'text-gray-300 transition-colors'}>
                             {confermaTesto.toUpperCase()[i] || char}
                          </span>

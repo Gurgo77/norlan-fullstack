@@ -17,11 +17,13 @@ public class DipendenteDTO {
     private String email;
     private Utente.Ruolo ruolo;
 
+    // AGGIUNGI QUESTO CAMPO QUI 👇
+    private String password;
+
     // Dati specifici di Dipendente
     private String codiceFiscale;
 
     // --- FLATTENING DELL'AZIENDA ---
-    // Non mandiamo l'intero oggetto Azienda, ma solo i riferimenti utili
     private Integer idAzienda;
     private String ragioneSocialeAzienda;
 }
