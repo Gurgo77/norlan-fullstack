@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0c30d3b2-a63f-40bc-9442-c9d5e64177b9" name="Changes" comment="sistemata la chat, implementazione notifiche campanellina + alcune correzioni lato back-end" />
+    <list default="true" id="0c30d3b2-a63f-40bc-9442-c9d5e64177b9" name="Changes" comment="sistemata la chat, implementazione notifiche campanellina + alcune correzioni lato back-end">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/azienda/dipendenti/+page.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/azienda/dipendenti/+page.svelte" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/docente/+page.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/docente/+page.svelte" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -56,7 +60,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/Applications/WebStorm.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "ts.external.directory.path": "/Users/antoniogurgoglione/Desktop/norlan-fullstack-project/front-end/Norlan-Svelte-TypeScript-master/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -83,7 +87,8 @@
       <workItem from="1777019879129" duration="40000" />
       <workItem from="1777135043567" duration="22000" />
       <workItem from="1777226262642" duration="1471000" />
-      <workItem from="1777229283184" duration="12864000" />
+      <workItem from="1777229283184" duration="13102000" />
+      <workItem from="1777283962839" duration="1642000" />
     </task>
     <task id="LOCAL-00001" summary="rifatta dashboard admin">
       <option name="closed" value="true" />

@@ -13,7 +13,6 @@
 	interface DashboardStats {
 		corsiAttivi: number;
 		studentiTotali: number;
-		oreMese: number;
 	}
 
 	interface LezioneImminente {
@@ -35,7 +34,7 @@
 	let isLoading = $state(true);
 	let nomeDocente = $state('Docente');
 
-	let stats = $state<DashboardStats>({ corsiAttivi: 0, studentiTotali: 0, oreMese: 0 });
+	let stats = $state<DashboardStats>({ corsiAttivi: 0, studentiTotali: 0});
 	let prossimeLezioni = $state<LezioneImminente[]>([]);
 	let actionItems = $state<ActionItem[]>([]);
 
@@ -79,11 +78,11 @@
 
 			stats = {
 				corsiAttivi: corsiAttivi.length,
-				studentiTotali: studentiCount,
-				oreMese: oreQuestoMese
+				studentiTotali: studentiCount
 			};
 
 			// --- CALCOLO LEZIONI IMMINENTI ---
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity
 			const oggiZero = new Date();
 			oggiZero.setHours(0,0,0,0);
 
@@ -172,7 +171,7 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Calcolo Statistiche Didattiche...</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-6 hover:-translate-y-1 transition-transform group">
 				<div class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
 					<BookOpen size={28} />
@@ -190,16 +189,6 @@
 				<div>
 					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Studenti Iscritti</p>
 					<p class="text-4xl font-black text-[#1B4B6B] leading-none">{stats.studentiTotali}</p>
-				</div>
-			</div>
-
-			<div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-6 hover:-translate-y-1 transition-transform group">
-				<div class="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-					<Clock size={28} />
-				</div>
-				<div>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ore Formazione (Mese)</p>
-					<p class="text-4xl font-black text-[#1B4B6B] leading-none">{stats.oreMese}h</p>
 				</div>
 			</div>
 		</div>
