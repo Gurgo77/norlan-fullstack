@@ -1,10 +1,9 @@
-
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
 		GraduationCap, Plus, X, Trash2, Search,
-		Calendar, MapPin, Users, BookOpen, Loader2
+		Calendar, MapPin, BookOpen, Loader2, MessageSquare, User
 	} from 'lucide-svelte';
 
 	// Modelli
@@ -176,6 +175,7 @@
 							<button
 									onclick={() => eliminaCorso(corso.idCorso)}
 									class="text-gray-300 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50"
+									title="Elimina corso"
 							>
 								<Trash2 size={18} />
 							</button>
@@ -202,21 +202,30 @@
 										<p class="text-xs font-bold text-[#1B4B6B] uppercase">{corso.luogoFisico}</p>
 									</div>
 								</div>
-
-								<div class="flex items-start gap-3">
-									<Users size={16} class="text-gray-400 shrink-0 mt-0.5" />
-									<div>
-										<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Capacità Aula</p>
-										<p class="text-xs font-bold text-[#1B4B6B]">Max {corso.capacitaMassima} iscritti</p>
-									</div>
-								</div>
 							</div>
 						</div>
 
-						<div class="bg-[#1B4B6B] p-4 text-white flex justify-between items-center text-[10px] font-bold uppercase tracking-widest group-hover:bg-[#153a54] transition-colors">
-							<span>Docente Assegnato</span>
-							<span class="truncate max-w-[150px]">{corso.emailDocente}</span>
+						<div class="bg-[#1B4B6B] p-4 text-white flex justify-between items-center group-hover:bg-[#153a54] transition-colors">
+							<div class="flex items-center gap-3">
+								<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+									<User size={14} class="text-white/80" />
+								</div>
+								<div class="flex flex-col">
+									<span class="text-[9px] font-bold text-white/50 uppercase tracking-widest">Docente Assegnato</span>
+									<span class="text-xs font-bold truncate max-w-[130px]" title={corso.emailDocente}>{corso.emailDocente}</span>
+								</div>
+							</div>
+
+							<a
+									href="/dashboard/admin/comunicazioni"
+									class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white text-white hover:text-[#1B4B6B] rounded-lg transition-all text-[10px] font-black uppercase tracking-widest"
+									title="Vai ai messaggi per contattare il docente"
+							>
+								<MessageSquare size={14} />
+								<span>Contatta</span>
+							</a>
 						</div>
+
 					</div>
 				{/each}
 			</div>

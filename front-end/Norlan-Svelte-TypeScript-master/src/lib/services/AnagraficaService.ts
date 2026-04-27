@@ -118,4 +118,9 @@ export class AnagraficaService {
 		await httpClient.put(`${this.basePath}/admin/${id}`, dati);
 	}
 
+	static async getAllDipendenti(): Promise<any[]> {
+		const response = await httpClient.get(`${this.basePath}/dipendenti`);
+		return response.data;
+	}
+
 }

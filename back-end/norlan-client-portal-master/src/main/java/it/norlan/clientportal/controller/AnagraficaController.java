@@ -37,6 +37,9 @@ public class AnagraficaController {
     @Autowired
     private AdminService adminService;
 
+    @Autowired
+    private it.norlan.clientportal.service.DipendenteService dipendenteService;
+
     @PostMapping("/registrazione")
     public ResponseEntity<?> registraNuovoUtente(@RequestBody AuthRequestDTO payload) {
         try {
@@ -141,5 +144,14 @@ public class AnagraficaController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/dipendenti")
+    public ResponseEntity<List<DipendenteDTO>> getAllDipendenti() {
+        List<DipendenteDTO> dipendenti = dipendenteService.findAll()
+                .stream()
+                .map(dipendenteService::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dipendenti);
     }
 }

@@ -43,13 +43,21 @@ public class SecurityConfig {
                         .requestMatchers("/chat-prod.html", "/js/**", "/css/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
+
                         // Permessi specifici per l'Azienda
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
-                         // 1. SBLOCCO ANAGRAFICA DOCENTE: Permette ai docenti di leggere e modificare se stessi
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
+                        // 1. SBLOCCO ANAGRAFICA DOCENTE
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE", "DIPENDENTE", "LAVORATORE")
                         .requestMatchers(HttpMethod.PUT, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
-                        // 2. Protezione del resto dell'anagrafica (Solo Admin)
+
+                        // ---> NUOVO: SBLOCCO SCHEDA ADMIN PER CHAT E ASSISTENZA <---
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/admin/**").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE", "DIPENDENTE", "LAVORATORE")
+
+                        // ---> NUOVO: SBLOCCO LISTA DIPENDENTI PER RUBRICA <---
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/dipendenti").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE")
+
+                        // 2. Protezione del resto dell'anagrafica (Tutto ciò che non è elencato sopra diventa Solo Admin)
                         .requestMatchers("/api/anagrafica/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 3. SBLOCCO LAVORATORI
