@@ -118,6 +118,13 @@ public class IscrizioneCorsoService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public String getPathAttestato(Integer idLavoratore, Integer idCorso) {
+        return iscrizioneRepository.findById(new IscrizioneId(idLavoratore, idCorso))
+                .map(IscrizioneCorso::getPathAttestato)
+                .orElseThrow(() -> new IllegalArgumentException("Iscrizione non trovata"));
+    }
+
 
     @Transactional(readOnly = true)
     public List<IscrizioneCorso> trovaIscrizioniUtente(Integer idUtente) {

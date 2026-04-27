@@ -132,20 +132,67 @@ public class FormazioneController {
         return ResponseEntity.ok("Presenza validata con successo.");
     }
 
-    @PatchMapping("/corsi/{idCorso}/iscrizioni/{idLavoratore}/certificato")
-    public ResponseEntity<?> sbloccaCertificato(
+    @PostMapping(value = "/corsi/{idCorso}/iscrizioni/{idLavoratore}/certificato", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadCertificato(
             @PathVariable Integer idCorso,
             @PathVariable Integer idLavoratore,
-            @RequestParam("pathFile") String pathFile) {
+            @RequestParam("file") MultipartFile file) {
 
         try {
-            iscrizioneService.rilasciaCertificato(idCorso, idLavoratore, pathFile);
-            return ResponseEntity.ok("Certificato sbloccato e assegnato correttamente.");
+            String subFolder = "attestati/corso_" + idCorso + "/utente_" + idLavoratore;
+            String pathFileSalvato = fileStorageService.storeFile(file, subFolder);
+
+            iscrizioneService.rilasciaCertificato(idCorso, idLavoratore, pathFileSalvato);
+
+            return ResponseEntity.ok(pathFileSalvato);
 
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Errore salvataggio file");
+        }
+    }
+
+    // --- NUOVO ENDPOINT PER IL DOWNLOAD DELL'ATTESTATO ---
+    @GetMapping("/corsi/{idCorso}/iscrizioni/{idUtente}/certificato/download")
+    public ResponseEntity<Resource> downloadCertificato(
+            @PathVariable Integer idCorso,
+            @PathVariable Integer idUtente) {
+
+        try {
+            // 1. Recupera il path
+            String pathFile = iscrizioneService.getPathAttestato(idUtente, idCorso);
+            if (pathFile == null || pathFile.isEmpty() || "null".equalsIgnoreCase(pathFile)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 2. Pulisci la stringa (rimuovi eventuali '/' iniziali che rompono Paths.resolve)
+            if (pathFile.startsWith("/")) {
+                pathFile = pathFile.substring(1);
+            }
+
+            // 3. Carica il file
+            Resource resource = fileStorageService.loadFileAsResource(pathFile);
+
+            // 4. Se il file non esiste fisicamente, lancia 404 invece di 500
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 5. Ritorna il file
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    // Usa inline per permettere l'apertura nel browser, usa attachment per forzare il download
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Attestato_Corso_" + idCorso + ".pdf\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            // Logga l'errore per capire esattamente cosa fallisce
+            System.err.println("ERRORE DOWNLOAD ATTESTATO: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

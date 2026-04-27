@@ -19,6 +19,27 @@
 	let utente = $state<DipendenteDTO | null>(null);
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
 
+	/**
+	 * Funzione per il download fisico del file PDF
+	 */
+	async function scaricaAttestato(idCorso: number) {
+		if (!utente) return;
+		try {
+			const blob = await FormazioneService.downloadAttestato(idCorso, utente.idUtente);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `Attestato_Corso_${idCorso}.pdf`; // Nome del file scaricato
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		} catch (e) {
+			console.error("Errore download", e);
+			alert("Errore nel download dell'attestato. Riprova.");
+		}
+	}
+
 	onMount(async () => {
 		// Recuperiamo la sessione dal service senza localStorage grezzo
 		const session = AuthService.getSession();
@@ -40,11 +61,21 @@
 		}
 	});
 
-	// 2. LOGICA REATTIVA (Filtra solo le iscrizioni con presenza confermata, attestato presente e ricerca testuale)
+	/**
+	 * Funzione scudo per bloccare percorsi fittizi dal DB
+	 */
+	function isAttestatoValido(path: any): boolean {
+		if (!path) return false;
+		const p = String(path).trim().toLowerCase();
+		if (p === '' || p === 'null' || p === 'undefined' || p === '[]' || p === '{}' || p === 'false') return false;
+		return true;
+	}
+
+	// 2. LOGICA REATTIVA (Filtra solo le iscrizioni con presenza confermata, ATTESTATO REALE e ricerca testuale)
 	const attestatiDisponibili = $derived(
 			iscrizioni.filter(i =>
 					i.presenzaConfermata === true &&
-					i.pathAttestato && i.pathAttestato.trim() !== '' &&
+					isAttestatoValido(i.pathAttestato) && // IL NUOVO CONTROLLO
 					i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 	);
@@ -120,13 +151,12 @@
 						<button class="flex-1 md:flex-none p-4 bg-gray-50 text-[#1B4B6B] rounded-2xl hover:bg-gray-100 transition-all">
 							<Info size={20} />
 						</button>
-						<a
-								href={iscrizione.pathAttestato}
-								download
-								class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10"
+						<button
+								onclick={() => scaricaAttestato(iscrizione.idCorso)}
+								class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 cursor-pointer"
 						>
 							<Download size={18} /> Scarica PDF
-						</a>
+						</button>
 					</div>
 				</div>
 			{/each}

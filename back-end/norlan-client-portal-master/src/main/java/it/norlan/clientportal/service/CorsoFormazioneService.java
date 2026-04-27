@@ -3,8 +3,10 @@ package it.norlan.clientportal.service;
 import it.norlan.clientportal.dto.CorsoFormazioneDTO;
 import it.norlan.clientportal.model.CorsoFormazione;
 import it.norlan.clientportal.model.IscrizioneCorso;
+import it.norlan.clientportal.model.MaterialeDidattico;
 import it.norlan.clientportal.repository.CorsoFormazioneRepository;
 import it.norlan.clientportal.repository.IscrizioneCorsoRepository;
+import it.norlan.clientportal.repository.MaterialeDidatticoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,10 @@ public class CorsoFormazioneService {
     @Autowired
     private IscrizioneCorsoRepository iscrizioneRepository;
 
+    // Aggiunto il repository per gestire i materiali didattici collegati
+    @Autowired
+    private MaterialeDidatticoRepository materialeRepository;
+
     @Autowired
     private NotificaService notificaService;
 
@@ -37,8 +43,22 @@ public class CorsoFormazioneService {
 
     @Transactional
     public void eliminaCorso(Integer id) {
+        // 1. Eliminiamo prima tutti i materiali didattici associati al corso
+        List<MaterialeDidattico> materiali = materialeRepository.findByCorsoIdCorso(id);
+        if (!materiali.isEmpty()) {
+            materialeRepository.deleteAll(materiali);
+        }
+
+        // 2. Eliminiamo tutte le iscrizioni associate al corso
+        List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(id);
+        if (!iscrizioni.isEmpty()) {
+            iscrizioneRepository.deleteAll(iscrizioni);
+        }
+
+        // 3. Ora possiamo eliminare il corso in modo totalmente sicuro per il DB
         corsoRepository.deleteById(id);
     }
+
     @Transactional
     public CorsoFormazione salvaCorso(CorsoFormazione corso) {
         if (corso.getDataOrario() != null && corso.getDataOrario().isBefore(LocalDateTime.now())) {
@@ -65,7 +85,6 @@ public class CorsoFormazioneService {
         });
     }
 
-    // Snippet da implementare in CorsoFormazioneService.java
     @Transactional
     public void concludiCorso(Integer idCorso) {
         CorsoFormazione corso = corsoRepository.findById(idCorso).orElseThrow();

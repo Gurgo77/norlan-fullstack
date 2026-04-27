@@ -125,16 +125,28 @@ export class FormazioneService {
 	 * ATTENZIONE: Aggiunto il parametro pathFile richiesto dal BE.
 	 * BE: PATCH /api/formazione/corsi/{idCorso}/iscrizioni/{idLavoratore}/certificato
 	 */
-	static async sbloccaCertificato(
-		idCorso: number | string,
-		idLavoratore: number | string,
-		pathFile: string
-	): Promise<void> {
-		await httpClient.patch(
-			`${this.basePath}/corsi/${idCorso}/iscrizioni/${idLavoratore}/certificato`,
-			null,
-			{ params: { pathFile } } // Passato come @RequestParam
+	static async uploadAttestato(idCorso: number | string, idLavoratore: number | string, file: File): Promise<string> {
+		const formData = new FormData();
+		formData.append('file', file);
+
+		const response = await httpClient.post(`${this.basePath}/corsi/${idCorso}/iscrizioni/${idLavoratore}/certificato`, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data'
+			}
+		});
+		return response.data;
+	}
+
+	/**
+	 * Scarica l'attestato di un lavoratore
+	 * BE: GET /api/formazione/corsi/{idCorso}/iscrizioni/{idUtente}/certificato/download
+	 */
+	static async downloadAttestato(idCorso: number | string, idUtente: number | string): Promise<Blob> {
+		const response = await httpClient.get<Blob>(
+			`${this.basePath}/corsi/${idCorso}/iscrizioni/${idUtente}/certificato/download`,
+			{ responseType: 'blob' }
 		);
+		return response.data;
 	}
 
 	/**

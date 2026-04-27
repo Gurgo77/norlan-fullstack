@@ -24,26 +24,25 @@
 	let searchQuery = $state('');
 	let showModal = $state(false);
 
-	// Form di creazione tipizzato
+	// Form di creazione tipizzato (senza capacitaMassima)
 	let formCorso = $state<Partial<CorsoFormazioneRequest>>({
 		titolo: '',
 		dataOrario: '',
 		luogoFisico: '',
-		capacitaMassima: 20,
 		idDocente: undefined
 	});
 
-	// Validazione derivata
+	// Validazione derivata aggiornata
 	const isFormValid = $derived(
 			!!formCorso.titolo &&
 			!!formCorso.dataOrario &&
 			!!formCorso.luogoFisico &&
-			!!formCorso.idDocente &&
-			(formCorso.capacitaMassima ?? 0) > 0
+			!!formCorso.idDocente
 	);
 
+	// Aggiunto paracadute (c.titolo || '') per evitare crash se il titolo è null nel DB
 	const filteredCorsi = $derived(
-			corsi.filter(c => c.titolo.toLowerCase().includes(searchQuery.toLowerCase()))
+			corsi.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	// --- AZIONI ---
@@ -75,13 +74,15 @@
 			// Formattiamo la data per il backend (ISO string)
 			const isoDate = new Date(formCorso.dataOrario!).toISOString();
 
-			const payload: CorsoFormazioneRequest = {
+			// Formattiamo il payload esattamente come se lo aspetta il backend Java (Entity CorsoFormazione)
+			const payload = {
 				titolo: formCorso.titolo!,
 				dataOrario: isoDate,
 				luogoFisico: formCorso.luogoFisico!,
-				capacitaMassima: formCorso.capacitaMassima!,
-				idDocente: formCorso.idDocente!
-			};
+				docente: {
+					idUtente: formCorso.idDocente! // Impacchettato come oggetto Docente!
+				}
+			} as unknown as CorsoFormazioneRequest; // Trucco per far felice TypeScript
 
 			const nuovoCorso = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovoCorso];
@@ -93,7 +94,6 @@
 				titolo: '',
 				dataOrario: '',
 				luogoFisico: '',
-				capacitaMassima: 20,
 				idDocente: undefined
 			};
 		} catch (error) {
@@ -167,9 +167,9 @@
 									<GraduationCap size={24} />
 								</div>
 								<div>
-                            <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border {corso.stato === StatoCorso.PROGRAMMATO ? 'border-blue-200 text-blue-600 bg-blue-50' : corso.stato === StatoCorso.IN_SVOLGIMENTO ? 'border-yellow-200 text-yellow-600 bg-yellow-50' : 'border-green-200 text-green-600 bg-green-50'}">
-                            {corso.stato.replace('_', ' ')}
-                            </span>
+									<span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border {corso.stato === StatoCorso.PROGRAMMATO || !corso.stato ? 'border-blue-200 text-blue-600 bg-blue-50' : corso.stato === StatoCorso.IN_SVOLGIMENTO ? 'border-yellow-200 text-yellow-600 bg-yellow-50' : 'border-green-200 text-green-600 bg-green-50'}">
+                            			{corso.stato ? corso.stato.replace('_', ' ') : 'PROGRAMMATO'}
+                            		</span>
 								</div>
 							</div>
 							<button
@@ -183,7 +183,7 @@
 
 						<div class="p-6 flex-1 flex flex-col gap-4">
 							<h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight group-hover:text-[#1B4B6B] transition-colors">
-								{corso.titolo}
+								{corso.titolo || 'Nessun Titolo'}
 							</h3>
 
 							<div class="space-y-3 mt-2">
@@ -199,7 +199,7 @@
 									<MapPin size={16} class="text-gray-400 shrink-0 mt-0.5" />
 									<div>
 										<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Luogo</p>
-										<p class="text-xs font-bold text-[#1B4B6B] uppercase">{corso.luogoFisico}</p>
+										<p class="text-xs font-bold text-[#1B4B6B] uppercase">{corso.luogoFisico || 'Non specificato'}</p>
 									</div>
 								</div>
 							</div>
@@ -212,7 +212,7 @@
 								</div>
 								<div class="flex flex-col">
 									<span class="text-[9px] font-bold text-white/50 uppercase tracking-widest">Docente Assegnato</span>
-									<span class="text-xs font-bold truncate max-w-[130px]" title={corso.emailDocente}>{corso.emailDocente}</span>
+									<span class="text-xs font-bold truncate max-w-[130px]" title={corso.emailDocente}>{corso.emailDocente || 'Nessun Docente'}</span>
 								</div>
 							</div>
 
@@ -255,11 +255,6 @@
 					</div>
 
 					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Capacità Massima *</label>
-						<input bind:value={formCorso.capacitaMassima} type="number" min="1" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl transition-all font-bold text-xs" />
-					</div>
-
-					<div class="col-span-2 space-y-2">
 						<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Sede Aula *</label>
 						<input bind:value={formCorso.luogoFisico} type="text" placeholder="Es: Sede NorLan - Aula A" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl transition-all font-bold text-xs uppercase" />
 					</div>
