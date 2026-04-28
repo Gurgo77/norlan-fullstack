@@ -1,25 +1,28 @@
 package it.norlan.clientportal.controller;
 
+import it.norlan.clientportal.model.Utente;
+import it.norlan.clientportal.repository.UtenteRepository;
+import it.norlan.clientportal.service.*;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
-import it.norlan.clientportal.service.FileStorageService;
 
 import it.norlan.clientportal.dto.CorsoFormazioneDTO;
 import it.norlan.clientportal.dto.IscrizioneCorsoDTO;
 import it.norlan.clientportal.dto.MaterialeDidatticoDTO;
 import it.norlan.clientportal.model.CorsoFormazione;
 import it.norlan.clientportal.model.MaterialeDidattico;
-import it.norlan.clientportal.service.CorsoFormazioneService;
-import it.norlan.clientportal.service.IscrizioneCorsoService;
-import it.norlan.clientportal.service.MaterialeDidatticoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -31,13 +34,19 @@ public class FormazioneController {
     private FileStorageService fileStorageService;
 
     @Autowired
-    private CorsoFormazioneService corsoService;
+    private CorsoFormazioneService corsoService; // Consolidato l'uso di questo service
 
     @Autowired
     private IscrizioneCorsoService iscrizioneService;
 
     @Autowired
     private MaterialeDidatticoService materialeService;
+
+    @Autowired
+    private UtenteRepository utenteRepository;
+
+    @Autowired
+    private DocumentoService documentoService;
 
     @GetMapping("/corsi")
     public ResponseEntity<List<CorsoFormazioneDTO>> getAllCorsi() {
@@ -123,75 +132,91 @@ public class FormazioneController {
         }
     }
 
-    @PatchMapping("/corsi/{idCorso}/iscrizioni/{idLavoratore}/presenza")
-    public ResponseEntity<String> validaPresenza(
-            @PathVariable Integer idCorso,
-            @PathVariable Integer idLavoratore) {
+    /**
+     * API FSM Fase 1: Validazione Presenze (Admin)
+     */
+    @PostMapping("/corsi/{id}/valida-presenze")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> validaPresenzeAdmin(
+            @PathVariable Integer id,
+            @RequestBody List<Integer> idUtentiPresenti) {
 
-        iscrizioneService.validaPresenzaLavoratore(idCorso, idLavoratore);
-        return ResponseEntity.ok("Presenza validata con successo.");
+        corsoService.validaPresenzeAdmin(id, idUtentiPresenti);
+        return ResponseEntity.ok(Map.of("message", "Presenze validate. Registro in attesa di firma docente."));
     }
 
-    @PostMapping(value = "/corsi/{idCorso}/iscrizioni/{idLavoratore}/certificato", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadCertificato(
-            @PathVariable Integer idCorso,
-            @PathVariable Integer idLavoratore,
-            @RequestParam("file") MultipartFile file) {
+    /**
+     * API FSM Fase 2: Controfirma del Registro (Docente)
+     */
+    @PostMapping("/corsi/{id}/firma-docente")
+    @PreAuthorize("hasRole('DOCENTE')")
+    public ResponseEntity<?> controfirmaRegistro(
+            @PathVariable Integer id,
+            Authentication authentication) {
 
-        try {
-            String subFolder = "attestati/corso_" + idCorso + "/utente_" + idLavoratore;
-            String pathFileSalvato = fileStorageService.storeFile(file, subFolder);
+        String emailDocente = authentication.getName();
+        Utente docente = utenteRepository.findByEmail(emailDocente)
+                .orElseThrow(() -> new SecurityException("Impossibile risolvere l'identità del docente."));
 
-            iscrizioneService.rilasciaCertificato(idCorso, idLavoratore, pathFileSalvato);
+        corsoService.controfirmaDocente(id, docente.getIdUtente());
+        return ResponseEntity.ok(Map.of("message", "Registro controfirmato con successo."));
+    }
 
-            return ResponseEntity.ok(pathFileSalvato);
+    /**
+     * API FSM Fase 3: Distribuzione Attestati alle Aziende (Admin)
+     */
+    @PostMapping(value = "/corsi/{id}/distribuisci-attestati", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> distribuisciAttestati(
+            @PathVariable Integer id,
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam("idAziende") List<Integer> idAziende) {
 
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Errore salvataggio file");
+        if (files.size() != idAziende.size()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Il numero di file non corrisponde al numero delle aziende."));
         }
+
+        Map<Integer, String> percorsiFileGenerati = new HashMap<>();
+        for (int i = 0; i < idAziende.size(); i++) {
+            MultipartFile file = files.get(i);
+            Integer idAzienda = idAziende.get(i);
+            String percorsoFisico = fileStorageService.storeFile(file, "attestati/corso_" + id);
+            percorsiFileGenerati.put(idAzienda, percorsoFisico);
+        }
+
+        documentoService.distribuisciAttestatiMassivi(id, percorsiFileGenerati);
+        return ResponseEntity.ok(Map.of("message", "Attestati distribuiti alle aziende."));
     }
 
-    // --- NUOVO ENDPOINT PER IL DOWNLOAD DELL'ATTESTATO ---
+    /**
+     * Download dell'attestato finale per il dipendente (naviga la relazione Iscrizione -> Documento)
+     */
     @GetMapping("/corsi/{idCorso}/iscrizioni/{idUtente}/certificato/download")
     public ResponseEntity<Resource> downloadCertificato(
             @PathVariable Integer idCorso,
             @PathVariable Integer idUtente) {
 
         try {
-            // 1. Recupera il path
             String pathFile = iscrizioneService.getPathAttestato(idUtente, idCorso);
             if (pathFile == null || pathFile.isEmpty() || "null".equalsIgnoreCase(pathFile)) {
                 return ResponseEntity.notFound().build();
             }
 
-            // 2. Pulisci la stringa (rimuovi eventuali '/' iniziali che rompono Paths.resolve)
             if (pathFile.startsWith("/")) {
                 pathFile = pathFile.substring(1);
             }
 
-            // 3. Carica il file
             Resource resource = fileStorageService.loadFileAsResource(pathFile);
-
-            // 4. Se il file non esiste fisicamente, lancia 404 invece di 500
             if (!resource.exists() || !resource.isReadable()) {
                 return ResponseEntity.notFound().build();
             }
 
-            // 5. Ritorna il file
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
-                    // Usa inline per permettere l'apertura nel browser, usa attachment per forzare il download
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Attestato_Corso_" + idCorso + ".pdf\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Attestato_" + idUtente + ".pdf\"")
                     .body(resource);
 
         } catch (Exception e) {
-            // Logga l'errore per capire esattamente cosa fallisce
-            System.err.println("ERRORE DOWNLOAD ATTESTATO: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

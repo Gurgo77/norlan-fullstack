@@ -19,6 +19,32 @@ export class FormazioneService {
 	 * Recupera tutti i corsi.
 	 * BE: GET /api/formazione/corsi
 	 */
+
+	static async validaPresenzeAdmin(idCorso: number, idUtentiPresenti: number[]): Promise<void> {
+		await httpClient.post(`/corsi/${idCorso}/valida-presenze`, idUtentiPresenti);
+	}
+
+	static async controfirmaRegistro(idCorso: number): Promise<void> {
+		await httpClient.post(`/corsi/${idCorso}/firma-docente`);
+	}
+
+	static async distribuisciAttestati(
+		idCorso: number,
+		payload: { file: File; idAzienda: number }[]
+	): Promise<void> {
+		const formData = new FormData();
+
+		// Costruzione dei vettori paralleli per il controller Spring Boot
+		payload.forEach(item => {
+			formData.append('files', item.file);
+			formData.append('idAziende', item.idAzienda.toString());
+		});
+
+		// NOTA: Con Axios o Fetch moderni, omettiamo il Content-Type manuale
+		// affinché il browser generi automaticamente il 'boundary' corretto per il multipart.
+		await httpClient.post(`/corsi/${idCorso}/distribuisci-attestati`, formData);
+	}
+
 	static async getAllCorsi(): Promise<CorsoFormazione[]> {
 		const response = await httpClient.get<CorsoData[]>(`${this.basePath}/corsi`);
 		return response.data.map((item) => new CorsoFormazione(item));

@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class Documento {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_documento")
     private Integer idDocumento;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,5 +55,8 @@ public class Documento {
     private LocalDate dataScadenza;
 
     public enum ModuloServizio { PRIVACY, SICUREZZA, HACCP }
-    public enum TipoDocumento { DVR, HACCP, NOMINA_RESPONSABILE, REGISTRO_TRATTAMENTI, ALTRO }
+
+    public enum TipoDocumento {
+        DVR, HACCP, NOMINA_RESPONSABILE, REGISTRO_TRATTAMENTI, ALTRO, ATTESTATO_CORSO
+    }
 }

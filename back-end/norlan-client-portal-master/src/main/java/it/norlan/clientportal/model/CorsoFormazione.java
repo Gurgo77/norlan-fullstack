@@ -29,5 +29,11 @@ public class CorsoFormazione {
     @Enumerated(EnumType.STRING)
     private StatoCorso stato = StatoCorso.PROGRAMMATO;
 
-    public enum StatoCorso { PROGRAMMATO, IN_SVOLGIMENTO, CONCLUSO }
+    public enum StatoCorso {
+        PROGRAMMATO,
+        IN_SVOLGIMENTO,
+        CONCLUSO,
+        ATTESA_FIRMA_DOCENTE,
+        VALIDATO
+    }
 }

@@ -26,8 +26,9 @@ public class IscrizioneCorso {
     @Column(name = "presenza_confermata")
     private Boolean presenzaConfermata = false;
 
-    @Column(name = "path_attestato")
-    private String pathAttestato;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_documento", referencedColumnName = "id_documento")
+    private Documento documentoAttestato;
 
     @Embeddable
     @Data @NoArgsConstructor @AllArgsConstructor
@@ -40,10 +41,7 @@ public class IscrizioneCorso {
         this.presenzaConfermata = true;
     }
 
-    public void sbloccaCertificato(String path) {
-        if (this.presenzaConfermata == null || !this.presenzaConfermata) {
-            throw new IllegalStateException("Violazione Invariante: Impossibile sbloccare il certificato. La presenza del lavoratore non è stata validata dal Docente.");
-        }
-        this.pathAttestato = path;
+    public void invalidaPresenza() {
+        this.presenzaConfermata = false;
     }
 }

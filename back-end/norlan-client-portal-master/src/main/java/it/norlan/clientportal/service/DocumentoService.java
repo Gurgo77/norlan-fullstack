@@ -1,10 +1,8 @@
 package it.norlan.clientportal.service;
 
 import it.norlan.clientportal.dto.DocumentoDTO;
-import it.norlan.clientportal.model.Documento;
-import it.norlan.clientportal.model.Notifica;
-import it.norlan.clientportal.model.Utente;
-import it.norlan.clientportal.repository.DocumentoRepository;
+import it.norlan.clientportal.model.*;
+import it.norlan.clientportal.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +10,16 @@ import java.time.temporal.ChronoUnit;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentoService {
+
+    @Autowired
+    private CorsoFormazioneRepository corsoRepository;
+
+    @Autowired
+    private IscrizioneCorsoRepository iscrizioneRepository;
 
     @Autowired
     private DocumentoRepository documentoRepository;
@@ -144,5 +149,67 @@ public class DocumentoService {
         }
 
         return dto;
+    }
+
+    @Transactional
+    public void distribuisciAttestatiMassivi(Integer idCorso, Map<Integer, String> pathFileUpload) {
+        // 1. Recupero entità e Guardia di Stato FSM
+        CorsoFormazione corso = corsoRepository.findById(idCorso)
+                .orElseThrow(() -> new IllegalArgumentException("Errore di integrità: Corso non trovato"));
+
+        if (corso.getStato() != CorsoFormazione.StatoCorso.VALIDATO) {
+            throw new IllegalStateException("Violazione FSM: Impossibile generare gli attestati. Il corso non ha ricevuto la controfirma del docente. Stato attuale: " + corso.getStato());
+        }
+
+        // 2. Estrazione Iscrizioni
+        List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(idCorso);
+
+        // 3. Algoritmo di Filtraggio e Raggruppamento (Stream API)
+        Map<Azienda, List<IscrizioneCorso>> dipendentiPerAzienda = iscrizioni.stream()
+                .filter(IscrizioneCorso::getPresenzaConfermata) // Filtra solo chi ha partecipato
+                .filter(isc -> isc.getUtente() instanceof Dipendente) // Type safety
+                .collect(Collectors.groupingBy(isc -> ((Dipendente) isc.getUtente()).getAzienda()));
+
+        if (dipendentiPerAzienda.isEmpty()) {
+            throw new IllegalStateException("Anomalia elaborazione: Nessun dipendente valido trovato per la generazione.");
+        }
+
+        // 4. Instanziazione Multipla e Linking Relazionale
+        for (Map.Entry<Azienda, List<IscrizioneCorso>> entry : dipendentiPerAzienda.entrySet()) {
+            Azienda azienda = entry.getKey();
+            List<IscrizioneCorso> iscrizioniAzienda = entry.getValue();
+
+            String filePath = pathFileUpload.getOrDefault(azienda.getIdUtente(), "path/temporaneo/da_definire.pdf");
+
+            // A. Creazione del nodo Documento
+            Documento pacchettoAttestati = new Documento();
+            pacchettoAttestati.setAzienda(azienda);
+            pacchettoAttestati.setModulo(Documento.ModuloServizio.SICUREZZA); // Categorizzazione
+            pacchettoAttestati.setTipologia(Documento.TipoDocumento.ATTESTATO_CORSO);
+            pacchettoAttestati.setFilePath(filePath);
+
+            // Impostiamo una data di scadenza formale (es. 5 anni per validità attestato)
+            pacchettoAttestati.setDataScadenza(LocalDate.now().plusYears(5));
+
+            // Salvataggio iniziale nel database (StatoCaricato di default)
+            Documento salvato = documentoRepository.save(pacchettoAttestati);
+
+            // B. Avanzamento di stato del Documento: Traslazione immediata in IN_ATTESA_FIRMA
+            salvato.richiediFirma();
+            documentoRepository.save(salvato);
+
+            // C. Costruzione del Ponte Logico: Aggiornamento della Foreign Key in IscrizioneCorso
+            for (IscrizioneCorso iscrizione : iscrizioniAzienda) {
+                iscrizione.setDocumentoAttestato(salvato);
+            }
+            iscrizioneRepository.saveAll(iscrizioniAzienda);
+
+            notificaService.inviaNotifica(
+                    azienda,
+                    "Azione Richiesta: Firma gli attestati per il corso '" + corso.getTitolo() + "'.",
+                    Notifica.Priorita.ALTA,
+                    Notifica.CanaleNotifica.IN_APP
+            );
+        }
     }
 }

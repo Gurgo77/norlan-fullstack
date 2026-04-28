@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -25,6 +26,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // CRITICO: Abilita i filtri @PreAuthorize sui metodi dei Controller
 public class SecurityConfig {
 
     @Autowired
@@ -39,34 +41,41 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // 0. SBLOCCO CORS PREFLIGHT (Risolve i blocchi Axios/Browser)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 1. ROTTE PUBBLICHE
                         .requestMatchers("/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers("/chat-prod.html", "/js/**", "/css/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
-                        // Permessi specifici per l'Azienda
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
-                        .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
-                        // 1. SBLOCCO ANAGRAFICA DOCENTE
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE", "DIPENDENTE", "LAVORATORE")
-                        .requestMatchers(HttpMethod.PUT, "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
+                        // 2. PERMESSI SPECIFICI PER L'AZIENDA (Corretto lo strict path matching)
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
 
-                        // ---> NUOVO: SBLOCCO SCHEDA ADMIN PER CHAT E ASSISTENZA <---
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/admin/**").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE", "DIPENDENTE", "LAVORATORE")
+                        // 3. SBLOCCO ANAGRAFICA DOCENTE
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti", "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE", "DIPENDENTE", "LAVORATORE")
+                        .requestMatchers(HttpMethod.PUT, "/api/anagrafica/docenti", "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
 
-                        // ---> NUOVO: SBLOCCO LISTA DIPENDENTI PER RUBRICA <---
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/dipendenti").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE")
+                        // 4. SBLOCCO SCHEDA ADMIN PER CHAT E ASSISTENZA
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/admin", "/api/anagrafica/admin/**").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE", "DIPENDENTE", "LAVORATORE")
 
-                        // 2. Protezione del resto dell'anagrafica (Tutto ciò che non è elencato sopra diventa Solo Admin)
+                        // 5. SBLOCCO LISTA DIPENDENTI PER RUBRICA
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/dipendenti", "/api/anagrafica/dipendenti/**").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE")
+
+                        // 6. PROTEZIONE RESTO ANAGRAFICA (Solo Admin per tutto ciò che non è specificato sopra)
                         .requestMatchers("/api/anagrafica/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // 3. SBLOCCO LAVORATORI
-                        .requestMatchers(HttpMethod.POST, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
-                        // Permettiamo al DIPENDENTE di aggiornare il proprio profilo (aggiunto DIPENDENTE)
-                        .requestMatchers(HttpMethod.PUT, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
-                        // Permettiamo al DOCENTE di fare GET per vedere la lista dei suoi studenti (aggiunto DOCENTE)
-                        .requestMatchers(HttpMethod.GET, "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE", "DOCENTE") .anyRequest().authenticated()
+
+                        // 7. SBLOCCO LAVORATORI
+                        .requestMatchers(HttpMethod.POST, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
+                        .requestMatchers(HttpMethod.PUT, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
+                        .requestMatchers(HttpMethod.GET, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE", "DOCENTE")
+
+                        // 8. FALLBACK GLOBALE (Impedisce accessi non autorizzati alle rotte non mappate)
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -107,6 +116,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-
 }

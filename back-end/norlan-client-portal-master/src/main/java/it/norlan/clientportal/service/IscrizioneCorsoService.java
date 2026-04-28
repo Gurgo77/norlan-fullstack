@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class IscrizioneCorsoService {
@@ -99,32 +98,15 @@ public class IscrizioneCorsoService {
         iscrizioneRepository.save(iscrizione);
     }
 
-    @Transactional
-    public void rilasciaCertificato(Integer idCorso, Integer idLavoratore, String pathFileCertificato) {
-        IscrizioneId id = new IscrizioneId(idLavoratore, idCorso);
-
-        IscrizioneCorso iscrizione = iscrizioneRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Iscrizione non trovata."));
-
-        iscrizione.sbloccaCertificato(pathFileCertificato);
-
-        iscrizioneRepository.save(iscrizione);
-
-        notificaService.inviaNotifica(
-                iscrizione.getUtente(),
-                "Il tuo certificato per il corso " + iscrizione.getCorso().getTitolo() + " è ora disponibile per il download.",
-                Notifica.Priorita.ALTA,
-                Notifica.CanaleNotifica.IN_APP
-        );
-    }
-
+    /**
+     * Estrazione sicura del path fisico tramite navigazione della relazione FSM.
+     */
     @Transactional(readOnly = true)
     public String getPathAttestato(Integer idLavoratore, Integer idCorso) {
         return iscrizioneRepository.findById(new IscrizioneId(idLavoratore, idCorso))
-                .map(IscrizioneCorso::getPathAttestato)
+                .map(iscrizione -> iscrizione.getDocumentoAttestato() != null ? iscrizione.getDocumentoAttestato().getFilePath() : null)
                 .orElseThrow(() -> new IllegalArgumentException("Iscrizione non trovata"));
     }
-
 
     @Transactional(readOnly = true)
     public List<IscrizioneCorso> trovaIscrizioniUtente(Integer idUtente) {
@@ -149,7 +131,13 @@ public class IscrizioneCorsoService {
         }
 
         dto.setPresenzaConfermata(iscrizione.getPresenzaConfermata());
-        dto.setPathAttestato(iscrizione.getPathAttestato());
+
+        // Assegnazione sicura del path se il documento è stato generato e collegato
+        if (iscrizione.getDocumentoAttestato() != null) {
+            dto.setPathAttestato(iscrizione.getDocumentoAttestato().getFilePath());
+        } else {
+            dto.setPathAttestato(null);
+        }
 
         return dto;
     }

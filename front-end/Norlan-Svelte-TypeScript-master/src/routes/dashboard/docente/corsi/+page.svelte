@@ -122,11 +122,12 @@
 							<span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{corso.idCorso}</span>
 						</div>
 						<div class="px-3 py-1 rounded-lg text-[9px] font-black uppercase border
-                      {corso.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                       corso.stato === StatoCorso.PROGRAMMATO ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                       'bg-emerald-50 text-emerald-600 border-emerald-100'}"
-						>
-							{corso.stato.replace('_', ' ')}
+    						{corso.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-amber-50 text-amber-600 border-amber-100' :
+    							 corso.stato === StatoCorso.PROGRAMMATO ? 'bg-blue-50 text-blue-600 border-blue-100' :
+    							 !corso.stato ? 'bg-gray-50 text-gray-500 border-gray-200' :
+     							'bg-emerald-50 text-emerald-600 border-emerald-100'}"
+							>
+							{corso.stato ? corso.stato.replace('_', ' ') : 'STATO MANCANTE'}
 						</div>
 					</div>
 

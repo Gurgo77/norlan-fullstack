@@ -91,9 +91,9 @@ public class CorsoFormazioneService {
         corso.setStato(CorsoFormazione.StatoCorso.CONCLUSO);
         corsoRepository.save(corso);
 
-        List<IscrizioneCorso> partecipanti =  iscrizioneRepository.findByCorsoAndPresenzaConfermataTrue(corso);
+        List<IscrizioneCorso> partecipanti = iscrizioneRepository.findByCorsoAndPresenzaConfermataTrue(corso);
 
-        for(IscrizioneCorso partecipante : partecipanti) {
+        for (IscrizioneCorso partecipante : partecipanti) {
             String messaggio = "Il corso '" + corso.getTitolo() + "' si è concluso. Ti invitiamo a lasciare un feedback qualitativo sulla piattaforma.";
             notificaService.inviaNotifica(partecipante.getUtente(), messaggio, Notifica.Priorita.MEDIA, Notifica.CanaleNotifica.IN_APP);
         }
@@ -119,5 +119,51 @@ public class CorsoFormazioneService {
         }
 
         return dto;
+    }
+
+    @Transactional
+    public void validaPresenzeAdmin(Integer idCorso, List<Integer> idUtentiPresenti) {
+        // 1. Recupero dell'entità principale
+        CorsoFormazione corso = corsoRepository.findById(idCorso)
+                .orElseThrow(() -> new IllegalArgumentException("Errore di integrità: Corso non trovato"));
+
+        // 2. Guardia di Stato (State Guard): L'azione è permessa solo se il corso è fisicamente terminato
+        if (corso.getStato() != CorsoFormazione.StatoCorso.CONCLUSO) {
+            throw new IllegalStateException("Violazione FSM: Impossibile validare le presenze. Il corso si trova nello stato: " + corso.getStato());
+        }
+
+        List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(idCorso);
+
+        for (IscrizioneCorso iscrizione : iscrizioni) {
+            Integer idDipendente = iscrizione.getUtente().getIdUtente();
+
+            if (idUtentiPresenti.contains(idDipendente)) {
+                iscrizione.validaPresenza();
+            } else {
+                iscrizione.invalidaPresenza();
+            }
+        }
+
+        iscrizioneRepository.saveAll(iscrizioni);
+
+        corso.setStato(CorsoFormazione.StatoCorso.ATTESA_FIRMA_DOCENTE);
+        corsoRepository.save(corso);
+    }
+
+    @Transactional
+    public void controfirmaDocente(Integer idCorso, Integer idDocente) {
+        CorsoFormazione corso = corsoRepository.findById(idCorso)
+                .orElseThrow(() -> new IllegalArgumentException("Errore di integrità: Corso non trovato"));
+
+        if (!corso.getDocente().getIdUtente().equals(idDocente)) {
+            throw new SecurityException("Violazione Accesso: Il docente specificato non è il titolare di questo corso.");
+        }
+
+        if (corso.getStato() != CorsoFormazione.StatoCorso.ATTESA_FIRMA_DOCENTE) {
+            throw new IllegalStateException("Violazione FSM: Impossibile apporre la firma. Il corso si trova nello stato: " + corso.getStato());
+        }
+
+        corso.setStato(CorsoFormazione.StatoCorso.VALIDATO);
+        corsoRepository.save(corso);
     }
 }
