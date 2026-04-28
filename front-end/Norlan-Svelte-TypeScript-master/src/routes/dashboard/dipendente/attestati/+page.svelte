@@ -7,10 +7,11 @@
 	} from 'lucide-svelte';
 
 	// IMPORT MODELLI E SERVIZI UFFICIALI
-	import { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
+	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
+	import httpClient from '$lib/api/httpClient';
 
 	// 1. STATO CON RUNE (Svelte 5)
 	let isLoading = $state(true);
@@ -25,31 +26,34 @@
 	async function scaricaAttestato(idCorso: number) {
 		if (!utente) return;
 		try {
-			const blob = await FormazioneService.downloadAttestato(idCorso, utente.idUtente);
-			const url = URL.createObjectURL(blob);
+			// Utilizziamo l'endpoint che abbiamo creato nel backend
+			const response = await httpClient.get(`/formazione/corsi/${idCorso}/iscrizioni/${utente.idUtente}/certificato/download`, {
+				responseType: 'blob'
+			});
+
+			const url = URL.createObjectURL(response.data);
 			const a = document.createElement('a');
 			a.href = url;
-			a.download = `Attestato_Corso_${idCorso}.pdf`; // Nome del file scaricato
+			a.download = `Attestato_Corso_${idCorso}.pdf`;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 		} catch (e) {
 			console.error("Errore download", e);
-			alert("Errore nel download dell'attestato. Riprova.");
+			alert("Errore nel download dell'attestato. Il file potrebbe non essere ancora disponibile o l'azienda non ha completato le procedure di firma.");
 		}
 	}
 
 	onMount(async () => {
-		// Recuperiamo la sessione dal service senza localStorage grezzo
 		const session = AuthService.getSession();
 		if (!session) return;
 
 		try {
-			// Eseguiamo il fetch in parallelo dell'utente e dei suoi attestati
+			// Fetch parallelo
 			const [dipendenteData, iscrizioniData] = await Promise.all([
-				LavoratoreService.getById(session.idUtente), //
-				FormazioneService.getIscrizioniUtente(session.idUtente) //
+				LavoratoreService.getById(session.idUtente),
+				FormazioneService.getIscrizioniUtente(session.idUtente)
 			]);
 
 			utente = dipendenteData;
@@ -62,20 +66,19 @@
 	});
 
 	/**
-	 * Funzione scudo per bloccare percorsi fittizi dal DB
+	 * LOGICA REATTIVA FSM
+	 * Un attestato è disponibile per il dipendente se e solo se:
+	 * 1. L'admin ha validato la presenza (presenzaConfermata = true)
+	 * 2. L'azienda ha completato la Macchina a Stati Documentale (il backend DTO ha popolato il pathAttestato o il documento)
+	 * * Nota: Nel DTO di IscrizioneCorso che abbiamo modificato nel backend (convertToDTO),
+	 * pathAttestato viene popolato solo se il DocumentoAttestato esiste!
 	 */
-	function isAttestatoValido(path: any): boolean {
-		if (!path) return false;
-		const p = String(path).trim().toLowerCase();
-		if (p === '' || p === 'null' || p === 'undefined' || p === '[]' || p === '{}' || p === 'false') return false;
-		return true;
-	}
-
-	// 2. LOGICA REATTIVA (Filtra solo le iscrizioni con presenza confermata, ATTESTATO REALE e ricerca testuale)
 	const attestatiDisponibili = $derived(
 			iscrizioni.filter(i =>
 					i.presenzaConfermata === true &&
-					isAttestatoValido(i.pathAttestato) && // IL NUOVO CONTROLLO
+					i.pathAttestato !== null &&
+					i.pathAttestato !== undefined &&
+					i.pathAttestato.trim() !== '' &&
 					i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 	);
@@ -134,7 +137,7 @@
 
 						<div class="min-w-0">
 							<div class="flex items-center gap-2 mb-1">
-								<span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">Certificato Valido</span>
+								<span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">Certificato Convalidato Azienda</span>
 							</div>
 							<h3 class="text-base font-black text-[#1B4B6B] uppercase truncate group-hover:text-blue-700 transition-colors">
 								{iscrizione.titoloCorso}
@@ -155,7 +158,7 @@
 								onclick={() => scaricaAttestato(iscrizione.idCorso)}
 								class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 cursor-pointer"
 						>
-							<Download size={18} /> Scarica PDF
+							<Download size={18} /> Scarica PDF Finale
 						</button>
 					</div>
 				</div>
@@ -165,7 +168,7 @@
 				<div class="py-32 text-center bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200">
 					<FileText size={48} class="mx-auto text-gray-200 mb-4" />
 					<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun attestato</h3>
-					<p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Completa i corsi e verifica la presenza per sbloccare i certificati</p>
+					<p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Completa i corsi e attendi la validazione aziendale per sbloccare i certificati</p>
 				</div>
 			{/if}
 		</div>
