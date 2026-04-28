@@ -11,46 +11,20 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-	import httpClient from '$lib/api/httpClient';
 
-	// 1. STATO CON RUNE (Svelte 5)
+	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
 	let utente = $state<DipendenteDTO | null>(null);
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
 
-	/**
-	 * Funzione per il download fisico del file PDF
-	 */
-	async function scaricaAttestato(idCorso: number) {
-		if (!utente) return;
-		try {
-			// Utilizziamo l'endpoint che abbiamo creato nel backend
-			const response = await httpClient.get(`/formazione/corsi/${idCorso}/iscrizioni/${utente.idUtente}/certificato/download`, {
-				responseType: 'blob'
-			});
-
-			const url = URL.createObjectURL(response.data);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `Attestato_Corso_${idCorso}.pdf`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-		} catch (e) {
-			console.error("Errore download", e);
-			alert("Errore nel download dell'attestato. Il file potrebbe non essere ancora disponibile o l'azienda non ha completato le procedure di firma.");
-		}
-	}
-
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
 
 		try {
-			// Fetch parallelo
+			// Fetch parallelo ottimizzato
 			const [dipendenteData, iscrizioniData] = await Promise.all([
 				LavoratoreService.getById(session.idUtente),
 				FormazioneService.getIscrizioniUtente(session.idUtente)
@@ -59,26 +33,52 @@
 			utente = dipendenteData;
 			iscrizioni = iscrizioniData;
 		} catch (error) {
-			console.error("Errore durante il recupero dei dati degli attestati:", error);
+			console.error("Errore durante il recupero dei dati:", error);
 		} finally {
 			isLoading = false;
 		}
 	});
 
 	/**
+	 * Download fisico tramite l'endpoint dedicato che naviga la FSM nel backend
+	 */
+	async function scaricaAttestato(idCorso: number) {
+		if (!utente) return;
+
+		try {
+			// Usiamo il Service ufficiale che ha già il basePath '/api/formazione'
+			const blob = await FormazioneService.downloadAttestato(idCorso, utente.idUtente);
+
+			// Programmazione difensiva
+			if (!blob || blob.size === 0) {
+				throw new Error("Il file restituito dal server è vuoto o corrotto.");
+			}
+
+			// Creazione del link di download temporaneo nel browser
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `Attestato_Corso_${idCorso}_NorLan.pdf`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+
+		} catch (e) {
+			console.error("Errore nel download dell'attestato:", e);
+			alert("Impossibile scaricare il file. Verifica che il documento sia effettivamente presente sul server.");
+		}
+	}
+
+	/**
 	 * LOGICA REATTIVA FSM
-	 * Un attestato è disponibile per il dipendente se e solo se:
-	 * 1. L'admin ha validato la presenza (presenzaConfermata = true)
-	 * 2. L'azienda ha completato la Macchina a Stati Documentale (il backend DTO ha popolato il pathAttestato o il documento)
-	 * * Nota: Nel DTO di IscrizioneCorso che abbiamo modificato nel backend (convertToDTO),
-	 * pathAttestato viene popolato solo se il DocumentoAttestato esiste!
+	 * Verifica la proprietà piatta generata dal DTO del backend.
 	 */
 	const attestatiDisponibili = $derived(
 			iscrizioni.filter(i =>
 					i.presenzaConfermata === true &&
-					i.pathAttestato !== null &&
-					i.pathAttestato !== undefined &&
-					i.pathAttestato.trim() !== '' &&
+					i.idDocumento !== undefined &&
+					i.idDocumento !== null &&
 					i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 	);
@@ -137,7 +137,7 @@
 
 						<div class="min-w-0">
 							<div class="flex items-center gap-2 mb-1">
-								<span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">Certificato Convalidato Azienda</span>
+								<span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">Certificato Convalidato</span>
 							</div>
 							<h3 class="text-base font-black text-[#1B4B6B] uppercase truncate group-hover:text-blue-700 transition-colors">
 								{iscrizione.titoloCorso}

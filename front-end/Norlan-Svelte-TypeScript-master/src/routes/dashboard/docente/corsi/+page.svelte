@@ -61,14 +61,14 @@
 		if (!confirm(`Sei sicuro di voler impostare il corso come: ${nuovoStato.replace('_', ' ')}?`)) return;
 
 		try {
-			// Chiamata diretta all'API se non presente nel Service
-			await httpClient.patch(`/corsi/${idCorso}/stato`, null, { params: { nuovoStato } });
+			// Utilizziamo il metodo centralizzato del Service che implementa il routing corretto (/api/formazione/corsi/...)
+			await FormazioneService.updateStatoCorso(idCorso, nuovoStato);
 
-			// Aggiornamento reattivo UI
+			// Aggiornamento reattivo UI: il Svelte Store intercetta la mutazione e aggiorna le sezioni visive
 			corsi = corsi.map(c => c.idCorso === idCorso ? { ...c, stato: nuovoStato } as CorsoFormazione : c);
 		} catch (error) {
 			console.error(error);
-			alert("Errore durante l'aggiornamento dello stato del corso.");
+			alert("Errore durante l'aggiornamento dello stato del corso. Verifica i permessi o i log del server.");
 		}
 	}
 

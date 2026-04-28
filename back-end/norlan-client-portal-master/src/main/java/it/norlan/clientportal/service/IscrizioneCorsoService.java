@@ -132,11 +132,9 @@ public class IscrizioneCorsoService {
 
         dto.setPresenzaConfermata(iscrizione.getPresenzaConfermata());
 
-        // Assegnazione sicura del path se il documento è stato generato e collegato
+        // Mappatura FSM: propagazione dell'ID relazionale al posto del percorso stringa piatto
         if (iscrizione.getDocumentoAttestato() != null) {
-            dto.setPathAttestato(iscrizione.getDocumentoAttestato().getFilePath());
-        } else {
-            dto.setPathAttestato(null);
+            dto.setIdDocumento(iscrizione.getDocumentoAttestato().getIdDocumento());
         }
 
         return dto;

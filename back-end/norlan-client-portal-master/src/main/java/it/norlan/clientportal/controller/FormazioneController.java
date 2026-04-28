@@ -162,30 +162,32 @@ public class FormazioneController {
         return ResponseEntity.ok(Map.of("message", "Registro controfirmato con successo."));
     }
 
-    /**
-     * API FSM Fase 3: Distribuzione Attestati alle Aziende (Admin)
-     */
-    @PostMapping(value = "/corsi/{id}/distribuisci-attestati", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/corsi/{id}/distribuisci-attestati", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> distribuisciAttestati(
             @PathVariable Integer id,
-            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files,
             @RequestParam("idAziende") List<Integer> idAziende) {
 
         if (files.size() != idAziende.size()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Il numero di file non corrisponde al numero delle aziende."));
+            return ResponseEntity.badRequest().body(Map.of("error", "Mismatch tra file caricati e aziende."));
         }
 
         Map<Integer, String> percorsiFileGenerati = new HashMap<>();
-        for (int i = 0; i < idAziende.size(); i++) {
-            MultipartFile file = files.get(i);
+
+        for (int i = 0; i < files.size(); i++) {
             Integer idAzienda = idAziende.get(i);
-            String percorsoFisico = fileStorageService.storeFile(file, "attestati/corso_" + id);
+            org.springframework.web.multipart.MultipartFile file = files.get(i);
+
+            // Salviamo il file fisico.
+            String percorsoFisico = fileStorageService.storeFile(file, "attestati/corso_" + id + "/azienda_" + idAzienda);
             percorsiFileGenerati.put(idAzienda, percorsoFisico);
         }
 
+        // Passiamo la MAPPA al Service
         documentoService.distribuisciAttestatiMassivi(id, percorsiFileGenerati);
-        return ResponseEntity.ok(Map.of("message", "Attestati distribuiti alle aziende."));
+
+        return ResponseEntity.ok(Map.of("message", "Attestati distribuiti con successo."));
     }
 
     /**

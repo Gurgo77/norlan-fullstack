@@ -12,39 +12,59 @@ export class FormazioneService {
 	private static readonly basePath = '/api/formazione';
 
 	// ==========================================
-	// SEZIONE CORSI
+	// SEZIONE CORSI E FSM (MACCHINA A STATI)
+	// ==========================================
+
+	/**
+	 * Valida le presenze di un corso (Passaggio da CONCLUSO a ATTESA_FIRMA_DOCENTE)
+	 * BE: POST /api/formazione/corsi/{idCorso}/valida-presenze
+	 */
+	static async validaPresenzeAdmin(idCorso: number, idUtentiPresenti: number[]): Promise<void> {
+		await httpClient.post(`${this.basePath}/corsi/${idCorso}/valida-presenze`, idUtentiPresenti);
+	}
+
+	/**
+	 * Il docente firma il registro (Passaggio da ATTESA_FIRMA_DOCENTE a VALIDATO)
+	 * BE: POST /api/formazione/corsi/{idCorso}/firma-docente
+	 */
+	static async controfirmaRegistro(idCorso: number): Promise<void> {
+		await httpClient.post(`${this.basePath}/corsi/${idCorso}/firma-docente`);
+	}
+
+	/**
+	 * Genera e distribuisce gli attestati alle aziende (Da VALIDATO in poi)
+	 * BE: POST /api/formazione/corsi/{idCorso}/distribuisci-attestati
+	 */
+	/**
+	 * Carica e distribuisce i PDF separati per le singole aziende
+	 * BE: POST /api/formazione/corsi/{idCorso}/distribuisci-attestati
+	 */
+	static async distribuisciAttestati(
+		idCorso: number,
+		payload: { file: File; idAzienda: number }[]
+	): Promise<void> {
+		const formData = new FormData();
+		payload.forEach(item => {
+			formData.append('files', item.file);
+			formData.append('idAziende', item.idAzienda.toString());
+		});
+
+		// Sovrascriviamo l'interceptor globale forzando il multipart
+		await httpClient.post(`${this.basePath}/corsi/${idCorso}/distribuisci-attestati`, formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data'
+			}
+		});
+	}
+
+	// ==========================================
+	// SEZIONE CRUD CORSI
 	// ==========================================
 
 	/**
 	 * Recupera tutti i corsi.
 	 * BE: GET /api/formazione/corsi
 	 */
-
-	static async validaPresenzeAdmin(idCorso: number, idUtentiPresenti: number[]): Promise<void> {
-		await httpClient.post(`/corsi/${idCorso}/valida-presenze`, idUtentiPresenti);
-	}
-
-	static async controfirmaRegistro(idCorso: number): Promise<void> {
-		await httpClient.post(`/corsi/${idCorso}/firma-docente`);
-	}
-
-	static async distribuisciAttestati(
-		idCorso: number,
-		payload: { file: File; idAzienda: number }[]
-	): Promise<void> {
-		const formData = new FormData();
-
-		// Costruzione dei vettori paralleli per il controller Spring Boot
-		payload.forEach(item => {
-			formData.append('files', item.file);
-			formData.append('idAziende', item.idAzienda.toString());
-		});
-
-		// NOTA: Con Axios o Fetch moderni, omettiamo il Content-Type manuale
-		// affinché il browser generi automaticamente il 'boundary' corretto per il multipart.
-		await httpClient.post(`/corsi/${idCorso}/distribuisci-attestati`, formData);
-	}
-
 	static async getAllCorsi(): Promise<CorsoFormazione[]> {
 		const response = await httpClient.get<CorsoData[]>(`${this.basePath}/corsi`);
 		return response.data.map((item) => new CorsoFormazione(item));
@@ -60,7 +80,7 @@ export class FormazioneService {
 	}
 
 	/**
-	 * NUOVO: Recupera i corsi filtrati per stato.
+	 * Recupera i corsi filtrati per stato.
 	 * BE: GET /api/formazione/corsi/stato/{stato}
 	 */
 	static async getCorsiByStato(stato: StatoCorso): Promise<CorsoFormazione[]> {
@@ -78,7 +98,7 @@ export class FormazioneService {
 	}
 
 	/**
-	 * NUOVO: Aggiorna lo stato di un corso.
+	 * Aggiorna lo stato di un corso.
 	 * BE: PATCH /api/formazione/corsi/{idCorso}/stato
 	 */
 	static async updateStatoCorso(idCorso: number | string, nuovoStato: StatoCorso): Promise<void> {
@@ -88,7 +108,7 @@ export class FormazioneService {
 	}
 
 	/**
-	 * NUOVO: Elimina un corso.
+	 * Elimina un corso.
 	 * BE: DELETE /api/formazione/corsi/{idCorso}
 	 */
 	static async deleteCorso(idCorso: number | string): Promise<void> {
@@ -111,7 +131,7 @@ export class FormazioneService {
 	}
 
 	/**
-	 * NUOVO: Recupera tutti gli iscritti a un determinato corso.
+	 * Recupera tutti gli iscritti a un determinato corso.
 	 * BE: GET /api/formazione/corsi/{idCorso}/iscrizioni
 	 */
 	static async getIscrizioniByCorso(idCorso: number | string): Promise<IscrizioneCorso[]> {
@@ -176,7 +196,7 @@ export class FormazioneService {
 	}
 
 	/**
-	 * NUOVO: Rimuove un'iscrizione a un corso.
+	 * Rimuove un'iscrizione a un corso.
 	 * BE: DELETE /api/formazione/corsi/{idCorso}/iscrizioni/{idUtente}
 	 */
 	static async rimuoviIscrizione(
@@ -191,7 +211,7 @@ export class FormazioneService {
 	// ==========================================
 
 	/**
-	 * NUOVO: Recupera i materiali associati a un corso.
+	 * Recupera i materiali associati a un corso.
 	 * BE: GET /api/formazione/corsi/{idCorso}/materiali
 	 */
 	static async getMaterialiByCorso(idCorso: number | string): Promise<MaterialeDidattico[]> {

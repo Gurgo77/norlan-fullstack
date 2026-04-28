@@ -21,7 +21,7 @@
 	// --- STATO REATTIVO GLOBALE ---
 	let corsi = $state<CorsoFormazione[]>([]);
 	let docenti = $state<Docente[]>([]);
-	let dipendenti = $state<any[]>([]); // Per mappare le aziende
+	let dipendenti = $state<any[]>([]); // Array grezzo dal backend
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let searchQuery = $state('');
@@ -53,39 +53,59 @@
 	);
 
 	// --- SEZIONI STRUTTURALI DELLA DASHBOARD ---
-	// 1. Conclusi (Include anche quelli in validazione e da certificare)
 	const corsiConclusi = $derived(corsiFiltrati.filter(c =>
 			c.stato === StatoCorso.CONCLUSO ||
 			c.stato === StatoCorso.ATTESA_FIRMA_DOCENTE ||
 			c.stato === StatoCorso.VALIDATO
 	));
-	// 2. In Svolgimento
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
-	// 3. Programmati
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato));
 
 	// --- DERIVAZIONE AZIENDE PER UPLOAD ATTESTATI ---
 	const aziendeCoinvolte = $derived.by(() => {
 		if (!selectedCorso || iscrizioniAttuali.length === 0 || dipendenti.length === 0) return [];
 
-		// Prendiamo solo chi ha la presenza confermata
 		const presenti = iscrizioniAttuali.filter(i => i.presenzaConfermata);
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const map = new Map<number, { idAzienda: number, ragioneSociale: string, count: number }>();
 
 		presenti.forEach(isc => {
+			// Trova il dipendente intero
 			const dip = dipendenti.find(d => d.idUtente === isc.idUtente);
-			if (dip && dip.aziendaId) {
-				if (!map.has(dip.aziendaId)) {
-					map.set(dip.aziendaId, {
-						idAzienda: dip.aziendaId,
-						ragioneSociale: dip.aziendaRagioneSociale || `Azienda #${dip.aziendaId}`,
+			if (!dip) return; // Se per assurdo non c'è, saltiamo
+
+			// ESTRATTORE AGGRESSIVO DELL'ID AZIENDA:
+			// A seconda di come Jackson serializza il Lavoratore/Azienda nel DTO.
+			let idAzienda = null;
+			let nomeAzienda = "Azienda Sconosciuta";
+
+			if (dip.azienda && typeof dip.azienda === 'object') {
+				idAzienda = dip.azienda.idUtente || dip.azienda.id;
+				nomeAzienda = dip.azienda.ragioneSociale || dip.azienda.nome || nomeAzienda;
+			} else if (dip.aziendaId) {
+				idAzienda = dip.aziendaId;
+				nomeAzienda = dip.aziendaRagioneSociale || `Azienda ID ${idAzienda}`;
+			} else if (dip.idAzienda) {
+				idAzienda = dip.idAzienda;
+				nomeAzienda = dip.ragioneSocialeAzienda || `Azienda ID ${idAzienda}`;
+			}
+
+			// Se abbiamo trovato un VERO ID Azienda, raggruppiamo.
+			if (idAzienda) {
+				if (!map.has(idAzienda)) {
+					map.set(idAzienda, {
+						idAzienda: idAzienda,
+						ragioneSociale: nomeAzienda,
 						count: 0
 					});
 				}
-				map.get(dip.aziendaId)!.count++;
+				map.get(idAzienda)!.count++;
+			} else {
+				// Caso limite di sicurezza: Il dipendente non ha azienda associata.
+				console.warn(`Dipendente ${isc.emailUtente} non ha un'azienda associata nel database!`);
 			}
 		});
+
 		return Array.from(map.values());
 	});
 
@@ -95,7 +115,7 @@
 			const [corsiRes, docentiRes, dipendentiRes] = await Promise.all([
 				FormazioneService.getAllCorsi(),
 				AnagraficaService.getAllDocenti(),
-				AnagraficaService.getAllDipendenti() // Recuperiamo per il mapping aziendale
+				AnagraficaService.getAllDipendenti()
 			]);
 
 			corsi = corsiRes;
@@ -173,11 +193,10 @@
 		isActionLoading = true;
 		try {
 			await FormazioneService.validaPresenzeAdmin(selectedCorso.idCorso, presenzeSelezionate);
-			// Avanzamento locale dello stato per reattività UI
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.ATTESA_FIRMA_DOCENTE } as CorsoFormazione : c);
 			showModalPresenze = false;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
+			console.error("Errore durante la chiamata API validaPresenze:", error);
 			alert("Errore durante la validazione del registro.");
 		} finally {
 			isActionLoading = false;
@@ -191,7 +210,12 @@
 		showModalUpload = true;
 		fileUploads = {}; // Reset file
 		try {
+			// Ricarichiamo le iscrizioni per essere sicuri dei dati
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
+
+			if (aziendeCoinvolte.length === 0) {
+				console.warn("Attenzione: Nessuna azienda rilevata per i presenti. Verifica i dati anagrafici dei dipendenti iscritti.");
+			}
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile caricare i dati.");
@@ -213,7 +237,6 @@
 	async function confermaDistribuzioneAttestati() {
 		if (!selectedCorso) return;
 
-		// Verifica che tutte le aziende abbiano un file associato
 		const missing = aziendeCoinvolte.some(a => !fileUploads[a.idAzienda]);
 		if (missing) {
 			alert("Devi caricare un certificato PDF per tutte le aziende elencate.");
@@ -228,11 +251,15 @@
 			}));
 
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
-			alert("Attestati distribuiti correttamente!");
+			alert("Attestati distribuiti correttamente! Le aziende riceveranno una notifica.");
+
+			// Chiudiamo il corso definitivamente nella UI
+			corsi = corsi.filter(c => c.idCorso !== selectedCorso!.idCorso);
 			showModalUpload = false;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
-			alert("Errore durante il caricamento degli attestati.");
+			// LOG CRITICO PER IL DEBUG
+			console.error("Errore fatale durante l'upload degli attestati:", error);
+			alert("Errore durante il caricamento degli attestati. Controlla la console.");
 		} finally {
 			isActionLoading = false;
 		}
@@ -457,7 +484,13 @@
 				{:else}
 					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda. Il sistema provvederà a inoltrarlo automaticamente e a collegarlo al profilo di tutti i dipendenti iscritti dell'azienda.</p>
 
-					<div class="space-y-4">
+					{#if aziendeCoinvolte.length === 0}
+						<div class="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
+							<p class="text-amber-700 font-bold uppercase text-xs">Attenzione: Non è stata rilevata nessuna azienda valida per i dipendenti presenti. Impossibile procedere con la distribuzione.</p>
+						</div>
+					{/if}
+
+					<div class="space-y-4 mt-4">
 						{#each aziendeCoinvolte as azienda (azienda.idAzienda)}
 							<div class="p-5 bg-white border border-gray-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
 								<div class="flex items-start gap-4">
@@ -483,7 +516,7 @@
 				{/if}
 			</div>
 			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4">
-				<button onclick={confermaDistribuzioneAttestati} disabled={isActionLoading} class="w-full py-4 bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 uppercase text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 flex justify-center items-center gap-2">
+				<button onclick={confermaDistribuzioneAttestati} disabled={isActionLoading || aziendeCoinvolte.length === 0} class="w-full py-4 bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 uppercase text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 flex justify-center items-center gap-2">
 					{#if isActionLoading} <Loader2 class="animate-spin" size={16} /> Elaborazione... {:else} Invia Documenti alle Aziende {/if}
 				</button>
 			</div>

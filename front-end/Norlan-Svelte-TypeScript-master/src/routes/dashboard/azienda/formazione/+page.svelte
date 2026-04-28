@@ -3,7 +3,8 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		Search, Filter, User, ShieldCheck, AlertTriangle, ArrowRight,
-		Bookmark, Loader2, GraduationCap, Download, UploadCloud, CheckCircle2, FileCheck2
+		Bookmark, Loader2, GraduationCap, Download, UploadCloud, CheckCircle2, FileCheck2,
+		BookPlus, X
 	} from 'lucide-svelte';
 
 	// Import Servizi e Modelli
@@ -12,9 +13,11 @@
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import type { Documento } from '$lib/models/Documento';
+	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 
 	// --- INTERFACCE TIPIZZATE ---
 	interface CorsoStato {
+		idCorso?: number;
 		nome: string;
 		data: string;
 		stato: 'OK' | 'IN_ATTESA' | 'CRITICO';
@@ -35,8 +38,14 @@
 	let dipendenti = $state<DipendenteFormazione[]>([]);
 	let attestatiDaFirmare = $state<Documento[]>([]);
 
-	// Mappa reattiva per i file firmati pronti all'upload (idDocumento -> File)
+	let corsiDisponibili = $state<CorsoFormazione[]>([]);
 	let fileFirmati = $state<Record<number, File>>({});
+
+	// --- STATI MODALE ISCRIZIONE ---
+	let showModalIscrizione = $state(false);
+	let idDipendenteSelezionato = $state<number | ''>('');
+	let idCorsoSelezionato = $state<number | ''>('');
+	let isEnrolling = $state(false);
 
 	// --- CARICAMENTO DATI ---
 	onMount(async () => {
@@ -44,19 +53,18 @@
 		if (!session) return;
 
 		try {
-			// 1. Fetch parallelo: Lavoratori e Documenti Aziendali
-			const [lavoratoriRaw, documentiAzienda] = await Promise.all([
+			const [lavoratoriRaw, documentiAzienda, tuttiCorsi] = await Promise.all([
 				LavoratoreService.getByAzienda(session.idUtente),
-				DocumentoService.getDocumentiByAzienda(session.idUtente)
+				DocumentoService.getDocumentiByAzienda(session.idUtente),
+				FormazioneService.getAllCorsi()
 			]);
 
-			// 2. Filtriamo solo gli attestati in attesa di firma dell'azienda
-			// (Assumiamo che il backend usi "IN_ATTESA_FIRMA" nello State Pattern)
+			corsiDisponibili = tuttiCorsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato);
+
 			attestatiDaFirmare = documentiAzienda.filter(d =>
 					d.tipologia === 'ATTESTATO_CORSO' && d.stato === 'IN_ATTESA_FIRMA'
 			);
 
-			// 3. Costruzione della lista dipendenti con lo stato formativo reale
 			const promises = lavoratoriRaw.map(async (l) => {
 				const iscrizioni = await FormazioneService.getIscrizioniUtente(l.idUtente);
 				return {
@@ -64,6 +72,7 @@
 					nomeCompleto: `${l.nome} ${l.cognome}`.toUpperCase(),
 					ruolo: l.ruolo.replace('_', ' '),
 					corsi: iscrizioni.map((i) => ({
+						idCorso: i.idCorso,
 						nome: i.titoloCorso.toUpperCase(),
 						data: formattaData(i.dataOrarioCorso),
 						stato: (i.presenzaConfermata ? 'OK' : 'IN_ATTESA') as 'OK' | 'IN_ATTESA'
@@ -87,6 +96,44 @@
 	const countDaAggiornare = $derived(
 			dipendenti.filter((d) => d.corsi.some((c) => c.stato !== 'OK')).length
 	);
+
+	// --- AZIONI MODALE ISCRIZIONE ---
+	function apriModaleIscrizione() {
+		idDipendenteSelezionato = '';
+		idCorsoSelezionato = '';
+		showModalIscrizione = true;
+	}
+
+	async function confermaIscrizione() {
+		if (idDipendenteSelezionato === '' || idCorsoSelezionato === '') return;
+		isEnrolling = true;
+
+		try {
+			await FormazioneService.iscriviUtente(idCorsoSelezionato as number, idDipendenteSelezionato as number);
+
+			const corsoScelto = corsiDisponibili.find(c => c.idCorso === idCorsoSelezionato);
+			const dipendenteScelto = dipendenti.find(d => d.id === idDipendenteSelezionato);
+
+			if (corsoScelto && dipendenteScelto) {
+				dipendenteScelto.corsi = [...dipendenteScelto.corsi, {
+					idCorso: corsoScelto.idCorso,
+					nome: corsoScelto.titolo.toUpperCase(),
+					data: formattaData(corsoScelto.dataOrario),
+					stato: 'IN_ATTESA'
+				}];
+
+				dipendenti = [...dipendenti];
+			}
+
+			alert("Dipendente iscritto al corso con successo!");
+			showModalIscrizione = false;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		} catch (error) {
+			alert("Errore durante l'iscrizione. Il dipendente potrebbe essere già iscritto a questo corso.");
+		} finally {
+			isEnrolling = false;
+		}
+	}
 
 	// --- AZIONI SUI DOCUMENTI (FSM) ---
 	async function scaricaOriginale(idDocumento: number) {
@@ -123,11 +170,8 @@
 
 		isActionLoading = true;
 		try {
-			// Qui idealmente chiameresti un endpoint per sostituire il file fisico.
-			// Per far avanzare la Macchina a Stati usiamo approvaDocumento.
 			await DocumentoService.approvaDocumento(idDocumento);
 
-			// Rimuoviamo il documento dalla lista "Da firmare" (sblocco FSM completato)
 			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
 			delete fileFirmati[idDocumento];
 
@@ -141,6 +185,7 @@
 	}
 
 	function formattaData(dateStr: string) {
+		if(!dateStr) return '';
 		return new Date(dateStr).toLocaleDateString('it-IT', {
 			day: '2-digit', month: '2-digit', year: 'numeric'
 		});
@@ -148,7 +193,7 @@
 </script>
 
 <div in:fade class="pb-20">
-	<div class="mb-10 flex items-start justify-between">
+	<div class="mb-10 flex flex-col lg:flex-row items-start justify-between gap-6">
 		<div>
 			<h1 class="text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">
 				Formazione Dipendenti
@@ -158,13 +203,22 @@
 			</p>
 		</div>
 
-		<div class="flex items-center gap-4 rounded-2xl border border-red-50 bg-white p-4 shadow-sm">
-			<div class="rounded-lg bg-red-50 p-2 text-red-500">
-				<AlertTriangle size={20} />
-			</div>
-			<div>
-				<p class="text-[9px] font-bold uppercase text-gray-400">Da Completare</p>
-				<p class="text-xs font-black uppercase text-red-600">{countDaAggiornare} Dipendenti</p>
+		<div class="flex flex-col sm:flex-row items-center gap-4">
+			<button
+					onclick={apriModaleIscrizione}
+					class="flex items-center gap-2 rounded-2xl bg-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-[#153a54]"
+			>
+				<BookPlus size={18} /> Iscrivi a Nuovo Corso
+			</button>
+
+			<div class="flex w-full sm:w-auto items-center gap-4 rounded-2xl border border-red-50 bg-white p-4 shadow-sm">
+				<div class="rounded-lg bg-red-50 p-2 text-red-500">
+					<AlertTriangle size={20} />
+				</div>
+				<div>
+					<p class="text-[9px] font-bold uppercase text-gray-400">Da Completare</p>
+					<p class="text-xs font-black uppercase text-red-600">{countDaAggiornare} Dipendenti</p>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -279,12 +333,12 @@
 						{/if}
 					</div>
 
-					<div class="flex items-center gap-4 w-full xl:w-auto justify-end mt-4 xl:mt-0 pt-4 xl:pt-0 border-t border-gray-100 xl:border-0">
+					<div class="flex items-center gap-3 w-full xl:w-auto justify-end mt-4 xl:mt-0 pt-4 xl:pt-0 border-t border-gray-100 xl:border-0">
 						<button class="text-gray-300 transition-colors hover:text-[#1B4B6B]">
 							<Bookmark size={20} />
 						</button>
-						<a href="/dashboard/azienda/dipendenti" class="flex items-center gap-3 rounded-2xl border-2 border-[#1B4B6B] bg-white px-6 py-3 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-sm transition-all hover:bg-[#1B4B6B] hover:text-white">
-							Profilo <ArrowRight size={16} />
+						<a href="/dashboard/azienda/dipendenti" class="flex items-center gap-2 rounded-2xl border-2 border-[#1B4B6B] bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-sm transition-all hover:bg-[#1B4B6B] hover:text-white">
+							Profilo <ArrowRight size={14} />
 						</a>
 					</div>
 				</div>
@@ -301,6 +355,71 @@
 
 	{/if}
 </div>
+
+{#if showModalIscrizione}
+	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
+		<div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden" in:scale>
+
+			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center shrink-0">
+				<div>
+					<h2 class="text-lg font-extrabold uppercase leading-none">Iscrizione Formativa</h2>
+					<p class="text-[10px] text-blue-200 uppercase mt-1">Iscrivi un dipendente a un corso NorLan</p>
+				</div>
+				<button onclick={() => showModalIscrizione = false} class="hover:text-red-400 transition-colors"><X size={24} /></button>
+			</div>
+
+			<div class="p-8 flex-1 bg-gray-50/50 space-y-6">
+				<div class="space-y-2">
+					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Seleziona Dipendente *</label>
+					<select
+							bind:value={idDipendenteSelezionato}
+							class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl transition-all font-extrabold text-xs uppercase cursor-pointer outline-none focus:ring-2 focus:ring-[#1B4B6B]"
+					>
+						<option value="" disabled>-- Clicca per selezionare --</option>
+						{#each dipendenti as dip}
+							<option value={dip.id}>{dip.nomeCompleto}</option>
+						{/each}
+						{#if dipendenti.length === 0}
+							<option value="" disabled>Nessun dipendente trovato.</option>
+						{/if}
+					</select>
+				</div>
+
+				<div class="space-y-2">
+					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Seleziona Corso Programmato *</label>
+					<select
+							bind:value={idCorsoSelezionato}
+							class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl transition-all font-extrabold text-xs uppercase cursor-pointer outline-none focus:ring-2 focus:ring-[#1B4B6B]"
+					>
+						<option value="" disabled>-- Clicca per selezionare --</option>
+						{#each corsiDisponibili as corso}
+							<option value={corso.idCorso}>
+								{corso.titolo} - {formattaData(corso.dataOrario)}
+							</option>
+						{/each}
+						{#if corsiDisponibili.length === 0}
+							<option value="" disabled>Nessun corso programmato disponibile al momento.</option>
+						{/if}
+					</select>
+				</div>
+			</div>
+
+			<div class="p-6 border-t border-gray-100 flex gap-4 bg-white">
+				<button onclick={() => showModalIscrizione = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 transition-all uppercase text-[10px]">
+					Annulla
+				</button>
+				<button
+						onclick={confermaIscrizione}
+						disabled={idDipendenteSelezionato === '' || idCorsoSelezionato === '' || isEnrolling}
+						class="flex-1 px-6 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all uppercase text-[10px] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+				>
+					{#if isEnrolling} <Loader2 size={16} class="animate-spin" /> Registrazione... {:else} Conferma Iscrizione {/if}
+				</button>
+			</div>
+
+		</div>
+	</div>
+{/if}
 
 <style>
 	:global(body) { background-color: #f9fafb; }
