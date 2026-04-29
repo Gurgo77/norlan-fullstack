@@ -151,9 +151,6 @@
 					</div>
 
 					<div class="flex items-center gap-3 w-full md:w-auto">
-						<button class="flex-1 md:flex-none p-4 bg-gray-50 text-[#1B4B6B] rounded-2xl hover:bg-gray-100 transition-all">
-							<Info size={20} />
-						</button>
 						<button
 								onclick={() => scaricaAttestato(iscrizione.idCorso)}
 								class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 cursor-pointer"

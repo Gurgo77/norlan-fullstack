@@ -123,9 +123,6 @@
 							<button class="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1B4B6B] py-4 text-[10px] font-black uppercase text-white shadow-lg shadow-blue-900/10 transition-all hover:bg-[#153a54]">
 								<PlayCircle size={18} /> Materiali
 							</button>
-							<button class="rounded-2xl bg-gray-50 px-6 py-4 text-gray-400 transition-all hover:bg-gray-100">
-								<MapPin size={18} />
-							</button>
 						</div>
 					</div>
 				</div>

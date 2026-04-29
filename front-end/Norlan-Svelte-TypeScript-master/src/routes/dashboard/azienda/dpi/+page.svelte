@@ -1,11 +1,8 @@
-DPI
-
-
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import {
-		Search, HardHat, Plus, Download,
+		Search, Plus, Download,
 		ShieldCheck, AlertTriangle, Clock, Loader2, ArrowRight
 	} from 'lucide-svelte';
 
@@ -14,9 +11,12 @@ DPI
 	import { AuthService } from '$lib/services/AuthService';
 
 	// --- INTERFACCE LOCALI ---
+	// Aggiungiamo esplicitamente i campi "tipo" e "dataScadenzaRevisione" per risolvere l'errore TypeScript
 	interface DpiRegistro extends AssegnazioneDPIDTO {
 		nomeCompletoDipendente: string;
 		statoDerivato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
+		tipo?: string;
+		dataScadenzaRevisione?: string;
 	}
 
 	// --- STATO REATTIVO (Svelte 5) ---
@@ -27,7 +27,7 @@ DPI
 
 	// --- LOGICA DI CARICAMENTO ---
 	onMount(async () => {
-		const session = AuthService.getSession(); //
+		const session = AuthService.getSession();
 		if (!session) return;
 
 		try {
@@ -37,11 +37,13 @@ DPI
 			// 2. Recupero i DPI per ogni dipendente e li unisco in un unico registro
 			const promises = dipendenti.map(async (d) => {
 				const dpiLavoratore = await LavoratoreService.getDpiByLavoratore(d.idUtente);
-				return dpiLavoratore.map(dpi => ({
+
+				// Usiamo (dpi: any) per ignorare il vecchio modello TypeScript e accogliere i nuovi dati del backend
+				return dpiLavoratore.map((dpi: any) => ({
 					...dpi,
 					nomeCompletoDipendente: `${d.nome} ${d.cognome}`.toUpperCase(),
-					statoDerivato: calcolaStato(dpi.dataScadenza)
-				}));
+					statoDerivato: calcolaStato(dpi.dataScadenzaRevisione)
+				})) as DpiRegistro[];
 			});
 
 			const risultati = await Promise.all(promises);
@@ -57,7 +59,8 @@ DPI
 	/**
 	 * Calcola lo stato in base alla data di scadenza
 	 */
-	function calcolaStato(dataScadenzaStr: string): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
+	function calcolaStato(dataScadenzaStr: string | undefined): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
+		if (!dataScadenzaStr) return 'OK'; // Fallback se la data manca
 		const oggi = new Date();
 		const scadenza = new Date(dataScadenzaStr);
 		const diffGiorni = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
@@ -67,11 +70,17 @@ DPI
 		return 'OK';
 	}
 
+	function formattaData(dateStr: string | undefined) {
+		if (!dateStr) return 'N.D.';
+		return new Date(dateStr).toLocaleDateString('it-IT');
+	}
+
 	// --- LOGICA REATTIVA ---
 	const filteredRegistro = $derived(
 			registro.filter(d => {
+				const tipoSafe = d.tipo ? d.tipo.toString().toLowerCase() : '';
 				const matchSearch = d.nomeCompletoDipendente.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						d.nomeDpi.toLowerCase().includes(searchQuery.toLowerCase());
+						tipoSafe.includes(searchQuery.toLowerCase());
 				const matchFiltro = filtroAttivo === 'TUTTI' || d.statoDerivato === filtroAttivo;
 				return matchSearch && matchFiltro;
 			})
@@ -136,55 +145,46 @@ DPI
 			<table class="w-full text-left">
 				<thead class="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
 				<tr>
-					<th class="px-8 py-5 text-center w-20"></th>
-					<th class="px-6 py-5">Dipendente</th>
-					<th class="px-6 py-5">Tipo Dispositivo</th>
-					<th class="px-6 py-5">Data Consegna</th>
-					<th class="px-6 py-5">Revisione</th>
-					<th class="px-6 py-5">Stato</th>
-					<th class="px-8 py-5 text-right">Azioni</th>
+					<th class="px-8 py-5 text-center w-20">DPI</th>
+					<th class="px-6 py-5 text-center">Dipendente</th>
+					<th class="px-6 py-5 text-center">Tipo Dispositivo</th>
+					<th class="px-6 py-5 text-center">Data Consegna</th>
+					<th class="px-6 py-5 text-center">Revisione</th>
+					<th class="px-6 py-5 text-center">Stato</th>
 				</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-50">
 				{#if isLoading}
-					<tr><td colspan="7" class="px-8 py-20 text-center text-gray-300 font-black uppercase text-xs tracking-widest"><Loader2 size={32} class="animate-spin mx-auto mb-2" />Sincronizzazione...</td></tr>
+					<tr><td colspan="6" class="px-8 py-20 text-center text-gray-300 font-black uppercase text-xs tracking-widest"><Loader2 size={32} class="animate-spin mx-auto mb-2" />Sincronizzazione...</td></tr>
 				{:else}
 					{#each filteredRegistro as item (item.id)}
 						<tr class="hover:bg-white hover:shadow-xl hover:shadow-blue-900/5 transition-all group relative">
+
 							<td class="px-8 py-6 text-center">
-								<div class="size-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-									<HardHat size={24} />
+								<div class="h-12 px-4 bg-gray-50 rounded-xl inline-flex items-center justify-center text-gray-400 group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors font-black text-[9px] uppercase tracking-widest min-w-[3rem] text-center">
+									DPI
 								</div>
 							</td>
-							<td class="px-6 py-6"><span class="font-black text-[#1B4B6B] text-xs uppercase">{item.nomeCompletoDipendente}</span></td>
-							<td class="px-6 py-6">
-								<div class="flex items-center gap-2">
-									<HardHat size={14} class="text-[#1B4B6B] opacity-40" />
-									<span class="font-bold text-[#1B4B6B] text-xs uppercase">{item.nomeDpi}</span>
-								</div>
+
+							<td class="px-6 py-6 text-center"><span class="font-black text-[#1B4B6B] text-xs uppercase">{item.nomeCompletoDipendente}</span></td>
+
+							<td class="px-6 py-6 text-center">
+								<span class="font-bold text-[#1B4B6B] text-xs uppercase">{item.tipo ? item.tipo.replace(/_/g, ' ') : 'NON DEFINITO'}</span>
 							</td>
-							<td class="px-6 py-6 text-xs text-gray-400 font-medium">{item.dataConsegna}</td>
-							<td class="px-6 py-6 text-xs font-black text-[#1B4B6B]">{item.dataScadenza}</td>
-							<td class="px-6 py-6">
+
+							<td class="px-6 py-6 text-xs text-gray-400 font-medium text-center">{formattaData(item.dataConsegna)}</td>
+							<td class="px-6 py-6 text-xs font-black text-[#1B4B6B] text-center">{formattaData(item.dataScadenzaRevisione)}</td>
+
+							<td class="px-6 py-6 text-center">
 								<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase {item.statoDerivato === 'OK' ? 'bg-green-50 text-green-600 border-green-100' : item.statoDerivato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' : 'bg-red-50 text-red-600 border-red-100'}">
 									{#if item.statoDerivato === 'OK'}<ShieldCheck size={12} />{:else if item.statoDerivato === 'DA_REVISIONARE'}<Clock size={12} />{:else}<AlertTriangle size={12} />{/if}
 									{item.statoDerivato.replace('_', ' ')}
 								</div>
 							</td>
-							<td class="px-8 py-6 text-right">
-								<div class="flex justify-end gap-3 items-center">
-									<button class="p-2 text-gray-300 hover:text-[#1B4B6B] transition-colors"><Download size={18} /></button>
-
-									<a href="/dashboard/azienda/dipendenti" class="flex items-center gap-2 bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
-										Gestisci
-										<ArrowRight size={14} />
-									</a>
-								</div>
-							</td>
 						</tr>
 					{/each}
 					{#if filteredRegistro.length === 0}
-						<tr><td colspan="7" class="px-8 py-10 text-center text-gray-400 font-bold uppercase text-xs">Nessun DPI trovato nei registri.</td></tr>
+						<tr><td colspan="6" class="px-8 py-10 text-center text-gray-400 font-bold uppercase text-xs">Nessun DPI trovato nei registri.</td></tr>
 					{/if}
 				{/if}
 				</tbody>
