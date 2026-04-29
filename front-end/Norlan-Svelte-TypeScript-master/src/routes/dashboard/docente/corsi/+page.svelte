@@ -3,7 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		BookOpen, Search, Filter, Clock, MapPin, Users, Loader2,
-		CheckSquare, Play, CheckCircle2, Calendar, UserCheck, X
+		CheckSquare, Play, CheckCircle2, Calendar, UserCheck, X, UploadCloud
 	} from 'lucide-svelte';
 
 	// IMPORT SERVIZI E MODELLI UFFICIALI
@@ -12,6 +12,7 @@
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
+	import httpClient from '$lib/api/httpClient';
 
 	// STATO CON RUNE SVELTE 5
 	let isLoading = $state(true);
@@ -24,6 +25,13 @@
 	let isActionLoading = $state(false);
 	let selectedCorso = $state<CorsoFormazione | null>(null);
 	let iscrittiPresenti = $state<IscrizioneCorso[]>([]);
+
+	// STATI MODALE UPLOAD MATERIALE
+	let showModalMateriale = $state(false);
+	let isUploadingMateriale = $state(false);
+	let selectedCorsoMateriale = $state<CorsoFormazione | null>(null);
+	let fileMateriale = $state<File | null>(null);
+	let titoloMateriale = $state('');
 
 	onMount(async () => {
 		const session = AuthService.getSession();
@@ -72,6 +80,41 @@
 		} catch (error: any) {
 			console.error(error);
 			alert(error.response?.data?.message || "Errore durante l'aggiornamento dello stato del corso.");
+		}
+	}
+
+	// AZIONI MODALE MATERIALE
+	function apriModaleMateriale(corso: CorsoFormazione) {
+		selectedCorsoMateriale = corso;
+		fileMateriale = null;
+		titoloMateriale = '';
+		showModalMateriale = true;
+	}
+
+	async function caricaMaterialeDidattico() {
+		if (!selectedCorsoMateriale || !fileMateriale || !titoloMateriale.trim()) return;
+		isUploadingMateriale = true;
+
+		try {
+			const formData = new FormData();
+			formData.append('file', fileMateriale);
+			formData.append('titolo', titoloMateriale);
+			formData.append('idCorso', selectedCorsoMateriale.idCorso.toString());
+
+			// Utilizzo httpClient per forzare il multipart/form-data
+			await httpClient.post(`/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiale`, formData, {
+				headers: {
+					'Content-Type': 'multipart/form-data'
+				}
+			});
+
+			alert("Materiale didattico caricato con successo!");
+			showModalMateriale = false;
+		} catch (error) {
+			console.error("Errore upload materiale:", error);
+			alert("Errore durante il caricamento del materiale. Assicurati che il formato del file sia supportato.");
+		} finally {
+			isUploadingMateriale = false;
 		}
 	}
 
@@ -217,9 +260,16 @@
 									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><Users size={14} /> {corso.capacitaMassima || 0} Iscritti</div>
 								</div>
 							</div>
-							<button onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.CONCLUSO)} class="mt-6 w-full py-3 bg-[#1B4B6B] text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/10">
-								<CheckCircle2 size={14} /> Concludi Corso
-							</button>
+
+							<div class="mt-6 flex flex-col gap-2">
+								<button onclick={() => apriModaleMateriale(corso)} class="w-full py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors">
+									<UploadCloud size={14} /> Carica Materiale
+								</button>
+								<button onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.CONCLUSO)} class="w-full py-2.5 bg-[#1B4B6B] text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/10">
+									<CheckCircle2 size={14} /> Concludi Corso
+								</button>
+							</div>
+
 						</div>
 					{/each}
 				</div>
@@ -242,13 +292,19 @@
 								<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><Clock size={12}/> {formattaData(corso.dataOrario)}</p>
 								<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><MapPin size={12}/> {corso.luogoFisico}</p>
 							</div>
-							<button
-									onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.IN_SVOLGIMENTO)}
-									disabled={!!corso.stato && corso.stato !== StatoCorso.PROGRAMMATO}
-									class="w-full py-2.5 border-2 border-[#1B4B6B] text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								<Play size={14} fill="currentColor" /> Inizia Corso
-							</button>
+
+							<div class="mt-4 flex flex-col gap-2">
+								<button disabled class="w-full py-2.5 bg-gray-50 text-gray-400 border border-gray-100 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-not-allowed disabled:opacity-50">
+									<UploadCloud size={14} /> Carica Materiale
+								</button>
+								<button
+										onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.IN_SVOLGIMENTO)}
+										disabled={!!corso.stato && corso.stato !== StatoCorso.PROGRAMMATO}
+										class="w-full py-2.5 border-2 border-[#1B4B6B] text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									<Play size={14} fill="currentColor" /> Inizia Corso
+								</button>
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -257,6 +313,63 @@
 
 	{/if}
 </div>
+
+{#if showModalMateriale}
+	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
+		<div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col" in:scale>
+			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
+				<h2 class="text-lg font-extrabold uppercase flex items-center gap-2"><UploadCloud size={20}/> Materiale Didattico</h2>
+				<button onclick={() => showModalMateriale = false} class="hover:text-red-400"><X size={24} /></button>
+			</div>
+
+			<div class="p-8 space-y-6">
+				<div>
+					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Titolo Documento *</label>
+					<input
+							bind:value={titoloMateriale}
+							type="text"
+							placeholder="Es. Slide Lezione 1"
+							class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#1B4B6B]/20"
+					/>
+				</div>
+
+				<div class="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center bg-gray-50 group hover:bg-gray-100 transition-colors relative cursor-pointer">
+					<input
+							type="file"
+							onchange={(e) => fileMateriale = e.currentTarget.files?.[0] || null}
+							class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+					/>
+					<div class="flex flex-col items-center gap-3 pointer-events-none">
+						<div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm">
+							<UploadCloud size={24} />
+						</div>
+						{#if fileMateriale}
+							<span class="text-xs font-black text-[#1B4B6B] truncate w-full px-4">{fileMateriale.name}</span>
+							<span class="text-[9px] font-bold text-green-500 uppercase tracking-widest">Pronto per il caricamento</span>
+						{:else}
+							<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Clicca o trascina il file qui</span>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<div class="p-6 bg-gray-50 rounded-b-3xl border-t border-gray-100 flex gap-4">
+				<button onclick={() => showModalMateriale = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-white uppercase text-[10px] transition-colors">Annulla</button>
+				<button
+						onclick={caricaMaterialeDidattico}
+						disabled={isUploadingMateriale || !fileMateriale || !titoloMateriale.trim()}
+						class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-[#153a54] uppercase text-[10px] shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+				>
+					{#if isUploadingMateriale}
+						<Loader2 class="animate-spin" size={16} /> Attendi...
+					{:else}
+						Conferma Upload
+					{/if}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 {#if showModalFirma}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
