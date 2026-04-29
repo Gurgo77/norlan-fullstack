@@ -67,6 +67,9 @@
 	const filteredAziende = $derived(aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase())));
 	const isConfermaValida = $derived(confermaTesto.trim().toUpperCase() === 'ELIMINA');
 
+	// FILTRO DOCUMENTI: Esclude gli attestati dei corsi
+	const documentiAziendaliFiltrati = $derived(documentiCorrenti.filter(doc => doc.tipologia !== 'ATTESTATO_CORSO'));
+
 	// --- AZIONI ---
 
 	onMount(async () => {
@@ -345,16 +348,16 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
 						<div class="p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner"><FileText size={24} /></div>
-						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiCorrenti.length})</h2>
+						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiAziendaliFiltrati.length})</h2>
 					</div>
 					<button onclick={() => (showUploadModal = true)} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
 						<Plus size={16} /> Carica Documento
 					</button>
 				</div>
 
-				{#if documentiCorrenti.length > 0}
+				{#if documentiAziendaliFiltrati.length > 0}
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{#each documentiCorrenti as doc (doc.idDocumento)}
+						{#each documentiAziendaliFiltrati as doc (doc.idDocumento)}
 							<div class="bg-white p-6 rounded-3xl border transition-all group relative overflow-hidden
                             {doc.scaduto ? 'border-red-200 shadow-md shadow-red-50' : 'border-gray-100 shadow-sm hover:shadow-xl'}">
 
