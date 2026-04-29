@@ -6,7 +6,7 @@
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare, Upload, Infinity
+        FileText, ShieldCheck, Download, Calendar, MessageSquare
     } from 'lucide-svelte';
 
     // Servizi e Modelli
@@ -16,10 +16,10 @@
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
     import { Documento } from '$lib/models/Documento';
     import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
-    import { ModuloServizio, TipoDocumento, TipoDPI } from '$lib/models/Enums';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
+        idAzienda?: string | number;
     }
 
     // --- STATO REATTIVO ---
@@ -43,23 +43,9 @@
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
-    // --- STATI DOCUMENTI ---
-    let showUploadModal = $state(false);
-    let isUploading = $state(false);
-    let uploadFile = $state<File | null>(null);
-    let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.ATTESTATO_FORMAZIONE, dataScadenza: '' });
-
+    // --- STATI ATTESTATI E DPI (Solo eliminazione) ---
     let showDeleteDocModal = $state(false);
     let docDaEliminare = $state<Documento | null>(null);
-
-    // --- STATI DPI ---
-    let showDpiModal = $state(false);
-    let isSavingDpi = $state(false);
-    let formDpi = $state({
-        tipo: '' as unknown as TipoDPI,
-        dataConsegna: '',
-        dataScadenza: ''
-    });
 
     let showDeleteDpiModal = $state(false);
     let dpiDaEliminare = $state<AssegnazioneDPI | null>(null);
@@ -73,6 +59,25 @@
             (l.nomeAzienda && l.nomeAzienda.toLowerCase().includes(searchQuery.toLowerCase()))
         )
     );
+
+    const lavoratoriRaggruppati = $derived(() => {
+        const gruppi: Record<string, DipendenteEsteso[]> = {};
+
+        const ordinati = [...filteredLavoratori].sort((a, b) => {
+            const azA = a.nomeAzienda || "Senza Azienda";
+            const azB = b.nomeAzienda || "Senza Azienda";
+            return azA.localeCompare(azB);
+        });
+
+        for (const lavoratore of ordinati) {
+            const azienda = lavoratore.nomeAzienda || "Senza Azienda assegnata";
+            if (!gruppi[azienda]) {
+                gruppi[azienda] = [];
+            }
+            gruppi[azienda].push(lavoratore);
+        }
+        return gruppi;
+    });
 
     const isFormValid = $derived(
         formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' &&
@@ -96,7 +101,8 @@
                 const aziendaAssoc = aziendeList.find(a => String(a.idUtente) === String(item.idAzienda));
                 return {
                     ...l,
-                    nomeAzienda: aziendaAssoc ? aziendaAssoc.ragioneSociale : "Azienda non specificata"
+                    nomeAzienda: aziendaAssoc ? aziendaAssoc.ragioneSociale : "Azienda non specificata",
+                    idAzienda: item.idAzienda
                 };
             });
 
@@ -118,9 +124,40 @@
         selectedDipendente = lavoratore;
         isLoadingDettaglio = true;
         try {
-            documentiCorrenti = await DocumentoService.getDocumentiByAzienda(lavoratore.idUtente);
-        } catch {
-            console.error("Errore dettaglio dipendente");
+            const [resDocs, resDpis] = await Promise.all([
+                DocumentoService.getDocumentiByAzienda(lavoratore.idUtente),
+                LavoratoreService.getDpiByLavoratore(lavoratore.idUtente)
+            ]);
+
+            // ORDINAMENTO ATTESTATI: Prima gli scaduti, poi i restanti per data crescente
+            documentiCorrenti = resDocs.sort((a, b) => {
+                const oggi = new Date().getTime();
+                const scadA = new Date(a.dataScadenza).getTime();
+                const scadB = new Date(b.dataScadenza).getTime();
+                const aScaduto = scadA < oggi;
+                const bScaduto = scadB < oggi;
+
+                if (aScaduto && !bScaduto) return -1;
+                if (!aScaduto && bScaduto) return 1;
+                return scadA - scadB; // Mette in alto quelli che scadono prima
+            });
+
+            // ORDINAMENTO DPI: Prima gli scaduti, poi i restanti per data crescente
+            const dpis = resDpis as unknown as AssegnazioneDPI[];
+            dpiCorrenti = dpis.sort((a, b) => {
+                const aScaduto = isDPIScaduto(a.dataScadenzaRevisione);
+                const bScaduto = isDPIScaduto(b.dataScadenzaRevisione);
+
+                if (aScaduto && !bScaduto) return -1;
+                if (!aScaduto && bScaduto) return 1;
+
+                const scadA = new Date(a.dataScadenzaRevisione || '9999-12-31').getTime();
+                const scadB = new Date(b.dataScadenzaRevisione || '9999-12-31').getTime();
+                return scadA - scadB;
+            });
+
+        } catch (error) {
+            console.error("Errore caricamento dettaglio dipendente:", error);
         } finally {
             isLoadingDettaglio = false;
         }
@@ -150,12 +187,19 @@
                 codiceFiscale: formDipendente.codiceFiscale,
                 email: formDipendente.email,
                 passwordHash: formDipendente.password
-            } as unknown as DipendenteRequest;
+            };
 
-            const nuovo = await LavoratoreService.create(formDipendente.idAzienda, payload);
+            const nuovo = await LavoratoreService.create(
+                formDipendente.idAzienda,
+                payload as unknown as DipendenteRequest
+            );
 
             const aziendaSelezionata = aziende.find(a => String(a.idUtente) === String(formDipendente.idAzienda));
-            const esteso: DipendenteEsteso = { ...nuovo, nomeAzienda: aziendaSelezionata?.ragioneSociale };
+            const esteso: DipendenteEsteso = {
+                ...nuovo,
+                nomeAzienda: aziendaSelezionata?.ragioneSociale,
+                idAzienda: formDipendente.idAzienda
+            };
 
             lavoratori = [esteso, ...lavoratori];
             showAddModal = false;
@@ -195,38 +239,11 @@
             const u = URL.createObjectURL(b);
             const a = document.createElement('a');
             a.href = u;
-            a.download = doc.filePath.split('/').pop() || 'doc.pdf';
+            a.download = doc.filePath.split('/').pop() || 'attestato.pdf';
             a.click();
             URL.revokeObjectURL(u);
         } catch {
             alert("Errore download.");
-        }
-    }
-
-    function preparaAggiornamento(doc: Documento) {
-        formDocumento.modulo = doc.modulo;
-        formDocumento.tipologia = doc.tipologia;
-        showUploadModal = true;
-    }
-
-    async function gestisciUpload() {
-        if (!uploadFile || !selectedDipendente || !formDocumento.dataScadenza) return;
-        isUploading = true;
-        try {
-            const fd = new FormData();
-            fd.append('file', uploadFile);
-            fd.append('modulo', formDocumento.modulo);
-            fd.append('tipologia', formDocumento.tipologia);
-            fd.append('dataScadenzaStr', formDocumento.dataScadenza);
-
-            await DocumentoService.uploadDocumento(selectedDipendente.idUtente, fd);
-            documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedDipendente.idUtente);
-            showUploadModal = false;
-            uploadFile = null;
-        } catch {
-            alert("Errore upload.");
-        } finally {
-            isUploading = false;
         }
     }
 
@@ -240,62 +257,54 @@
             showDeleteDocModal = false;
             docDaEliminare = null;
         } catch {
-            alert("Errore eliminazione documento.");
-        }
-    }
-
-    async function salvaDPI() {
-        if (!formDpi.tipo || !formDpi.dataConsegna || !selectedDipendente) return;
-        isSavingDpi = true;
-        try {
-            const nuovoDpi: AssegnazioneDPI = {
-                idAssegnazione: Date.now(),
-                idDipendente: selectedDipendente.idUtente,
-                tipo: formDpi.tipo,
-                dataConsegna: formDpi.dataConsegna,
-                dataScadenzaRevisione: formDpi.dataScadenza,
-                daRevisionare: false
-            };
-            dpiCorrenti = [...dpiCorrenti, nuovoDpi];
-            showDpiModal = false;
-            formDpi = { tipo: '' as unknown as TipoDPI, dataConsegna: '', dataScadenza: '' };
-        } catch {
-            alert("Errore salvataggio DPI.");
-        } finally {
-            isSavingDpi = false;
+            alert("Errore eliminazione attestato.");
         }
     }
 
     function isDPIScaduto(dataScadenza: string) {
         if (!dataScadenza || dataScadenza === '9999-12-31') return false;
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const oggi = new Date();
         oggi.setHours(0, 0, 0, 0);
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const scad = new Date(dataScadenza);
         scad.setHours(0, 0, 0, 0);
         return scad < oggi;
     }
 
-    function sollecitaRinnovoDPI(dpi: AssegnazioneDPI) {
+    function sollecitaViaEmail(dpi: AssegnazioneDPI) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
-
         const azienda = aziende.find(a => String(a.idUtente) === String(selectedDipendente?.idAzienda));
 
         if (!azienda || !azienda.email) {
-            alert("Attenzione: L'azienda associata non ha un'email registrata nel sistema.");
+            alert("Attenzione: L'azienda associata non ha un'email registrata.");
             return;
         }
 
         const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${selectedDipendente.nome} ${selectedDipendente.cognome}`);
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
+        const dataScad = new Date(dpi.dataScadenzaRevisione).toLocaleDateString();
+
         const body = encodeURIComponent(
             `Gentile ${azienda.ragioneSociale},\n\n` +
-            `Vi segnaliamo che il seguente Dispositivo di Protezione Individuale (DPI) assegnato al vostro lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta SCADUTO e necessita di rinnovo/sostituzione immediata:\n\n` +
-            `- Tipologia: ${dpi.tipo.replace(/_/g, ' ')}\n` +
-            `- Data di scadenza: ${new Date(dpi.dataScadenzaRevisione).toLocaleDateString()}\n\n` +
-            `Vi invitiamo a provvedere quanto prima per garantire la conformità alle normative sulla sicurezza sul lavoro.\n\n` +
-            `Cordiali saluti,\nTeam NorLan`
+            `Vi segnaliamo che il DPI (${dpi.tipo.replace(/_/g, ' ')}) assegnato a ${selectedDipendente.nome} ${selectedDipendente.cognome} è SCADUTO il ${dataScad}.\n\n` +
+            `Vi invitiamo a provvedere al rinnovo immediato.\n\nCordiali saluti,\nTeam NorLan`
+        );
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
+    }
+
+    async function sollecitaViaChat(dpi: AssegnazioneDPI) {
+        if (!selectedDipendente || !selectedDipendente.idAzienda) return;
+
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
+        const dataScad = new Date(dpi.dataScadenzaRevisione).toLocaleDateString();
+
+        const testoMessaggio = encodeURIComponent(
+            `Salve, vi segnaliamo che il DPI (${dpi.tipo.replace(/_/g, ' ')}) assegnato al lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
+        await goto(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`);
     }
 
     function preparaEliminaDPI(dpi: AssegnazioneDPI) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
@@ -303,16 +312,25 @@
     async function confermaEliminaDPI() {
         if (!dpiDaEliminare) return;
         try {
+            const dpi = dpiDaEliminare as unknown as { idAssegnazione?: number; id?: number };
+            const idReale = dpi.idAssegnazione || dpi.id;
+
+            if (idReale) {
+                await LavoratoreService.deleteDpi(idReale);
+            }
+
             dpiCorrenti = dpiCorrenti.filter(d => d !== dpiDaEliminare);
             showDeleteDpiModal = false;
             dpiDaEliminare = null;
-        } catch {
+        } catch (error) {
+            console.error("Errore eliminazione DPI dal Database:", error);
             alert("Errore eliminazione DPI.");
         }
     }
 
     function formattaScadenza(data: string) {
         if (!data || data === '9999-12-31') return 'Senza scadenza';
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         return new Date(data).toLocaleDateString();
     }
 </script>
@@ -342,54 +360,63 @@
 
         {#if isLoading}
             <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
+        {:else if filteredLavoratori.length === 0}
+            <div class="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                <Users size={48} class="mx-auto text-gray-300 mb-4" />
+                <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
+            </div>
         {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {#each filteredLavoratori as l (l.idUtente)}
-                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
+            {#each Object.entries(lavoratoriRaggruppati()) as [nomeAzienda, dipendentiAzienda]}
+                <div class="mb-12">
+                    <div class="flex items-center gap-3 mb-6 pb-2 border-b-2 border-gray-100">
+                        <div class="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                            <Building2 size={20} />
+                        </div>
+                        <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">
+                            {nomeAzienda}
+                        </h2>
+                        <span class="ml-2 bg-gray-100 text-gray-500 text-[10px] px-3 py-1 rounded-full font-black uppercase">
+                            {dipendentiAzienda.length} Lavorator{dipendentiAzienda.length === 1 ? 'e' : 'i'}
+                        </span>
+                    </div>
 
-                        <div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
-                            <button
-                                    onclick={(e) => { e.stopPropagation(); preparaEliminazione(l); }}
-                                    class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-red-50 rounded-lg"
-                            >
-                                <Trash2 size={18} />
-                            </button>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {#each dipendentiAzienda as l (l.idUtente)}
+                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
 
-                            <div class="flex items-center gap-4 mb-6">
-                                <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
-                                    {l.nome[0]}{l.cognome[0]}
-                                </div>
-                                <div>
-                                    <h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">{l.nome} {l.cognome}</h3>
-                                    <div class="flex items-center gap-1 text-gray-400 mt-1">
-                                        <Building2 size={12} class="text-[#1B4B6B]"/>
-                                        <span class="text-[9px] font-bold uppercase truncate max-w-[150px] text-[#1B4B6B]">
-                                            {l.nomeAzienda}
-                                        </span>
+                                <div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
+                                    <button
+                                            onclick={(e) => { e.stopPropagation(); preparaEliminazione(l); }}
+                                            class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-red-50 rounded-lg"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+
+                                    <div class="flex items-center gap-4 mb-6">
+                                        <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
+                                            {l.nome[0]}{l.cognome[0]}
+                                        </div>
+                                        <div>
+                                            <h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">{l.nome} {l.cognome}</h3>
+                                            <div class="flex items-center gap-1 text-gray-400 mt-1">
+                                                <IdCard size={12} class="text-[#1B4B6B]"/>
+                                                <span class="text-[9px] font-bold uppercase truncate max-w-[150px] text-[#1B4B6B]">
+                                                    {l.codiceFiscale}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="space-y-3 pt-4 border-t border-gray-50">
-                                <div class="flex items-center justify-between text-[10px] font-bold uppercase">
-                                    <span class="text-gray-400 flex items-center gap-1"><IdCard size={12}/> C. Fiscale</span>
-                                    <span class="text-[#1B4B6B] font-mono tracking-wider">{l.codiceFiscale}</span>
-                                </div>
+                                <button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
+                                    <div class="flex items-center gap-2"><FileText size={16} class="text-purple-600"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
+                                    <ChevronRight size={20} class="text-[#1B4B6B]" />
+                                </button>
                             </div>
-                        </div>
-
-                        <button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-                            <div class="flex items-center gap-2"><FileText size={16} class="text-purple-600"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
-                            <ChevronRight size={20} class="text-[#1B4B6B]" />
-                        </button>
+                        {/each}
                     </div>
-                {:else}
-                    <div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                        <Users size={48} class="mx-auto text-gray-300 mb-4" />
-                        <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
-                    </div>
-                {/each}
-            </div>
+                </div>
+            {/each}
         {/if}
 
     {:else}
@@ -444,28 +471,28 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="p-2.5 bg-blue-100 text-blue-600 rounded-xl shadow-inner"><FileText size={20} /></div>
-                                <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documenti ({documentiCorrenti.length})</h2>
+                                <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2>
                             </div>
-                            <button onclick={() => (showUploadModal = true)} class="bg-[#1B4B6B] text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
-                                <Plus size={14} /> Aggiungi
-                            </button>
                         </div>
 
                         {#if documentiCorrenti.length > 0}
                             <div class="space-y-4">
                                 {#each documentiCorrenti as doc (doc.idDocumento)}
-                                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                    {@const docScaduto = new Date(doc.dataScadenza).getTime() < new Date().getTime()}
+                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {docScaduto ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
                                         <div class="flex justify-between items-start mb-3">
                                             <div class="flex items-center gap-3">
-                                                <div class="p-2 bg-gray-50 rounded-xl text-[#1B4B6B]"><FileText size={16} /></div>
+                                                <div class="p-2 rounded-xl {docScaduto ? 'bg-red-100 text-red-600' : 'bg-gray-50 text-[#1B4B6B]'}">
+                                                    <FileText size={16} />
+                                                </div>
                                                 <div>
-                                                    <h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4>
+                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {docScaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">{doc.tipologia.replace(/_/g, ' ')}</h4>
                                                     <p class="text-[9px] text-gray-400 font-bold uppercase mt-0.5">{doc.modulo}</p>
                                                 </div>
                                             </div>
                                             <div class="flex gap-1">
-                                                <button onclick={() => scaricaDoc(doc)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-gray-50 rounded-lg hover:bg-gray-100"><Download size={14} /></button>
-                                                <button onclick={() => preparaEliminaDoc(doc)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
+                                                <button onclick={() => scaricaDoc(doc)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-white rounded-lg hover:bg-gray-100 shadow-sm"><Download size={14} /></button>
+                                                <button onclick={() => preparaEliminaDoc(doc)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-white rounded-lg hover:bg-red-50 shadow-sm"><Trash2 size={14} /></button>
                                             </div>
                                         </div>
                                         <div class="flex items-center justify-between pt-3 border-t border-gray-50">
@@ -473,8 +500,8 @@
                                                 <Calendar size={10} />
                                                 <span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
                                             </div>
-                                            {#if doc.scaduto}
-                                                <button onclick={() => preparaAggiornamento(doc)} class="text-[8px] font-black px-3 py-1 bg-[#1B4B6B] text-white rounded-md uppercase shadow-sm hover:bg-[#1B4B6B]/80 hover:scale-105 transition-all">Aggiorna</button>
+                                            {#if docScaduto}
+                                                <span class="text-[8px] font-black px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded-md uppercase">Scaduto</span>
                                             {:else}
                                                 <span class="text-[8px] font-black px-2 py-1 bg-green-50 text-green-600 border border-green-100 rounded-md uppercase">Valido</span>
                                             {/if}
@@ -484,7 +511,7 @@
                             </div>
                         {:else}
                             <div class="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-[10px] italic">
-                                Nessun documento associato al lavoratore
+                                Nessun attestato associato al lavoratore
                             </div>
                         {/if}
                     </div>
@@ -495,9 +522,6 @@
                                 <div class="p-2.5 bg-green-100 text-green-600 rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
                                 <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
                             </div>
-                            <button onclick={() => (showDpiModal = true)} class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-green-700 transition-all shadow-md">
-                                <Plus size={14} /> Assegna DPI
-                            </button>
                         </div>
 
                         {#if dpiCorrenti.length > 0}
@@ -517,7 +541,7 @@
                                                     </h4>
                                                 </div>
                                             </div>
-                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all rounded-lg {scaduto ? 'hover:bg-red-100' : 'hover:bg-red-50'}">
+                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all rounded-lg {scaduto ? 'hover:bg-red-100 bg-white' : 'hover:bg-red-50 bg-gray-50'}">
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
@@ -537,12 +561,25 @@
                                             </div>
 
                                             {#if scaduto}
-                                                <button
-                                                        onclick={() => sollecitaRinnovoDPI(dpi)}
-                                                        class="mt-2 w-full py-2 bg-red-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-2 shadow-sm hover:bg-red-700 transition-colors"
-                                                >
-                                                    <Mail size={12} /> Sollecita Rinnovo all'Azienda
-                                                </button>
+                                                <div class="mt-2 pt-2 border-t border-red-100 border-dashed">
+                                                    <p class="text-[8px] font-black uppercase text-red-400 mb-1.5 text-center tracking-tighter">
+                                                        Invia sollecito a {selectedDipendente.nomeAzienda}:
+                                                    </p>
+                                                    <div class="flex gap-2">
+                                                        <button
+                                                                onclick={() => sollecitaViaEmail(dpi)}
+                                                                class="flex-1 py-2 bg-red-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm hover:bg-red-700 transition-colors"
+                                                        >
+                                                            <Mail size={12} /> Email
+                                                        </button>
+                                                        <button
+                                                                onclick={() => sollecitaViaChat(dpi)}
+                                                                class="flex-1 py-2 bg-[#1B4B6B] text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#1B4B6B]/90 transition-colors"
+                                                        >
+                                                            <MessageSquare size={12} /> Chat
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             {/if}
                                         </div>
                                     </div>
@@ -644,132 +681,17 @@
         </div>
     {/if}
 
-    {#if showUploadModal}
-        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-                <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><FileText size={20}/> Carica Documento Lavoratore</h2>
-                    <button onclick={() => (showUploadModal = false)}><X size={24}/></button>
-                </div>
-                <div class="p-8 space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label>
-                            <select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
-                                {#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label>
-                            <select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
-                                {#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
-                        <input type="date" bind:value={formDocumento.dataScadenza} max="9999-12-31" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
-                    </div>
-                    <div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group">
-                        <input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} />
-                        <label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3">
-                            <div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div>
-                            <span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
-                    <button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button>
-                    <button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
-                        {#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    {/if}
-
     {#if showDeleteDocModal}
         <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
                 <div class="p-8 text-center">
                     <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il documento?</h2>
+                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare l'attestato?</h2>
                     <p class="text-sm text-gray-400 mb-8">Stai per rimuovere definitivamente: <br><span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span></p>
                     <div class="flex flex-col gap-3">
                         <button onclick={confermaEliminaDoc} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Eliminazione</button>
                         <button onclick={() => (showDeleteDocModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
                     </div>
-                </div>
-            </div>
-        </div>
-    {/if}
-
-    {#if showDpiModal}
-        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-                <div class="bg-green-600 p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><ShieldCheck size={20}/> Registra Consegna DPI</h2>
-                    <button onclick={() => (showDpiModal = false)}><X size={24}/></button>
-                </div>
-                <div class="p-8 space-y-6">
-                    <div>
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia DPI *</label>
-                        <select bind:value={formDpi.tipo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
-                            <option value="">Seleziona DPI...</option>
-                            {#each Object.values(TipoDPI) as tipoDpi (tipoDpi)}
-                                <option value={tipoDpi}>{tipoDpi.replace(/_/g, ' ')}</option>
-                            {/each}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Consegna *</label>
-                        <div class="flex gap-2">
-                            <input
-                                    type="date"
-                                    bind:value={formDpi.dataConsegna}
-                                    max="9999-12-31"
-                                    class="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold"
-                            />
-                            <button
-                                    type="button"
-                                    onclick={() => formDpi.dataConsegna = new Date().toISOString().split('T')[0]}
-                                    class="px-4 bg-white border-2 border-gray-200 text-gray-400 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2 hover:bg-gray-50 hover:text-[#1B4B6B] hover:border-[#1B4B6B]"
-                            >
-                                <Calendar size={14} /> Oggi
-                            </button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza / Revisione</label>
-                        <div class="flex gap-2">
-                            <input
-                                    type="date"
-                                    bind:value={formDpi.dataScadenza}
-                                    max="9999-12-31"
-                                    disabled={formDpi.dataScadenza === '9999-12-31'}
-                                    class="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold disabled:opacity-50"
-                            />
-                            <button
-                                    type="button"
-                                    onclick={() => {
-                                    if(formDpi.dataScadenza === '9999-12-31') formDpi.dataScadenza = '';
-                                    else formDpi.dataScadenza = '9999-12-31';
-                                }}
-                                    class="px-4 bg-white border-2 {formDpi.dataScadenza === '9999-12-31' ? 'border-green-500 text-green-500' : 'border-gray-200 text-gray-400'} rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2 hover:bg-gray-50"
-                            >
-                                <Infinity size={14} />
-                                {formDpi.dataScadenza === '9999-12-31' ? 'Scade' : 'Non scade'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
-                    <button onclick={() => (showDpiModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button>
-                    <button onclick={salvaDPI} disabled={isSavingDpi || !formDpi.tipo || !formDpi.dataConsegna} class="bg-green-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
-                        {#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
-                    </button>
                 </div>
             </div>
         </div>

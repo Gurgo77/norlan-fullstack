@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Send, Building2, MessageSquare, Loader2, Clock, Hash,
-		Users, User, ChevronDown, ChevronRight, GraduationCap
+		Users, User, ChevronDown, ChevronRight, GraduationCap, Search
 	} from 'lucide-svelte';
 
 	// Servizi
@@ -19,20 +18,19 @@
 	import { Dipendente, type DipendenteData } from '$lib/models/Dipendente';
 
 	// --- INTERFACCE LOCALI PER LA RUBRICA ---
-	// Usiamo una struttura unificata per semplificare la UI e la logica di invio messaggi
 	interface ContattoRubrica {
 		idUtente: number;
 		nomeVisualizzato: string;
 		sottotitolo: string;
 		ruolo: string;
 		icona: any;
-		idAziendaRiferimento?: number; // Utile per i dipendenti
+		idAziendaRiferimento?: number;
 	}
 
 	interface GruppoAzienda {
 		azienda: ContattoRubrica;
 		dipendenti: ContattoRubrica[];
-		espansa: boolean; // Per la UI della tendina
+		espansa: boolean;
 	}
 
 	// --- STATO REATTIVO ---
@@ -40,7 +38,6 @@
 	let currentUser: UserSession | null = $state(null);
 	let token: string = $state('');
 
-	// Dati Strutturati per la UI
 	let gruppiAziende: GruppoAzienda[] = $state([]);
 	let docentiRubrica: ContattoRubrica[] = $state([]);
 
@@ -48,13 +45,49 @@
 	let messaggi: Messaggio[] = $state([]);
 	let newMessage: string = $state('');
 	let isLoading: boolean = $state(true);
+	let searchQuery: string = $state(''); // AGGIUNTO: Variabile per la ricerca
+
+	// --- LOGICA DERIVATA PER LA RICERCA ---
+	const filteredDocenti = $derived(
+			docentiRubrica.filter(d =>
+					d.nomeVisualizzato.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					d.sottotitolo.toLowerCase().includes(searchQuery.toLowerCase())
+			)
+	);
+
+	const filteredGruppiAziende = $derived(
+			gruppiAziende.map(gruppo => {
+				const query = searchQuery.toLowerCase();
+
+				// Controlla se la ricerca corrisponde al nome dell'azienda o alla p.iva
+				const matchAzienda = gruppo.azienda.nomeVisualizzato.toLowerCase().includes(query) ||
+						gruppo.azienda.sottotitolo.toLowerCase().includes(query);
+
+				// Filtra i dipendenti all'interno dell'azienda
+				const dipendentiFiltrati = gruppo.dipendenti.filter(dip =>
+						dip.nomeVisualizzato.toLowerCase().includes(query) ||
+						dip.sottotitolo.toLowerCase().includes(query)
+				);
+
+				// Mantiene il gruppo se l'azienda corrisponde O se almeno un dipendente corrisponde
+				if (matchAzienda || dipendentiFiltrati.length > 0) {
+					return {
+						...gruppo,
+						// Se matcha l'azienda, mostra tutti i dipendenti, altrimenti solo quelli filtrati
+						dipendenti: matchAzienda ? gruppo.dipendenti : dipendentiFiltrati,
+						// Espande automaticamente la cartella se stiamo cercando qualcosa
+						espansa: query !== '' ? true : gruppo.espansa
+					};
+				}
+				return null;
+			}).filter(g => g !== null) as GruppoAzienda[]
+	);
 
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		token = AuthService.getToken() || '';
 
 		try {
-			// Scaricamento Parallelo di tutta l'anagrafica
 			const [rawAziende, rawDocenti, rawDipendenti] = await Promise.all([
 				AnagraficaService.getAllAziende(),
 				AnagraficaService.getAllDocenti(),
@@ -65,7 +98,6 @@
 			const docenti = (rawDocenti as DocenteData[]).map(d => new Docente(d));
 			const dipendenti = (rawDipendenti as DipendenteData[]).map(d => new Dipendente(d));
 
-			// 1. Costruiamo la lista dei Docenti
 			docentiRubrica = docenti.map(d => ({
 				idUtente: d.idUtente,
 				nomeVisualizzato: `${d.titolo ? d.titolo + ' ' : ''}${d.nome} ${d.cognome}`,
@@ -74,10 +106,7 @@
 				icona: GraduationCap
 			}));
 
-			// 2. Costruiamo i Gruppi Aziende + Dipendenti
 			gruppiAziende = aziende.map(a => {
-				// Troviamo i dipendenti di questa specifica azienda
-				// N.B: Assicurati che il modello Dipendente abbia la proprietà idAzienda o azienda_id esposta
 				const dipendentiAssociati = dipendenti.filter(dip => {
 					const idAz = dip.idAzienda || (dip as any).azienda?.idUtente || (dip as any).azienda_id;
 					return String(idAz) === String(a.idUtente);
@@ -99,18 +128,19 @@
 						icona: User,
 						idAziendaRiferimento: a.idUtente
 					})),
-					espansa: false // Chiusa di default
+					espansa: false
 				};
 			});
 
-			// Selezione automatica da URL
-			const chatIdDaUrl = $page.url.searchParams.get('chatId');
+			// --- LOGICA DI INTERCETTAZIONE URL ---
+			const urlParams = new URLSearchParams(window.location.search);
+			const chatIdDaUrl = urlParams.get('chatId');
+			const msgDaUrl = urlParams.get('msg');
+
 			if (chatIdDaUrl) {
 				const idNum = Number(chatIdDaUrl);
-				// Cerca tra i docenti
 				let contattoTrovato = docentiRubrica.find(d => d.idUtente === idNum);
 
-				// Se non è un docente, cerca tra aziende e dipendenti
 				if (!contattoTrovato) {
 					for (const gruppo of gruppiAziende) {
 						if (gruppo.azienda.idUtente === idNum) {
@@ -120,7 +150,7 @@
 						const dip = gruppo.dipendenti.find(d => d.idUtente === idNum);
 						if (dip) {
 							contattoTrovato = dip;
-							gruppo.espansa = true; // Apri automaticamente la tendina dell'azienda
+							gruppo.espansa = true;
 							break;
 						}
 					}
@@ -128,11 +158,14 @@
 
 				if (contattoTrovato) {
 					await selectContact(contattoTrovato);
+					if (msgDaUrl) {
+						newMessage = decodeURIComponent(msgDaUrl);
+					}
 				}
 			}
 
 		} catch (error) {
-			console.error("Errore nel recupero della rubrica completa:", error);
+			console.error("Errore nel recupero della rubrica:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -153,10 +186,13 @@
 		if (chatService) chatService.disconnect();
 	});
 
-	function toggleAzienda(gruppo: GruppoAzienda) {
-		gruppo.espansa = !gruppo.espansa;
-		// Forziamo l'aggiornamento di Svelte riassegnando l'array
-		gruppiAziende = [...gruppiAziende];
+	// AGGIORNATO: Cambiato per modificare l'array originale in Svelte 5
+	function toggleAzienda(idUtenteAzienda: number) {
+		const index = gruppiAziende.findIndex(g => g.azienda.idUtente === idUtenteAzienda);
+		if (index !== -1) {
+			gruppiAziende[index].espansa = !gruppiAziende[index].espansa;
+			gruppiAziende = [...gruppiAziende];
+		}
 	}
 
 	async function selectContact(contatto: ContattoRubrica) {
@@ -201,14 +237,23 @@
 </script>
 
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
-
 	<div class="w-80 border-r border-gray-100 flex flex-col bg-gray-50/50 shrink-0">
-		<div class="p-8 border-b border-gray-100 bg-white">
+		<div class="p-8 pb-4 border-b border-gray-100 bg-white">
 			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
 				<MessageSquare size={22} class="text-[#1B4B6B]" />
 				RUBRICA
 			</h2>
-			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Seleziona un utente per chattare</p>
+			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1 mb-4">Seleziona un utente per chattare</p>
+
+			<div class="relative">
+				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+				<input
+						bind:value={searchQuery}
+						type="text"
+						placeholder="Cerca contatto..."
+						class="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 focus:border-[#1B4B6B] text-xs font-bold uppercase transition-all placeholder:text-gray-300"
+				/>
+			</div>
 		</div>
 
 		<div class="flex-1 overflow-y-auto custom-scrollbar">
@@ -222,12 +267,12 @@
 					<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aziende & Dipendenti</h3>
 				</div>
 
-				{#each gruppiAziende as gruppo (gruppo.azienda.idUtente)}
+				{#each filteredGruppiAziende as gruppo (gruppo.azienda.idUtente)}
 					<div class="border-b border-gray-50">
 						<div class="flex w-full {activeContact?.idUtente === gruppo.azienda.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent hover:bg-white transition-colors'}">
 
 							<button
-									onclick={() => toggleAzienda(gruppo)}
+									onclick={() => toggleAzienda(gruppo.azienda.idUtente)}
 									disabled={gruppo.dipendenti.length === 0}
 									class="p-4 pr-1 text-gray-400 hover:text-[#1B4B6B] disabled:opacity-30 disabled:cursor-not-allowed"
 							>
@@ -280,13 +325,17 @@
 							</div>
 						{/if}
 					</div>
+				{:else}
+					<div class="p-6 text-center text-gray-400 text-[10px] font-bold uppercase">
+						Nessun risultato
+					</div>
 				{/each}
 
-				{#if docentiRubrica.length > 0}
+				{#if filteredDocenti.length > 0}
 					<div class="px-6 pt-6 pb-2 border-t border-gray-100 mt-2">
 						<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Docenti</h3>
 					</div>
-					{#each docentiRubrica as docente (docente.idUtente)}
+					{#each filteredDocenti as docente (docente.idUtente)}
 						<button
 								onclick={() => selectContact(docente)}
 								class="w-full p-4 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.idUtente === docente.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
@@ -312,7 +361,7 @@
 		{#if activeContact}
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
 				<div class="flex items-center gap-5">
-					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20 transition-transform hover:scale-105">
+					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20">
 						<svelte:component this={activeContact.icona} size={24} />
 					</div>
 					<div>
@@ -328,7 +377,7 @@
 			<div id="comunicazionicomunicazioni-container" class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
 					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
-						<div class="max-w-[65%] shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-blue-900/10' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4'}">
+						<div class="max-w-[65%] {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-sm' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4 shadow-sm'}">
 							<p class="text-sm font-bold leading-relaxed">{msg.testo}</p>
 							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
 								<Clock size={10} />
@@ -347,14 +396,14 @@
 							bind:value={newMessage}
 							type="text"
 							placeholder="Scrivi a {activeContact.nomeVisualizzato}..."
-							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
+							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase"
 					/>
 					<button
 							type="submit"
 							disabled={!newMessage.trim()}
-							class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group"
+							class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl disabled:opacity-30 flex items-center justify-center shrink-0"
 					>
-						<Send size={20} class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+						<Send size={20} />
 					</button>
 				</form>
 			</div>
@@ -364,7 +413,7 @@
 					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
 				</div>
 				<h3 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tighter">Centro Comunicazioni NorLan</h3>
-				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">Seleziona un contatto dalla rubrica per visualizzare la cronologia o inviare nuovi messaggi.</p>
+				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">Seleziona un contatto per iniziare.</p>
 			</div>
 		{/if}
 	</div>
