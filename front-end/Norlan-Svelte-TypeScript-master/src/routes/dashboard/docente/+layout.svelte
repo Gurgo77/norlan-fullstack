@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation'; // <-- Import per il redirect di sicurezza
 	import { slide } from 'svelte/transition';
 	import {
-		LayoutDashboard, BookOpen, Users, Calendar, User,
+		LayoutDashboard, BookOpen, Users, User,
 		LogOut, Bell, Search, MessageSquare, Home, Clock, Loader2
 	} from 'lucide-svelte';
 
@@ -40,7 +40,6 @@
 		{ href: '/dashboard/docente', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/dashboard/docente/corsi', label: 'Corsi Assegnati', icon: BookOpen },
 		{ href: '/dashboard/docente/studenti', label: 'Studenti', icon: Users },
-		{ href: '/dashboard/docente/calendario', label: 'Calendario', icon: Calendar },
 		{ href: '/dashboard/docente/messaggi', label: 'Messaggi', icon: MessageSquare },
 		{ href: '/dashboard/docente/account', label: 'Il mio Account', icon: User }
 	];

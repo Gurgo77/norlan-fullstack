@@ -1,5 +1,6 @@
 // Assicurati che ci sia 'export' prima di interface e class
 import type { Documento } from './Documento';
+import type {StatoCorso} from "$lib/models/Enums";
 
 // Definiamo rigorosamente l'interfaccia in ingresso al costruttore
 export interface IscrizioneData {
@@ -12,6 +13,7 @@ export interface IscrizioneData {
 	// Campi opzionali per la FSM
 	idDocumento?: number;
 	documentoAttestato?: Documento;
+	statoCorso?: StatoCorso;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -33,6 +35,7 @@ export class IscrizioneCorso {
 	titoloCorso: string;
 	dataOrarioCorso: string;
 	presenzaConfermata: boolean;
+	statoCorso?: string;
 
 	constructor(data: IscrizioneData) {
 		this.idUtente = data.idUtente;
@@ -41,6 +44,7 @@ export class IscrizioneCorso {
 		this.titoloCorso = data.titoloCorso;
 		this.dataOrarioCorso = data.dataOrarioCorso;
 		this.presenzaConfermata = data.presenzaConfermata;
+		this.statoCorso = data.statoCorso;
 
 		// Mappatura condizionale: se l'API restituisce il documento (Fase VALIDATO), lo assegnamo
 		if (data.idDocumento !== undefined) {

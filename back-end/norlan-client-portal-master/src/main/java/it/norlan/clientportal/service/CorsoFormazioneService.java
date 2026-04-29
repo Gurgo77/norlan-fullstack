@@ -65,24 +65,36 @@ public class CorsoFormazioneService {
             throw new IllegalArgumentException("Non puoi programmare un corso nel passato.");
         }
 
+        if (corso.getStato() == null) {
+            corso.setStato(CorsoFormazione.StatoCorso.PROGRAMMATO);
+        }
         return corsoRepository.save(corso);
     }
 
     @Transactional
     public void aggiornaStato(Integer idCorso, CorsoFormazione.StatoCorso nuovoStato) {
-        corsoRepository.findById(idCorso).ifPresent(corso -> {
-            corso.setStato(nuovoStato);
-            CorsoFormazione salvato = corsoRepository.save(corso);
+        CorsoFormazione corso = corsoRepository.findById(idCorso)
+                .orElseThrow(() -> new IllegalArgumentException("Errore di integrità: Corso non trovato."));
 
-            if (salvato.getDocente() != null) {
-                notificaService.inviaNotifica(
-                        salvato.getDocente(),
-                        "Avviso: Lo stato del corso '" + salvato.getTitolo() + "' è stato modificato in: " + nuovoStato,
-                        Notifica.Priorita.ALTA,
-                        Notifica.CanaleNotifica.IN_APP
-                );
+        if (nuovoStato == CorsoFormazione.StatoCorso.IN_SVOLGIMENTO) {
+            long conteggioIscritti = iscrizioneRepository.findByCorsoIdCorso(idCorso).size();
+
+            if (conteggioIscritti == 0) {
+                throw new IllegalStateException("Violazione FSM: Impossibile passare allo stato IN_SVOLGIMENTO. Il corso non ha dipendenti iscritti.");
             }
-        });
+        }
+
+        corso.setStato(nuovoStato);
+        CorsoFormazione salvato = corsoRepository.save(corso);
+
+        if (salvato.getDocente() != null) {
+            notificaService.inviaNotifica(
+                    salvato.getDocente(),
+                    "Avviso: Lo stato del corso '" + salvato.getTitolo() + "' è stato modificato in: " + nuovoStato,
+                    Notifica.Priorita.ALTA,
+                    Notifica.CanaleNotifica.IN_APP
+            );
+        }
     }
 
     @Transactional

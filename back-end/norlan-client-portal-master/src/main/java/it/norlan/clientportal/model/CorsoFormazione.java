@@ -34,6 +34,7 @@ public class CorsoFormazione {
         IN_SVOLGIMENTO,
         CONCLUSO,
         ATTESA_FIRMA_DOCENTE,
-        VALIDATO
+        VALIDATO,
+        CERTIFICATO
     }
 }

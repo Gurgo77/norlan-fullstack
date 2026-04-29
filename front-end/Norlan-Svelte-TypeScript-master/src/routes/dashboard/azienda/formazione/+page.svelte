@@ -18,6 +18,7 @@
 	// --- INTERFACCE TIPIZZATE ---
 	interface CorsoStato {
 		idCorso?: number;
+		idDocumento?: number; // Fondamentale per il tracciamento FSM
 		nome: string;
 		data: string;
 		stato: 'OK' | 'IN_ATTESA' | 'CRITICO';
@@ -65,14 +66,25 @@
 					d.tipologia === 'ATTESTATO_CORSO' && d.stato === 'IN_ATTESA_FIRMA'
 			);
 
+			// Mappatura degli ID dei documenti che bloccano la chiusura del corso
+			const idDocumentiDaFirmare = attestatiDaFirmare.map(d => d.idDocumento);
+
 			const promises = lavoratoriRaw.map(async (l) => {
-				const iscrizioni = await FormazioneService.getIscrizioniUtente(l.idUtente);
+				const iscrizioniTutte = await FormazioneService.getIscrizioniUtente(l.idUtente);
+
+				// --- REGOLA 5: Algoritmo di Evizione ---
+				const iscrizioniDaCompletare = iscrizioniTutte.filter(i => {
+					if (!i.idDocumento) return true; // L'Admin non ha ancora elaborato l'attestato
+					return idDocumentiDaFirmare.includes(i.idDocumento); // L'azienda lo deve ancora firmare
+				});
+
 				return {
 					id: l.idUtente,
 					nomeCompleto: `${l.nome} ${l.cognome}`.toUpperCase(),
 					ruolo: l.ruolo.replace('_', ' '),
-					corsi: iscrizioni.map((i) => ({
+					corsi: iscrizioniDaCompletare.map((i) => ({
 						idCorso: i.idCorso,
+						idDocumento: i.idDocumento,
 						nome: i.titoloCorso.toUpperCase(),
 						data: formattaData(i.dataOrarioCorso),
 						stato: (i.presenzaConfermata ? 'OK' : 'IN_ATTESA') as 'OK' | 'IN_ATTESA'
@@ -127,7 +139,6 @@
 
 			alert("Dipendente iscritto al corso con successo!");
 			showModalIscrizione = false;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Errore durante l'iscrizione. Il dipendente potrebbe essere già iscritto a questo corso.");
 		} finally {
@@ -147,7 +158,6 @@
 			a.click();
 			window.URL.revokeObjectURL(url);
 			a.remove();
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Errore durante il download del documento originale.");
 		}
@@ -172,11 +182,18 @@
 		try {
 			await DocumentoService.approvaDocumento(idDocumento);
 
+			// Rimuove il box dall'area superiore
 			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
 			delete fileFirmati[idDocumento];
 
+			// --- SPARIZIONE REATTIVA IMMEDIATA (REGOLA 5) ---
+			// Percorre tutti i dipendenti e cancella i corsi legati all'attestato appena approvato
+			dipendenti = dipendenti.map(dip => ({
+				...dip,
+				corsi: dip.corsi.filter(c => c.idDocumento !== idDocumento)
+			}));
+
 			alert("Attestati firmati e consegnati con successo ai dipendenti!");
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Errore durante la consegna del documento.");
 		} finally {
@@ -329,7 +346,7 @@
 							</div>
 						{/each}
 						{#if dip.corsi.length === 0}
-							<p class="text-[10px] font-bold uppercase italic text-gray-300 mt-2">Nessun corso registrato</p>
+							<p class="text-[10px] font-bold uppercase italic text-gray-300 mt-2">Nessun corso operativo in sospeso</p>
 						{/if}
 					</div>
 

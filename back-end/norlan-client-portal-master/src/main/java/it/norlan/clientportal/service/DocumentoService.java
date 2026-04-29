@@ -174,7 +174,7 @@ public class DocumentoService {
                 // CRITICO: Forza Hibernate a rivelare la VERA classe dell'oggetto (rimuove il Proxy)
                 Utente utenteReale = (Utente) org.hibernate.Hibernate.unproxy(isc.getUtente());
 
-                // Ora l'instanceof funzionerà perfettamente!
+                // Ora l'instanceof funzionerà perfettamente
                 if (utenteReale instanceof Dipendente) {
                     Dipendente dip = (Dipendente) utenteReale;
                     Azienda azienda = dip.getAzienda();
@@ -222,7 +222,8 @@ public class DocumentoService {
             );
         }
 
-        corso.setStato(CorsoFormazione.StatoCorso.VALIDATO); // Usa la costante finale corretta
+        // 5. Risoluzione della FSM: Mutazione allo stato terminale operativo
+        corso.setStato(CorsoFormazione.StatoCorso.CERTIFICATO);
         corsoRepository.save(corso);
     }
 }

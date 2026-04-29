@@ -15,6 +15,6 @@ public class IscrizioneCorsoDTO {
     private String titoloCorso;
     private LocalDateTime dataOrarioCorso;
     private Boolean presenzaConfermata;
-
     private Integer idDocumento;
+    private String statoCorso;
 }

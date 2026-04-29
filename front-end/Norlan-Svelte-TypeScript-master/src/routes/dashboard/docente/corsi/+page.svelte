@@ -12,7 +12,6 @@
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-	import httpClient from '$lib/api/httpClient';
 
 	// STATO CON RUNE SVELTE 5
 	let isLoading = $state(true);
@@ -40,10 +39,18 @@
 		}
 	});
 
-	// LOGICA DI FILTRO REATTIVA
+	// --- REGOLA 3: SPARIZIONE POST-FIRMA ---
+	const corsiAttiviDocente = $derived(
+			corsi.filter(c =>
+					c.stato !== StatoCorso.VALIDATO &&
+					c.stato !== StatoCorso.CERTIFICATO
+			)
+	);
+
+	// LOGICA DI FILTRO REATTIVA SUI CORSI ATTIVI
 	const corsiFiltrati = $derived(
-			corsi.filter(c => {
-				const matchTesto = c.titolo.toLowerCase().includes(queryRicerca.toLowerCase());
+			corsiAttiviDocente.filter(c => {
+				const matchTesto = (c.titolo || '').toLowerCase().includes(queryRicerca.toLowerCase());
 				const matchStato = filtroStato === '' || c.stato === filtroStato;
 				return matchTesto && matchStato;
 			})
@@ -54,21 +61,17 @@
 	const corsiConclusiAttesaAdmin = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.CONCLUSO));
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => !c.stato || c.stato === StatoCorso.PROGRAMMATO));
-	const corsiValidati = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.VALIDATO));
 
 	// AZIONI DI STATO
 	async function cambiaStatoCorso(idCorso: number, nuovoStato: StatoCorso) {
 		if (!confirm(`Sei sicuro di voler impostare il corso come: ${nuovoStato.replace('_', ' ')}?`)) return;
 
 		try {
-			// Utilizziamo il metodo centralizzato del Service che implementa il routing corretto (/api/formazione/corsi/...)
 			await FormazioneService.updateStatoCorso(idCorso, nuovoStato);
-
-			// Aggiornamento reattivo UI: il Svelte Store intercetta la mutazione e aggiorna le sezioni visive
 			corsi = corsi.map(c => c.idCorso === idCorso ? { ...c, stato: nuovoStato } as CorsoFormazione : c);
-		} catch (error) {
+		} catch (error: any) {
 			console.error(error);
-			alert("Errore durante l'aggiornamento dello stato del corso. Verifica i permessi o i log del server.");
+			alert(error.response?.data?.message || "Errore durante l'aggiornamento dello stato del corso.");
 		}
 	}
 
@@ -81,9 +84,7 @@
 
 		try {
 			const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
-			// Il docente vede SOLO quelli che l'Admin ha confermato presenti
 			iscrittiPresenti = iscritti.filter((i: IscrizioneCorso) => i.presenzaConfermata);
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile caricare il registro degli iscritti.");
 			showModalFirma = false;
@@ -98,13 +99,9 @@
 
 		try {
 			await FormazioneService.controfirmaRegistro(selectedCorso.idCorso);
-
-			// Sblocco FSM: Il corso passa a VALIDATO
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.VALIDATO } as CorsoFormazione : c);
-
-			alert("Registro controfirmato con successo. L'Admin può ora inviare gli attestati.");
+			alert("Registro controfirmato con successo. Il corso è ora archiviato e gestito dall'amministrazione.");
 			showModalFirma = false;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Errore durante la controfirma del registro.");
 		} finally {
@@ -163,7 +160,6 @@
 				<div class="flex items-center gap-3 mb-6 border-b border-rose-200 pb-3">
 					<div class="p-2 bg-rose-100 text-rose-700 rounded-lg"><UserCheck size={20}/></div>
 					<h2 class="text-xl font-extrabold text-rose-700 uppercase tracking-tight">Registri da Controfirmare</h2>
-					<span class="ml-auto text-[10px] font-black text-white bg-rose-600 px-3 py-1 rounded-full uppercase shadow-lg shadow-rose-900/20">Azione Richiesta</span>
 				</div>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -175,7 +171,7 @@
 								<p class="text-[10px] font-bold text-rose-600 uppercase">Validato da Admin - In attesa di tua firma legale</p>
 							</div>
 							<div class="p-4 bg-rose-50 border-t border-rose-100">
-								<button onclick={() => apriValidazioneRegistro(corso)} class="w-full py-3 bg-rose-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-rose-700 transition-colors shadow-lg shadow-rose-900/20">
+								<button onclick={() => apriValidazioneRegistro(corso)} class="w-full py-3 bg-rose-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-rose-700 transition-colors">
 									<CheckSquare size={14} /> Verifica e Controfirma
 								</button>
 							</div>
@@ -218,7 +214,7 @@
 								<h3 class="font-extrabold text-[#1B4B6B] uppercase mb-4 ml-2">{corso.titolo}</h3>
 								<div class="space-y-2 ml-2">
 									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><MapPin size={14} /> {corso.luogoFisico}</div>
-									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><Users size={14} /> {corso.capacitaMassima} Iscritti</div>
+									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><Users size={14} /> {corso.capacitaMassima || 0} Iscritti</div>
 								</div>
 							</div>
 							<button onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.CONCLUSO)} class="mt-6 w-full py-3 bg-[#1B4B6B] text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/10">
@@ -246,7 +242,11 @@
 								<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><Clock size={12}/> {formattaData(corso.dataOrario)}</p>
 								<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><MapPin size={12}/> {corso.luogoFisico}</p>
 							</div>
-							<button onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.IN_SVOLGIMENTO)} class="w-full py-2.5 border-2 border-[#1B4B6B] text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-colors">
+							<button
+									onclick={() => cambiaStatoCorso(corso.idCorso, StatoCorso.IN_SVOLGIMENTO)}
+									disabled={!!corso.stato && corso.stato !== StatoCorso.PROGRAMMATO}
+									class="w-full py-2.5 border-2 border-[#1B4B6B] text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
 								<Play size={14} fill="currentColor" /> Inizia Corso
 							</button>
 						</div>
@@ -254,23 +254,6 @@
 				</div>
 			{/if}
 		</div>
-
-		{#if corsiValidati.length > 0}
-			<div class="mb-14 opacity-70 hover:opacity-100 transition-opacity">
-				<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3">
-					<div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><CheckSquare size={20}/></div>
-					<h2 class="text-xl font-extrabold text-gray-500 uppercase tracking-tight">Storico Corsi Validati</h2>
-				</div>
-				<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
-					{#each corsiValidati as corso}
-						<div class="bg-gray-50 rounded-xl border border-gray-100 p-4">
-							<h3 class="font-bold text-gray-600 uppercase text-xs truncate" title={corso.titolo}>{corso.titolo}</h3>
-							<p class="text-[9px] font-black text-emerald-600 mt-1 uppercase">Firma Apposta</p>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
 
 	{/if}
 </div>

@@ -47,9 +47,15 @@
 			!!formCorso.titolo && !!formCorso.dataOrario && !!formCorso.luogoFisico && !!formCorso.idDocente
 	);
 
-	// Filtro di ricerca base
+	// --- REGOLA 4: PULIZIA DASHBOARD ADMIN ---
+	// Filtro di base: esclude i corsi "CERTIFICATO" perché il lavoro dell'Admin è concluso
+	const corsiAttiviAdmin = $derived(
+			corsi.filter(c => c.stato !== StatoCorso.CERTIFICATO)
+	);
+
+	// Filtro di ricerca applicato solo ai corsi operativi
 	const corsiFiltrati = $derived(
-			corsi.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
+			corsiAttiviAdmin.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	// --- SEZIONI STRUTTURALI DELLA DASHBOARD ---
@@ -75,7 +81,6 @@
 			if (!dip) return; // Se per assurdo non c'è, saltiamo
 
 			// ESTRATTORE AGGRESSIVO DELL'ID AZIENDA:
-			// A seconda di come Jackson serializza il Lavoratore/Azienda nel DTO.
 			let idAzienda = null;
 			let nomeAzienda = "Azienda Sconosciuta";
 
@@ -101,7 +106,6 @@
 				}
 				map.get(idAzienda)!.count++;
 			} else {
-				// Caso limite di sicurezza: Il dipendente non ha azienda associata.
 				console.warn(`Dipendente ${isc.emailUtente} non ha un'azienda associata nel database!`);
 			}
 		});
@@ -137,14 +141,17 @@
 				titolo: formCorso.titolo!,
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
-				docente: { idUtente: formCorso.idDocente! }
-			} as unknown as CorsoFormazioneRequest;
+				docente: { idUtente: formCorso.idDocente! },
+				// REGOLA DI INTEGRITÀ: Ogni nuovo corso nasce come PROGRAMMATO
+				stato: StatoCorso.PROGRAMMATO
+			} as any; // Usiamo any se l'interfaccia Request non lo prevede ancora
 
 			const nuovo = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovo];
+
+			// Reset e chiusura
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile programmare il corso.");
 		} finally {
@@ -250,14 +257,15 @@
 				file: fileUploads[a.idAzienda]
 			}));
 
+			// Effettua la chiamata API
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
 			alert("Attestati distribuiti correttamente! Le aziende riceveranno una notifica.");
 
-			// Chiudiamo il corso definitivamente nella UI
-			corsi = corsi.filter(c => c.idCorso !== selectedCorso!.idCorso);
+			// FSM Client-Side: Aggiorniamo lo stato a CERTIFICATO per innescare la sparizione reattiva (Regola 4)
+			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
+
 			showModalUpload = false;
 		} catch (error) {
-			// LOG CRITICO PER IL DEBUG
 			console.error("Errore fatale durante l'upload degli attestati:", error);
 			alert("Errore durante il caricamento degli attestati. Controlla la console.");
 		} finally {

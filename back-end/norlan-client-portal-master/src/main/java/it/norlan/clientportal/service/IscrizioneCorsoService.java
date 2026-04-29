@@ -137,6 +137,17 @@ public class IscrizioneCorsoService {
             dto.setIdDocumento(iscrizione.getDocumentoAttestato().getIdDocumento());
         }
 
+        if (iscrizione.getCorso() != null) {
+            dto.setTitoloCorso(iscrizione.getCorso().getTitolo());
+            dto.setDataOrarioCorso(iscrizione.getCorso().getDataOrario());
+
+            // RECUPERO SCIENTIFICO DALL'ENTITA' CORSO:
+            // Leggiamo lo stato dal corso associato e lo passiamo al DTO come stringa
+            if (iscrizione.getCorso().getStato() != null) {
+                dto.setStatoCorso(iscrizione.getCorso().getStato().name());
+            }
+        }
+
         return dto;
     }
 }
