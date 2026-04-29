@@ -6,7 +6,7 @@
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare, Upload
+        FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare, Upload, Infinity
     } from 'lucide-svelte';
 
     // Servizi e Modelli
@@ -17,7 +17,7 @@
     import { Documento } from '$lib/models/Documento';
     import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
     import { ModuloServizio, TipoDocumento, TipoDPI } from '$lib/models/Enums';
-    // Interfaccia estesa
+
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
     }
@@ -38,8 +38,9 @@
     let isSaving = $state(false);
 
     let dipendenteDaEliminare = $state<DipendenteEsteso | null>(null);
+
     let formDipendente = $state({
-        nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: ''
+        nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
     // --- STATI DOCUMENTI ---
@@ -52,11 +53,13 @@
     let docDaEliminare = $state<Documento | null>(null);
 
     // --- STATI DPI ---
-    // --- STATI DPI ---
     let showDpiModal = $state(false);
     let isSavingDpi = $state(false);
-    // Inizializziamo il form con campi coerenti al modello
-    let formDpi = $state({ tipo: '' as unknown as TipoDPI, dataConsegna: '' });
+    let formDpi = $state({
+        tipo: '' as unknown as TipoDPI,
+        dataConsegna: '',
+        dataScadenza: ''
+    });
 
     let showDeleteDpiModal = $state(false);
     let dpiDaEliminare = $state<AssegnazioneDPI | null>(null);
@@ -73,11 +76,11 @@
 
     const isFormValid = $derived(
         formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' &&
-        formDipendente.codiceFiscale.length === 16 && formDipendente.idAzienda !== ''
+        formDipendente.codiceFiscale.length === 16 && formDipendente.idAzienda !== '' &&
+        formDipendente.password.trim() !== ''
     );
 
     // --- AZIONI ---
-
     onMount(async () => {
         try {
             const [resLavoratori, resAziende] = await Promise.all([
@@ -116,7 +119,6 @@
         isLoadingDettaglio = true;
         try {
             documentiCorrenti = await DocumentoService.getDocumentiByAzienda(lavoratore.idUtente);
-            // dpiCorrenti = await LavoratoreService.getDpiByLavoratore(lavoratore.idUtente); // Decommenta quando integrato col backend
         } catch {
             console.error("Errore dettaglio dipendente");
         } finally {
@@ -142,20 +144,25 @@
         if (!isFormValid) return;
         isSaving = true;
         try {
-            const payload: DipendenteRequest = {
+            const payload = {
                 nome: formDipendente.nome,
                 cognome: formDipendente.cognome,
                 codiceFiscale: formDipendente.codiceFiscale,
-                email: formDipendente.email
-            };
+                email: formDipendente.email,
+                passwordHash: formDipendente.password
+            } as unknown as DipendenteRequest;
+
             const nuovo = await LavoratoreService.create(formDipendente.idAzienda, payload);
+
             const aziendaSelezionata = aziende.find(a => String(a.idUtente) === String(formDipendente.idAzienda));
             const esteso: DipendenteEsteso = { ...nuovo, nomeAzienda: aziendaSelezionata?.ragioneSociale };
+
             lavoratori = [esteso, ...lavoratori];
             showAddModal = false;
-            formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '' };
-        } catch {
-            alert("Errore durante la registrazione.");
+            formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: '' };
+        } catch (error) {
+            console.error("Dettaglio errore registrazione:", error);
+            alert("Errore durante la registrazione. Controlla la console per i dettagli.");
         } finally {
             isSaving = false;
         }
@@ -182,7 +189,6 @@
         }
     }
 
-    // --- LOGICA DOCUMENTI ---
     async function scaricaDoc(doc: Documento) {
         try {
             const b = await DocumentoService.downloadDocumento(doc.idDocumento);
@@ -238,41 +244,76 @@
         }
     }
 
-    // --- LOGICA DPI ---
     async function salvaDPI() {
         if (!formDpi.tipo || !formDpi.dataConsegna || !selectedDipendente) return;
         isSavingDpi = true;
         try {
             const nuovoDpi: AssegnazioneDPI = {
                 idAssegnazione: Date.now(),
-                idDipendente: selectedDipendente.idUtente, // Campo obbligatorio
-                tipo: formDpi.tipo,                        // Campo obbligatorio Enum
-                dataConsegna: formDpi.dataConsegna,        // Campo obbligatorio string
-                dataScadenzaRevisione: '',                 // Campo obbligatorio string
-                daRevisionare: false                       // Campo obbligatorio boolean
+                idDipendente: selectedDipendente.idUtente,
+                tipo: formDpi.tipo,
+                dataConsegna: formDpi.dataConsegna,
+                dataScadenzaRevisione: formDpi.dataScadenza,
+                daRevisionare: false
             };
-
             dpiCorrenti = [...dpiCorrenti, nuovoDpi];
             showDpiModal = false;
-            formDpi = { tipo: '' as unknown as TipoDPI, dataConsegna: '' };
+            formDpi = { tipo: '' as unknown as TipoDPI, dataConsegna: '', dataScadenza: '' };
         } catch {
             alert("Errore salvataggio DPI.");
         } finally {
             isSavingDpi = false;
         }
     }
+
+    function isDPIScaduto(dataScadenza: string) {
+        if (!dataScadenza || dataScadenza === '9999-12-31') return false;
+        const oggi = new Date();
+        oggi.setHours(0, 0, 0, 0);
+        const scad = new Date(dataScadenza);
+        scad.setHours(0, 0, 0, 0);
+        return scad < oggi;
+    }
+
+    function sollecitaRinnovoDPI(dpi: AssegnazioneDPI) {
+        if (!selectedDipendente || !selectedDipendente.idAzienda) return;
+
+        const azienda = aziende.find(a => String(a.idUtente) === String(selectedDipendente?.idAzienda));
+
+        if (!azienda || !azienda.email) {
+            alert("Attenzione: L'azienda associata non ha un'email registrata nel sistema.");
+            return;
+        }
+
+        const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${selectedDipendente.nome} ${selectedDipendente.cognome}`);
+        const body = encodeURIComponent(
+            `Gentile ${azienda.ragioneSociale},\n\n` +
+            `Vi segnaliamo che il seguente Dispositivo di Protezione Individuale (DPI) assegnato al vostro lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta SCADUTO e necessita di rinnovo/sostituzione immediata:\n\n` +
+            `- Tipologia: ${dpi.tipo.replace(/_/g, ' ')}\n` +
+            `- Data di scadenza: ${new Date(dpi.dataScadenzaRevisione).toLocaleDateString()}\n\n` +
+            `Vi invitiamo a provvedere quanto prima per garantire la conformità alle normative sulla sicurezza sul lavoro.\n\n` +
+            `Cordiali saluti,\nTeam NorLan`
+        );
+
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
+    }
+
     function preparaEliminaDPI(dpi: AssegnazioneDPI) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
 
     async function confermaEliminaDPI() {
         if (!dpiDaEliminare) return;
         try {
-            // Simulazione eliminazione
             dpiCorrenti = dpiCorrenti.filter(d => d !== dpiDaEliminare);
             showDeleteDpiModal = false;
             dpiDaEliminare = null;
         } catch {
             alert("Errore eliminazione DPI.");
         }
+    }
+
+    function formattaScadenza(data: string) {
+        if (!data || data === '9999-12-31') return 'Senza scadenza';
+        return new Date(data).toLocaleDateString();
     }
 </script>
 
@@ -462,19 +503,47 @@
                         {#if dpiCorrenti.length > 0}
                             <div class="space-y-4">
                                 {#each dpiCorrenti as dpi (dpi.idAssegnazione)}
-                                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                    {@const scaduto = isDPIScaduto(dpi.dataScadenzaRevisione)}
+
+                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {scaduto ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
                                         <div class="flex justify-between items-start mb-3">
                                             <div class="flex items-center gap-3">
-                                                <div class="p-2 bg-green-50 rounded-xl text-green-600"><ShieldCheck size={16} /></div>
+                                                <div class="p-2 rounded-xl {scaduto ? 'bg-red-100 text-red-600' : 'bg-green-50 text-green-600'}">
+                                                    <ShieldCheck size={16} />
+                                                </div>
                                                 <div>
-                                                    <h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{dpi.tipo.replace(/_/g, ' ')}</h4>
+                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {scaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">
+                                                        {dpi.tipo.replace(/_/g, ' ')}
+                                                    </h4>
                                                 </div>
                                             </div>
-                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
+                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all rounded-lg {scaduto ? 'hover:bg-red-100' : 'hover:bg-red-50'}">
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
-                                        <div class="flex items-center gap-1.5 pt-3 border-t border-gray-50 text-gray-400">
-                                            <Calendar size={10} />
-                                            <span class="text-[9px] font-bold uppercase">Consegnato: {new Date(dpi.dataConsegna).toLocaleDateString()}</span>
+
+                                        <div class="flex flex-col gap-2 pt-3 border-t {scaduto ? 'border-red-100' : 'border-gray-50'}">
+                                            <div class="flex items-center gap-1.5 {scaduto ? 'text-red-400' : 'text-gray-400'}">
+                                                <Calendar size={10} />
+                                                <span class="text-[9px] font-bold uppercase">Consegnato: {new Date(dpi.dataConsegna).toLocaleDateString()}</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-1.5 {scaduto ? 'text-red-600 font-black' : 'text-gray-400'}">
+                                                    <AlertTriangle size={10} />
+                                                    <span class="text-[9px] font-bold uppercase">
+                                                        {scaduto ? 'Scaduto il:' : 'Scadenza:'} {formattaScadenza(dpi.dataScadenzaRevisione)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {#if scaduto}
+                                                <button
+                                                        onclick={() => sollecitaRinnovoDPI(dpi)}
+                                                        class="mt-2 w-full py-2 bg-red-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-2 shadow-sm hover:bg-red-700 transition-colors"
+                                                >
+                                                    <Mail size={12} /> Sollecita Rinnovo all'Azienda
+                                                </button>
+                                            {/if}
                                         </div>
                                     </div>
                                 {/each}
@@ -494,36 +563,65 @@
 
     {#if showAddModal}
         <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
                 <div class="bg-purple-600 p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Nuovo Lavoratore</h2>
+                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Lavoratore</h2>
                     <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
                 </div>
-                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Azienda di Appartenenza *</label>
+
+                <div class="p-8 space-y-4">
+                    <div class="space-y-1">
+                        <label class="block text-[10px] font-bold text-purple-600 uppercase">Azienda di Appartenenza *</label>
                         <select bind:value={formDipendente.idAzienda} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none font-bold">
                             <option value="">Seleziona azienda...</option>
                             {#each aziende as a (a.idUtente)}
                                 <option value={a.idUtente}>{a.ragioneSociale}</option>
                             {/each}
                         </select>
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
-                        <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
-                        <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
                     </div>
-                    <div class="space-y-4">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso</label>
-                        <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
-                        <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA80A01H501W" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-purple-600 outline-none" />
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Nome *</label>
+                            <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Cognome *</label>
+                            <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Codice Fiscale *</label>
+                            <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-purple-600 outline-none uppercase" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Email Accesso *</label>
+                            <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-[10px] font-bold text-purple-600 uppercase tracking-tight">Password Temporanea *</label>
+                        <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                        <div class="mt-2 flex items-start gap-2">
+                            <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+                            <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+                                Nota: Il lavoratore dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+                            </p>
+                        </div>
                     </div>
                 </div>
+
                 <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
                     <button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-                    <button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
-                        {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra Dipendente
+                    <button
+                            onclick={salvaDipendente}
+                            disabled={!isFormValid || isSaving}
+                            class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-purple-700 transition-colors"
+                    >
+                        {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra
                     </button>
                 </div>
             </div>
@@ -534,7 +632,7 @@
         <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
                 <div class="p-8 text-center">
-                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40}/></div>
+                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
                     <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere dipendente?</h2>
                     <p class="text-sm text-gray-400 mb-8">Il lavoratore <span class="font-bold text-[#1B4B6B]">{dipendenteDaEliminare?.nome} {dipendenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.</p>
                     <div class="flex flex-col gap-3">
@@ -570,7 +668,7 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
-                        <input type="date" bind:value={formDocumento.dataScadenza} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
+                        <input type="date" bind:value={formDocumento.dataScadenza} max="9999-12-31" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
                     </div>
                     <div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group">
                         <input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} />
@@ -623,9 +721,48 @@
                             {/each}
                         </select>
                     </div>
+
                     <div>
                         <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Consegna *</label>
-                        <input type="date" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
+                        <div class="flex gap-2">
+                            <input
+                                    type="date"
+                                    bind:value={formDpi.dataConsegna}
+                                    max="9999-12-31"
+                                    class="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold"
+                            />
+                            <button
+                                    type="button"
+                                    onclick={() => formDpi.dataConsegna = new Date().toISOString().split('T')[0]}
+                                    class="px-4 bg-white border-2 border-gray-200 text-gray-400 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2 hover:bg-gray-50 hover:text-[#1B4B6B] hover:border-[#1B4B6B]"
+                            >
+                                <Calendar size={14} /> Oggi
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza / Revisione</label>
+                        <div class="flex gap-2">
+                            <input
+                                    type="date"
+                                    bind:value={formDpi.dataScadenza}
+                                    max="9999-12-31"
+                                    disabled={formDpi.dataScadenza === '9999-12-31'}
+                                    class="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold disabled:opacity-50"
+                            />
+                            <button
+                                    type="button"
+                                    onclick={() => {
+                                    if(formDpi.dataScadenza === '9999-12-31') formDpi.dataScadenza = '';
+                                    else formDpi.dataScadenza = '9999-12-31';
+                                }}
+                                    class="px-4 bg-white border-2 {formDpi.dataScadenza === '9999-12-31' ? 'border-green-500 text-green-500' : 'border-gray-200 text-gray-400'} rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2 hover:bg-gray-50"
+                            >
+                                <Infinity size={14} />
+                                {formDpi.dataScadenza === '9999-12-31' ? 'Scade' : 'Non scade'}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">

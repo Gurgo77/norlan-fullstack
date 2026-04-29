@@ -5,9 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0c30d3b2-a63f-40bc-9442-c9d5e64177b9" name="Changes" comment="sistemata la chat, implementazione notifiche campanellina + alcune correzioni lato back-end">
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/back-end.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/compiler.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/encodings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/jarRepositories.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/admin/docenti/+page.svelte" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/azienda/dipendenti/+page.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/azienda/dipendenti/+page.svelte" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/docente/+page.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/docente/+page.svelte" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/norlan-client-portal-master/src/main/java/it/norlan/clientportal/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/norlan-client-portal-master/src/main/java/it/norlan/clientportal/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/app.css" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/app.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/admin/dipendenti/+page.svelte" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/Norlan-Svelte-TypeScript-master/src/routes/dashboard/admin/dipendenti/+page.svelte" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,9 +44,13 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Gurgo77/norlan-fullstack.git&quot;,
-    &quot;accountId&quot;: &quot;41cbd48d-1a70-4690-8b19-870a853ffad1&quot;
+    &quot;accountId&quot;: &quot;83d1f1c8-bd24-4e18-847c-bcb40811c7e7&quot;
   }
 }</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 4
 }</component>
@@ -52,7 +66,13 @@
   "keyToString": {
     "ASKED_ADD_EXTERNAL_FILES": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/antoniogurgoglione/Desktop/norlan-fullstack-project",
     "node.js.detected.package.eslint": "true",
@@ -60,8 +80,15 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/Users/antoniogurgoglione/Desktop/norlan-fullstack-project/front-end/Norlan-Svelte-TypeScript-master/node_modules/typescript/lib",
+    "prettierjs.PrettierConfiguration.Package": "C:\\Users\\nicol\\OneDrive\\Desktop\\norlan-fullstack\\front-end\\Norlan-Svelte-TypeScript-master\\node_modules\\prettier",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "C:\\Users\\nicol\\OneDrive\\Desktop\\norlan-fullstack\\front-end\\Norlan-Svelte-TypeScript-master\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "mysql"
+    ]
   }
 }]]></component>
   <component name="SharedIndexes">
@@ -89,6 +116,7 @@
       <workItem from="1777226262642" duration="1471000" />
       <workItem from="1777229283184" duration="13102000" />
       <workItem from="1777283962839" duration="1642000" />
+      <workItem from="1777392986980" duration="3011000" />
     </task>
     <task id="LOCAL-00001" summary="rifatta dashboard admin">
       <option name="closed" value="true" />
