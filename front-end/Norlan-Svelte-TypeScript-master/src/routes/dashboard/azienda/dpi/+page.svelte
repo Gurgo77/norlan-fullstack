@@ -2,8 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import {
-		Search, Plus, Download,
-		ShieldCheck, AlertTriangle, Clock, Loader2, ArrowRight
+		Search, Plus, ShieldCheck, AlertTriangle, Clock, Loader2
 	} from 'lucide-svelte';
 
 	// Import Servizi e Interfacce
