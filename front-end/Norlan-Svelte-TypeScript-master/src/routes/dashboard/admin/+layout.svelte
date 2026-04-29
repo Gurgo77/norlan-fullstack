@@ -5,8 +5,8 @@
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
-		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, UserCog, User,
-		Users, UserSquare2, ShieldCheck, FileText, ChevronDown, ChevronRight, Loader2
+		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, User,
+		Users, UserSquare2, HardHat, ChevronDown, ChevronRight, Loader2
 	} from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
@@ -26,8 +26,7 @@
 
 	// Stato per i sottomenu aperti
 	let openMenus = $state<Record<string, boolean>>({
-		utenti: false,
-		documenti: false
+		utenti: false
 	});
 
 	function toggleMenu(id: string) {
@@ -44,7 +43,7 @@
 		return subItems.some((sub) => $page.url.pathname.includes(sub.href));
 	}
 
-	// Configurazione dinamica dei menu
+	// --- CONFIGURAZIONE MENU AGGIORNATA ---
 	const menuItems = [
 		{ href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
 		{ id: 'utenti', label: 'Utenti', icon: Users, subItems: [
@@ -52,10 +51,7 @@
 				{ href: '/dashboard/admin/dipendenti', label: 'Dipendenti', icon: Users },
 				{ href: '/dashboard/admin/docenti', label: 'Docenti', icon: UserSquare2 }
 			]},
-		{ id: 'documenti', label: 'Documenti e DPI', icon: ShieldCheck, subItems: [
-				{ href: '/dashboard/admin/documenti', label: 'Documenti', icon: FileText },
-				{ href: '/dashboard/admin/dpi', label: 'DPI', icon: ShieldCheck }
-			]},
+		{ href: '/dashboard/admin/dpi', label: 'Gestione DPI', icon: HardHat },
 		{ href: '/dashboard/admin/formazione', label: 'Formazione', icon: GraduationCap },
 		{ href: '/dashboard/admin/scadenziario', label: 'Scadenziario', icon: FileClock },
 		{ href: '/dashboard/admin/comunicazioni', label: 'Messaggi', icon: MessageSquare },
@@ -64,12 +60,9 @@
 	];
 
 	onMount(async () => {
-		// Espande in automatico i sottomenu
+		// Espande in automatico solo il sottomenu utenti
 		if ($page.url.pathname.includes('/admin/aziende') || $page.url.pathname.includes('/admin/dipendenti') || $page.url.pathname.includes('/admin/docenti')) {
 			openMenus.utenti = true;
-		}
-		if ($page.url.pathname.includes('/admin/documenti') || $page.url.pathname.includes('/admin/dpi')) {
-			openMenus.documenti = true;
 		}
 
 		const session = AuthService.getSession();
@@ -91,12 +84,9 @@
 
 		userEmail = session.email;
 		try {
-			// MODIFICA QUI: forziamo la conversione in Number per distruggere eventuali "[object Object]"
 			const rawCount = await SistemaService.countNotificheNonLette(session.idUtente);
 
-			// Se per qualche motivo rawCount è un oggetto (es. { data: 2 }), estraiamo il valore
 			if (typeof rawCount === 'object' && rawCount !== null) {
-				// Estrae il primo valore dall'oggetto, oppure la proprietà 'data' se Axios non l'ha spacchettata
 				notificheCount = Number(Object.values(rawCount)[0] || rawCount.data || 0);
 			} else {
 				notificheCount = Number(rawCount || 0);
@@ -110,7 +100,7 @@
 
 	// --- FUNZIONI LOGICHE PER TENDINA NOTIFICHE ---
 	async function handleToggleNotifiche(event: Event) {
-		event.stopPropagation(); // Evita che il click chiuda subito la tendina tramite l'event listener su window
+		event.stopPropagation();
 		showNotifiche = !showNotifiche;
 
 		if (showNotifiche) {
@@ -131,9 +121,7 @@
 	async function handleLeggiNotifica(idNotifica: number) {
 		try {
 			await SistemaService.segnaLetta(idNotifica);
-			// Rimuove la notifica dalla lista localmente per aggiornamento immediato
 			listaNotifiche = listaNotifiche.filter(n => n.idNotifica !== idNotifica);
-			// Decrementa il counter stando attenti a non scendere sotto lo zero
 			notificheCount = Math.max(0, notificheCount - 1);
 		} catch (error) {
 			console.error("Errore nel segnare la notifica come letta:", error);
@@ -289,9 +277,6 @@
 					<div class="text-right hidden sm:block">
 						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">Super Admin</p>
 						<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Gestione Portale</p>
-					</div>
-					<div class="w-10 h-10 bg-[#1B4B6B] rounded-lg flex items-center justify-center text-white shadow-md">
-						<UserCog size={20} />
 					</div>
 				</div>
 			</div>
