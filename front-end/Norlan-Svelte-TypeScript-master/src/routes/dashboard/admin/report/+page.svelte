@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import {
-		Activity, FileText, ShieldAlert,
-		Search, Download, Clock, User
+		Activity, FileText, ShieldAlert, Search, Download,
+		Clock, User, ChevronLeft, ChevronRight, Filter
 	} from 'lucide-svelte';
 
 	// Importiamo il servizio e il modello reale
@@ -13,14 +13,24 @@
 	// --- STATO REATTIVO ---
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
+
+	// Filtri e Paginazione
 	let searchQuery = $state('');
+	let filtroGravita = $state<'TUTTI' | 'INFO' | 'ERROR'>('TUTTI');
+	let currentPage = $state(1);
+	const itemsPerPage = 15;
+
+	// Resetta la pagina quando i filtri cambiano
+	$effect(() => {
+		searchQuery;
+		filtroGravita;
+		currentPage = 1;
+	});
 
 	// --- AZIONI ---
 	onMount(async () => {
 		try {
-			// Recupero i veri log dal backend tramite l'endpoint unificato
 			logs = await SistemaService.getAllLogs();
-
 			// Ordina i log dal più recente al più vecchio
 			logs.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
 		} catch (error) {
@@ -30,22 +40,66 @@
 		}
 	});
 
-	// --- LOGICA DERIVATA (Senza "any") ---
+	// --- HELPER ---
+	function getCategory(desc: string): string {
+		const test = desc.toLowerCase();
+		if (test.includes('accesso') || test.includes('login') || test.includes('password')) return 'SICUREZZA';
+		if (test.includes('documento') || test.includes('upload') || test.includes('file')) return 'DOCUMENTI';
+		if (test.includes('corso') || test.includes('formazione') || test.includes('registro')) return 'FORMAZIONE';
+		return 'SISTEMA';
+	}
+
+	// --- LOGICA DERIVATA ---
 	const filteredLogs = $derived(
-			logs.filter(l =>
-					l.descrizioneEvento.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					(l.noteTecniche && l.noteTecniche.toLowerCase().includes(searchQuery.toLowerCase()))
-			)
+			logs.filter(l => {
+				const matchSearch = l.descrizioneEvento.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						(l.noteTecniche && l.noteTecniche.toLowerCase().includes(searchQuery.toLowerCase()));
+				const matchGravita = filtroGravita === 'TUTTI' ||
+						(filtroGravita === 'ERROR' && !l.esitoPositivo) ||
+						(filtroGravita === 'INFO' && l.esitoPositivo);
+				return matchSearch && matchGravita;
+			})
 	);
 
-	// Calcolo dinamico per le card in alto in base ai log reali
+	// Paginazione calcolata
+	const totalPages = $derived(Math.ceil(filteredLogs.length / itemsPerPage) || 1);
+	const paginatedLogs = $derived(
+			filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+	);
+
+	// Statistiche Dashboard
 	const operazioniTotali = $derived(logs.length);
-	const accessiRilevati = $derived(logs.filter(l => l.descrizioneEvento.toLowerCase().includes('accesso') || l.descrizioneEvento.toLowerCase().includes('login')).length);
-	const documentiProcessati = $derived(logs.filter(l => l.descrizioneEvento.toLowerCase().includes('documento') || l.descrizioneEvento.toLowerCase().includes('upload')).length);
+	const accessiRilevati = $derived(logs.filter(l => getCategory(l.descrizioneEvento) === 'SICUREZZA').length);
+	const documentiProcessati = $derived(logs.filter(l => getCategory(l.descrizioneEvento) === 'DOCUMENTI').length);
 	const erroriSicurezza = $derived(logs.filter(l => !l.esitoPositivo).length);
 
+	// --- EXPORT CSV ---
 	function esportaReport() {
-		alert('Funzionalità di esportazione CSV/PDF in preparazione...');
+		if (filteredLogs.length === 0) {
+			alert('Nessun log da esportare con i filtri attuali.');
+			return;
+		}
+
+		const headers = ['Data Ora', 'Esito', 'Categoria', 'Azione', 'Dettagli Tecnici'];
+		const csvRows = filteredLogs.map(l => {
+			const dataStr = new Date(l.dataEvento).toLocaleString('it-IT').replace(',', '');
+			const esitoStr = l.esitoPositivo ? 'INFO' : 'ERROR';
+			const catStr = getCategory(l.descrizioneEvento);
+			// Escape delle virgolette doppie per i CSV
+			const azioneStr = `"${l.descrizioneEvento.replace(/"/g, '""')}"`;
+			const noteStr = `"${(l.noteTecniche || '').replace(/"/g, '""')}"`;
+
+			return [dataStr, esitoStr, catStr, azioneStr, noteStr].join(',');
+		});
+
+		const csvContent = [headers.join(','), ...csvRows].join('\n');
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = `NorLan_Audit_Log_${new Date().toISOString().split('T')[0]}.csv`;
+		link.click();
+		URL.revokeObjectURL(url);
 	}
 </script>
 
@@ -100,29 +154,44 @@
 	</div>
 
 	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-		<div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-			<div class="relative w-96">
-				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-				<input
-						bind:value={searchQuery}
-						type="text"
-						placeholder="Cerca per azione o dettaglio..."
-						class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase"
-				/>
+		<div class="p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center bg-gray-50/30 gap-4">
+			<div class="flex items-center gap-4 w-full md:w-auto">
+				<div class="relative w-full md:w-72">
+					<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+					<input
+							bind:value={searchQuery}
+							type="text"
+							placeholder="Cerca per azione o dettaglio..."
+							class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase"
+					/>
+				</div>
+
+				<!-- Filtro Gravità -->
+				<div class="flex bg-gray-100 p-1 rounded-xl">
+					{#each ['TUTTI', 'INFO', 'ERROR'] as filtro}
+						<button
+								onclick={() => filtroGravita = filtro as any}
+								class="px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all {filtroGravita === filtro ? 'bg-white shadow text-[#1B4B6B]' : 'text-gray-400 hover:text-gray-600'}"
+						>
+							{filtro}
+						</button>
+					{/each}
+				</div>
 			</div>
+
 			<div class="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase">
-				<Clock size={14} />
-				<span>Ultimo aggiornamento: Ora</span>
+				<Filter size={14} />
+				<span>{filteredLogs.length} Risultati</span>
 			</div>
 		</div>
 
-		<div class="overflow-x-auto">
+		<div class="overflow-x-auto min-h-[400px]">
 			<table class="w-full text-left">
 				<thead class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
 				<tr>
 					<th class="px-6 py-4">Data e Ora</th>
 					<th class="px-6 py-4">Esito</th>
-					<th class="px-6 py-4">Sistema</th>
+					<th class="px-6 py-4">Categoria</th>
 					<th class="px-6 py-4">Azione Registrata</th>
 					<th class="px-6 py-4">Dettagli Tecnici</th>
 				</tr>
@@ -130,36 +199,42 @@
 				<tbody class="divide-y divide-gray-50">
 				{#if isLoading}
 					<tr>
-						<td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">
-							Caricamento registri in corso...
+						<td colspan="5" class="px-6 py-20 text-center text-gray-400 font-bold uppercase text-xs">
+							<div class="flex flex-col items-center gap-3">
+								<Activity class="animate-pulse text-[#1B4B6B]" size={32} />
+								Sincronizzazione registri di sicurezza...
+							</div>
 						</td>
 					</tr>
-				{:else if filteredLogs.length === 0}
+				{:else if paginatedLogs.length === 0}
 					<tr>
-						<td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">
-							Nessun log trovato.
+						<td colspan="5" class="px-6 py-20 text-center text-gray-400 font-bold uppercase text-xs">
+							<ShieldAlert size={32} class="mx-auto mb-3 opacity-20" />
+							Nessun log trovato per i filtri impostati.
 						</td>
 					</tr>
 				{:else}
-					{#each filteredLogs as log (log.idLog)}
-						<tr class="hover:bg-white hover:shadow-lg transition-all group relative">
+					{#each paginatedLogs as log (log.idLog)}
+						<tr class="transition-all group relative {log.esitoPositivo ? 'hover:bg-gray-50 bg-white' : 'bg-red-50/40 hover:bg-red-50/80'}">
 							<td class="px-6 py-4 whitespace-nowrap">
-                         <span class="text-xs font-bold text-[#1B4B6B]">
+                         <span class="text-xs font-bold {log.esitoPositivo ? 'text-[#1B4B6B]' : 'text-red-700'}">
                           {new Date(log.dataEvento).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                          </span>
 							</td>
 							<td class="px-6 py-4">
-                         <span class="text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest {log.esitoPositivo ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}">
+                         <span class="text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest {log.esitoPositivo ? 'bg-blue-50 text-blue-600' : 'bg-red-600 text-white shadow-sm shadow-red-200'}">
                           {log.esitoPositivo ? 'INFO' : 'ERROR'}
                          </span>
 							</td>
 							<td class="px-6 py-4">
-								<span class="font-extrabold text-gray-400 text-[10px] uppercase">SISTEMA</span>
+                         <span class="font-extrabold text-[10px] uppercase {log.esitoPositivo ? 'text-gray-400' : 'text-red-400'}">
+                             {getCategory(log.descrizioneEvento)}
+                         </span>
 							</td>
 							<td class="px-6 py-4">
-								<span class="font-bold text-[#1B4B6B] text-xs uppercase">{log.descrizioneEvento}</span>
+								<span class="font-bold text-xs uppercase {log.esitoPositivo ? 'text-[#1B4B6B]' : 'text-red-700'}">{log.descrizioneEvento}</span>
 							</td>
-							<td class="px-6 py-4 text-xs font-medium text-gray-500 max-w-md truncate">
+							<td class="px-6 py-4 text-xs font-medium max-w-md truncate {log.esitoPositivo ? 'text-gray-500' : 'text-red-500/80'}">
 								{log.noteTecniche || '-'}
 							</td>
 						</tr>
@@ -168,6 +243,31 @@
 				</tbody>
 			</table>
 		</div>
+
+		<!-- Paginazione -->
+		{#if totalPages > 1}
+			<div class="p-4 border-t border-gray-50 flex items-center justify-between bg-gray-50/30">
+				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+					Pagina {currentPage} di {totalPages}
+				</p>
+				<div class="flex gap-2">
+					<button
+							disabled={currentPage === 1}
+							onclick={() => currentPage--}
+							class="p-2 rounded-lg bg-white border border-gray-200 text-gray-500 disabled:opacity-50 hover:bg-gray-50 transition-colors"
+					>
+						<ChevronLeft size={16} />
+					</button>
+					<button
+							disabled={currentPage === totalPages}
+							onclick={() => currentPage++}
+							class="p-2 rounded-lg bg-white border border-gray-200 text-gray-500 disabled:opacity-50 hover:bg-gray-50 transition-colors"
+					>
+						<ChevronRight size={16} />
+					</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 </div>
 
