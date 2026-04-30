@@ -130,7 +130,9 @@
 				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
 			</div>
 			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Benvenuto, {nomeDocente}</h1>
-			<p class="text-sm font-bold text-gray-500 mt-1 uppercase tracking-tight">Panoramica didattica </p>
+			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
+				Area Riservata Docente
+			</p>
 		</div>
 	</div>
 

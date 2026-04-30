@@ -64,26 +64,33 @@
 
 	// --- CARICAMENTO DATI ---
 	onMount(async () => {
-		const session = AuthService.getSession(); //
+		const session = AuthService.getSession();
 		if (!session) return;
 
 		try {
 			// Fetch parallelo dei dati anagrafici e della lista DPI del dipendente
 			const [dipendenteData, dpiData] = await Promise.all([
-				LavoratoreService.getById(session.idUtente), //
-				LavoratoreService.getDpiByLavoratore(session.idUtente) //
+				LavoratoreService.getById(session.idUtente),
+				LavoratoreService.getDpiByLavoratore(session.idUtente)
 			]);
 
 			utente = dipendenteData;
 
 			// Mapping dal DTO del backend alla struttura usata dall'interfaccia
-			dotazioni = dpiData.map(d => ({
-				id: d.id,
-				nome: d.nomeDpi,
-				matricola: d.note && d.note.trim() !== '' ? d.note : `DPI-${d.id}`, // Fallback se manca la matricola
-				stato: calcolaStato(d.dataScadenza),
-				revisione: d.dataScadenza ? new Date(d.dataScadenza).toLocaleDateString('it-IT') : 'NON PREVISTA'
-			}));
+			// Usiamo (d: any) per allineare in sicurezza i campi reali del JSON (tipo, dataScadenzaRevisione, idAssegnazione)
+			dotazioni = dpiData.map((d: any) => {
+				const idReale = d.idAssegnazione || d.id || Date.now();
+				const nomeReale = d.tipo ? d.tipo.replace(/_/g, ' ') : (d.nomeDpi || 'SCONOSCIUTO');
+				const dataReale = d.dataScadenzaRevisione || d.dataScadenza;
+
+				return {
+					id: idReale,
+					nome: nomeReale,
+					matricola: `DPI-${idReale}`, // Generiamo una matricola di default
+					stato: calcolaStato(dataReale),
+					revisione: dataReale ? new Date(dataReale).toLocaleDateString('it-IT') : 'NON PREVISTA'
+				};
+			});
 
 		} catch (error) {
 			console.error("Errore durante il recupero dei DPI:", error);
@@ -92,11 +99,15 @@
 		}
 	});
 
-	// 4. LOGICA REATTIVA
+	// 4. LOGICA REATTIVA - Null Safe Navigation
 	const dpiFiltrati = $derived(
 			dotazioni.filter(d => {
-				const matchSearch = d.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						d.matricola.toLowerCase().includes(searchQuery.toLowerCase());
+				// Rendiamo sicura la ricerca evitando TypeError: Cannot read properties of undefined
+				const searchSafe = searchQuery ? searchQuery.toLowerCase() : '';
+				const nomeSafe = d.nome ? d.nome.toLowerCase() : '';
+				const matricolaSafe = d.matricola ? d.matricola.toLowerCase() : '';
+
+				const matchSearch = nomeSafe.includes(searchSafe) || matricolaSafe.includes(searchSafe);
 				const matchFiltro = filtroStato === 'TUTTI' || d.stato === filtroStato;
 				return matchSearch && matchFiltro;
 			})
@@ -188,15 +199,6 @@
 								</div>
 							</div>
 						</div>
-					</div>
-
-					<div class="p-8 pt-0 mt-auto flex gap-3">
-						<button class="flex-1 bg-gray-50 text-[#1B4B6B] py-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 border border-gray-100 hover:bg-gray-100 transition-colors">
-							<FileText size={18} /> Scheda Tecnica
-						</button>
-						<button class="flex-1 bg-white text-[#1B4B6B] py-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors">
-							<Info size={18} /> Dettagli
-						</button>
 					</div>
 				</div>
 			{/each}

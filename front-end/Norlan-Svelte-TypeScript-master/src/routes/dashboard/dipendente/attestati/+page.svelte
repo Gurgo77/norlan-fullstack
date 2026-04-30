@@ -99,13 +99,6 @@
 				Dipendente: <span class="text-[#1B4B6B]">{utente?.nome || '...'} {utente?.cognome || ''}</span>
 			</p>
 		</div>
-
-		<div class="bg-emerald-50 border border-emerald-100 px-6 py-4 rounded-[2rem] flex items-center gap-4">
-			<div class="p-2 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20">
-				<CheckCircle2 size={20} />
-			</div>
-			<p class="text-sm font-black text-[#1B4B6B] uppercase leading-none">Formazione in Regola</p>
-		</div>
 	</div>
 
 	<div class="relative group max-w-md">

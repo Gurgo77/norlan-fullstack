@@ -215,9 +215,7 @@
 			<h1 class="text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">
 				Formazione Dipendenti
 			</h1>
-			<p class="text-xs font-bold uppercase tracking-tighter text-gray-500">
-				Monitoraggio attestati e scadenze corsi NorLan.
-			</p>
+
 		</div>
 
 		<div class="flex flex-col sm:flex-row items-center gap-4">
@@ -228,15 +226,7 @@
 				<BookPlus size={18} /> Iscrivi a Nuovo Corso
 			</button>
 
-			<div class="flex w-full sm:w-auto items-center gap-4 rounded-2xl border border-red-50 bg-white p-4 shadow-sm">
-				<div class="rounded-lg bg-red-50 p-2 text-red-500">
-					<AlertTriangle size={20} />
-				</div>
-				<div>
-					<p class="text-[9px] font-bold uppercase text-gray-400">Da Completare</p>
-					<p class="text-xs font-black uppercase text-red-600">{countDaAggiornare} Dipendenti</p>
-				</div>
-			</div>
+
 		</div>
 	</div>
 

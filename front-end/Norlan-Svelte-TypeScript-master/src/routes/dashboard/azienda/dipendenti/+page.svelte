@@ -275,7 +275,7 @@
 		<div class="mb-10 flex justify-between items-start">
 			<div>
 				<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafica Dipendenti</h1>
-				<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione dei lavoratori e delle posizioni aziendali.</p>
+				<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione dei lavoratori </p>
 			</div>
 			<button
 					onclick={() => (showAddModal = true)}

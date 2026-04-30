@@ -1,7 +1,3 @@
-DOCUMENTI
-
-
-
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
@@ -22,7 +18,7 @@ DOCUMENTI
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AuthService } from '$lib/services/AuthService';
 	import { Documento } from '$lib/models/Documento';
-	import { ModuloServizio } from '$lib/models/Enums';
+	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums'; // Aggiunto import TipoDocumento
 
 	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
@@ -37,7 +33,10 @@ DOCUMENTI
 
 		try {
 			// Recupero dati reali dal database
-			documenti = await DocumentoService.getDocumentiByAzienda(session.idUtente);
+			const tuttiDocs = await DocumentoService.getDocumentiByAzienda(session.idUtente);
+
+			// FILTRO: Escludi gli attestati di corso dall'archivio documentale generale
+			documenti = tuttiDocs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
 		} catch (error) {
 			console.error('Errore nel caricamento documenti:', error);
 		} finally {
@@ -138,9 +137,9 @@ DOCUMENTI
 			<button
 					onclick={() => (filtroCategoria = 'TUTTI')}
 					class="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all {filtroCategoria ===
-				'TUTTI'
-					? 'bg-[#1B4B6B] text-white shadow-lg'
-					: 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
+             'TUTTI'
+                ? 'bg-[#1B4B6B] text-white shadow-lg'
+                : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 			>
 				Tutti
 			</button>
@@ -149,9 +148,9 @@ DOCUMENTI
 				<button
 						onclick={() => (filtroCategoria = cat)}
 						class="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all {filtroCategoria ===
-					cat
-						? 'bg-[#1B4B6B] text-white shadow-lg'
-						: 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
+                cat
+                   ? 'bg-[#1B4B6B] text-white shadow-lg'
+                   : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 				>
 					{cat}
 				</button>
@@ -197,8 +196,8 @@ DOCUMENTI
 								<FileText size={24} />
 							</div>
 							<span class="rounded border px-2 py-1 text-[8px] font-black uppercase {getStatusStyle(status)}">
-								{status.replace('_', ' ')}
-							</span>
+                         {status.replace('_', ' ')}
+                      </span>
 						</div>
 
 						<h3 class="mb-4 min-h-[3.5rem] text-lg font-black uppercase leading-tight text-[#1B4B6B] line-clamp-2">
