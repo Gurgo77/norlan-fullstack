@@ -345,7 +345,7 @@
             </div>
             <button
                     onclick={() => (showAddModal = true)}
-                    class="bg-white text-purple-600 border-2 border-purple-600 px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-purple-600 hover:text-white transition-all flex items-center gap-3"
+                    class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
             >
                 <UserPlus size={18} /> Nuovo Dipendente
             </button>
@@ -366,10 +366,11 @@
                 <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
             </div>
         {:else}
-            {#each Object.entries(lavoratoriRaggruppati()) as [nomeAzienda, dipendentiAzienda]}
+            <!-- Correzione dell'errore (key) aggiunta qui -->
+            {#each Object.entries(lavoratoriRaggruppati()) as [nomeAzienda, dipendentiAzienda] (nomeAzienda)}
                 <div class="mb-12">
                     <div class="flex items-center gap-3 mb-6 pb-2 border-b-2 border-gray-100">
-                        <div class="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                        <div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg">
                             <Building2 size={20} />
                         </div>
                         <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">
@@ -382,7 +383,7 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {#each dipendentiAzienda as l (l.idUtente)}
-                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
+                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden hover:border-[#1B4B6B]/30" in:scale>
 
                                 <div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
                                     <button
@@ -393,7 +394,7 @@
                                     </button>
 
                                     <div class="flex items-center gap-4 mb-6">
-                                        <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
+                                        <div class="w-14 h-14 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">
                                             {l.nome[0]}{l.cognome[0]}
                                         </div>
                                         <div>
@@ -409,7 +410,7 @@
                                 </div>
 
                                 <button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-                                    <div class="flex items-center gap-2"><FileText size={16} class="text-purple-600"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
+                                    <div class="flex items-center gap-2"><FileText size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
                                     <ChevronRight size={20} class="text-[#1B4B6B]" />
                                 </button>
                             </div>
@@ -424,27 +425,27 @@
             <button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
 
             <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
-                <div class="bg-purple-600 p-10 text-white flex justify-between items-end relative">
+                <div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
                     <div class="flex items-center gap-6">
-                        <div class="w-24 h-24 bg-white text-purple-600 rounded-3xl flex items-center justify-center font-black text-4xl shadow-lg">
+                        <div class="w-24 h-24 bg-white text-[#1B4B6B] rounded-3xl flex items-center justify-center font-black text-4xl shadow-lg">
                             {selectedDipendente.nome[0]}{selectedDipendente.cognome[0]}
                         </div>
                         <div>
                             <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-purple-500/50 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Building2 size={12}/> {selectedDipendente.nomeAzienda}</span>
+                                <span class="bg-white/20 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Building2 size={12}/> {selectedDipendente.nomeAzienda}</span>
                             </div>
                             <h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedDipendente.nome} {selectedDipendente.cognome}</h1>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-purple-600 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
+                        <button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
                             <Mail size={16} /> Manda Mail
                         </button>
-                        <button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-[#1B4B6B] text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-[#1B4B6B]/90 hover:scale-105">
+                        <button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
                             <MessageSquare size={16} /> Contatta
                         </button>
-                        <button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600/90 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-white/10 shadow-xl hover:bg-red-700 hover:scale-105">
+                        <button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl hover:bg-red-700 hover:scale-105">
                             <Trash2 size={16} /> Rimuovi
                         </button>
                     </div>
@@ -463,14 +464,14 @@
             </div>
 
             {#if isLoadingDettaglio}
-                <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-purple-600" /></div>
+                <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
             {:else}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                     <div class="space-y-6">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <div class="p-2.5 bg-blue-100 text-blue-600 rounded-xl shadow-inner"><FileText size={20} /></div>
+                                <div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><FileText size={20} /></div>
                                 <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2>
                             </div>
                         </div>
@@ -601,15 +602,15 @@
     {#if showAddModal}
         <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-                <div class="bg-purple-600 p-6 text-white flex justify-between items-center">
+                <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
                     <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Lavoratore</h2>
                     <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
                 </div>
 
                 <div class="p-8 space-y-4">
                     <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-purple-600 uppercase">Azienda di Appartenenza *</label>
-                        <select bind:value={formDipendente.idAzienda} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none font-bold">
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Azienda di Appartenenza *</label>
+                        <select bind:value={formDipendente.idAzienda} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold">
                             <option value="">Seleziona azienda...</option>
                             {#each aziende as a (a.idUtente)}
                                 <option value={a.idUtente}>{a.ragioneSociale}</option>
@@ -619,29 +620,29 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Nome *</label>
-                            <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
+                            <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                         </div>
                         <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Cognome *</label>
-                            <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
+                            <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Codice Fiscale *</label>
-                            <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-purple-600 outline-none uppercase" />
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
+                            <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none uppercase" />
                         </div>
                         <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-purple-600 uppercase">Email Accesso *</label>
-                            <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso *</label>
+                            <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                         </div>
                     </div>
 
                     <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-purple-600 uppercase tracking-tight">Password Temporanea *</label>
-                        <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
+                        <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                         <div class="mt-2 flex items-start gap-2">
                             <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
                             <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
@@ -656,7 +657,7 @@
                     <button
                             onclick={salvaDipendente}
                             disabled={!isFormValid || isSaving}
-                            class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-purple-700 transition-colors"
+                            class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54] transition-colors"
                     >
                         {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra
                     </button>
