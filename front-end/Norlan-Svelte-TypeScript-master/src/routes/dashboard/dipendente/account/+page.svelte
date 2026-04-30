@@ -3,8 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		User, Mail, Building2, IdCard, Lock,
-		Save, Camera, ShieldCheck, Loader2,
-		Briefcase
+		Save, ShieldCheck, Loader2, Briefcase
 	} from 'lucide-svelte';
 
 	// IMPORT SERVIZI E MODELLI
@@ -14,9 +13,7 @@
 
 	// STATO PRINCIPALE (Svelte 5)
 	let isLoading = $state(true);
-	let isSaving = $state(false);
 	let utente = $state<DipendenteData | null>(null);
-	let showSuccessMessage = $state(false);
 
 	// STATI PER IL CAMBIO PASSWORD
 	let isPasswordFormVisible = $state(false);
@@ -38,20 +35,6 @@
 		}
 		isLoading = false;
 	});
-
-	async function handleSave() {
-		if (!utente) return;
-		isSaving = true;
-		try {
-			// Logica di salvataggio anagrafica esistente
-			showSuccessMessage = true;
-			setTimeout(() => (showSuccessMessage = false), 3000);
-		} catch (error) {
-			console.error("Errore durante il salvataggio:", error);
-		} finally {
-			isSaving = false;
-		}
-	}
 
 	async function handlePasswordChange() {
 		passwordError = '';
@@ -107,13 +90,8 @@
 
 			<div class="space-y-8">
 				<div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
-					<div class="relative group">
-						<div class="w-32 h-32 bg-gray-100 rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
-							<User size={50} class="text-gray-300" />
-						</div>
-						<button class="absolute -bottom-2 -right-2 p-3 bg-[#1B4B6B] text-white rounded-2xl shadow-lg hover:scale-110 transition-transform">
-							<Camera size={16} />
-						</button>
+					<div class="w-32 h-32 bg-gray-100 rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
+						<User size={50} class="text-gray-300" />
 					</div>
 					<h2 class="mt-6 text-xl font-black text-[#1B4B6B] uppercase tracking-tight text-center">{utente.nome} {utente.cognome}</h2>
 					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Dipendente</p>
@@ -138,9 +116,10 @@
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 						<div class="space-y-2">
 							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Privata</label>
-							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
 								<Mail size={18} class="text-gray-400" />
-								<input type="email" bind:value={utente.email} class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full" />
+								<!-- Resa in sola lettura e tolto il bind -->
+								<input type="email" value={utente.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
 							</div>
 						</div>
 
@@ -204,27 +183,6 @@
 								</button>
 							</div>
 						{/if}
-					</div>
-
-					<div class="mt-10 flex items-center justify-between">
-						{#if showSuccessMessage}
-							<p in:scale class="text-emerald-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-								<ShieldCheck size={16} /> Profilo aggiornato correttamente
-							</p>
-						{:else}
-							<div></div>
-						{/if}
-
-						<button
-								onclick={handleSave}
-								disabled={isSaving}
-								class="bg-[#1B4B6B] text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50">
-							{#if isSaving}
-								<Loader2 size={18} class="animate-spin" /> Salvataggio...
-							{:else}
-								<Save size={18} /> Salva Modifiche Profilo
-							{/if}
-						</button>
 					</div>
 				</div>
 			</div>
