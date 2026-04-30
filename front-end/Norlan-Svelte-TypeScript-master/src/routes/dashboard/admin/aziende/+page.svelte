@@ -147,15 +147,13 @@
 		try {
 			const idAz = selectedAzienda.idUtente;
 
-			// Sostituisci la creazione del payload alla riga 153 con questo:
-			// All'interno di salvaNuovoDipendente in +page.svelte
 			const payload = {
 				nome: formDipendente.nome,
 				cognome: formDipendente.cognome,
 				codiceFiscale: formDipendente.codiceFiscale,
 				email: formDipendente.email.trim(),
-				passwordHash: formDipendente.password, // <--- QUESTO DEVE ESSERE UGUALE AL CAMPO JAVA
-				richiedeCambioPassword: true           // <--- AGGIUNGILO PER SICUREZZA (visto che è nullable=false)
+				passwordHash: formDipendente.password,
+				richiedeCambioPassword: true
 			} as unknown as DipendenteRequest;
 
 			const nuovo = await LavoratoreService.create(idAz, payload);
@@ -203,7 +201,7 @@
 			fd.append('tipologia', formDocumento.tipologia);
 			fd.append('dataScadenza', formDocumento.dataScadenza);
 
-			// 1. Prima facciamo l'upload del file nuovo (così se fallisce, non perdiamo nulla)
+			// 1. Prima facciamo l'upload del file nuovo
 			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
 
 			// 2. Se l'upload è andato a buon fine E stavamo aggiornando un file, eliminiamo il vecchio
@@ -297,13 +295,13 @@
 							<h3 class="font-extrabold text-[#1B4B6B] text-xl mb-1 uppercase truncate">{a.ragioneSociale}</h3>
 							<div class="flex items-center gap-2 mb-4">
 								<p class="text-[10px] text-gray-400 font-bold uppercase">P.IVA: {a.partitaIva}</p>
-								<span class="text-[8px] font-black px-2 py-0.5 rounded border {a.hasDipendenti ? 'border-purple-100 bg-purple-50 text-purple-600' : 'border-blue-100 bg-blue-50 text-blue-600'} uppercase">
+								<span class="text-[8px] font-black px-2 py-0.5 rounded border border-[#1B4B6B]/20 bg-[#1B4B6B]/5 text-[#1B4B6B] uppercase">
                             {a.hasDipendenti ? 'Con Personale' : 'Individuale'}
                          </span>
 							</div>
 						</div>
 						<button onclick={() => apriDettaglio(a)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-							<div class="flex items-center gap-2"><ShieldCheck size={16} class="text-green-600"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Verificata</span></div>
+							<div class="flex items-center gap-2"><ShieldCheck size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Verificata</span></div>
 							<ChevronRight size={20} class="text-[#1B4B6B]" />
 						</button>
 					</div>
@@ -320,9 +318,9 @@
 					<div>
 						<div class="flex items-center gap-3 mb-4">
 							{#if dynamicHasDipendenti}
-								<span class="bg-purple-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Users size={12}/> Azienda con Personale</span>
+								<span class="bg-white/20 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Users size={12}/> Azienda con Personale</span>
 							{:else}
-								<span class="bg-blue-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><User size={12}/> Ditta Individuale</span>
+								<span class="bg-white/20 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><User size={12}/> Ditta Individuale</span>
 							{/if}
 						</div>
 						<h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedAzienda.ragioneSociale}</h1>
@@ -332,7 +330,7 @@
 						<button onclick={() => apreGmail(selectedAzienda?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100">
 							<Mail size={16} /> Manda Mail
 						</button>
-						<button onclick={() => vaiInChat(selectedAzienda?.idUtente || '')} class="flex items-center gap-2 bg-blue-500 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-blue-600">
+						<button onclick={() => vaiInChat(selectedAzienda?.idUtente || '')} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30">
 							<MessageSquare size={16} /> Contatta Azienda
 						</button>
 						<button onclick={() => preparaEliminazione(selectedAzienda)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl hover:bg-red-700">
@@ -372,10 +370,10 @@
 			<div in:slide class="space-y-8 mb-16">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
-						<div class="p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner"><FileText size={24} /></div>
+						<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl shadow-inner"><FileText size={24} /></div>
 						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiAziendaliFiltrati.length})</h2>
 					</div>
-					<button onclick={apriModalUploadNuovo} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
+					<button onclick={apriModalUploadNuovo} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#153a54] transition-all shadow-md">
 						<Plus size={16} /> Carica Documento
 					</button>
 				</div>
@@ -393,7 +391,7 @@
 								<div class="flex justify-between items-start mb-4">
 									<div class="flex items-center gap-4">
 										<div class="p-3 rounded-2xl transition-all
-                                     {doc.scaduto ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white'}">
+                                     {doc.scaduto ? 'bg-red-50 text-red-600' : 'bg-[#1B4B6B]/10 text-[#1B4B6B] group-hover:bg-[#1B4B6B] group-hover:text-white'}">
 											<FileText size={20} />
 										</div>
 										<div>
@@ -429,10 +427,10 @@
 			<div in:slide class="space-y-8 mb-20">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-4">
-						<div class="p-3 bg-purple-100 text-purple-600 rounded-2xl shadow-inner"><Users size={24} /></div>
+						<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl shadow-inner"><Users size={24} /></div>
 						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale ({dipendentiCorrenti.length})</h2>
 					</div>
-					<button onclick={() => (showDipendenteModal = true)} class="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 shadow-md hover:bg-purple-700 transition-all">
+					<button onclick={() => (showDipendenteModal = true)} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 shadow-md hover:bg-[#153a54] transition-all">
 						<UserPlus size={16} /> Aggiungi Dipendente
 					</button>
 				</div>
@@ -445,11 +443,11 @@
 									tabindex="0"
 									onclick={() => vaiADettaglioDipendente(d.idUtente)}
 									onkeydown={(e) => e.key === 'Enter' && vaiADettaglioDipendente(d.idUtente)}
-									class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all relative group cursor-pointer hover:border-purple-600/30"
+									class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all relative group cursor-pointer hover:border-[#1B4B6B]/30"
 							>
 								<button onclick={(e) => { e.stopPropagation(); preparaEliminaDip(d); }} class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10" title="Elimina"><Trash2 size={16} /></button>
 								<div class="flex items-center gap-4 mb-4">
-									<div class="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#1B4B6B] font-black text-sm group-hover:bg-purple-600 group-hover:text-white transition-all">{d.nome[0]}{d.cognome[0]}</div>
+									<div class="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#1B4B6B] font-black text-sm group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">{d.nome[0]}{d.cognome[0]}</div>
 									<h4 class="font-extrabold text-[#1B4B6B] uppercase text-sm leading-tight">{d.nome}<br>{d.cognome}</h4>
 								</div>
 								<div class="space-y-2 pt-4 border-t border-gray-50">
@@ -457,8 +455,8 @@
 									<p class="text-[10px] font-mono font-bold text-gray-600">{d.codiceFiscale}</p>
 								</div>
 								<div class="mt-4 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-									<span class="text-[9px] font-black text-purple-600 uppercase tracking-tighter">Vedi Profilo</span>
-									<ChevronRight size={14} class="text-purple-600" />
+									<span class="text-[9px] font-black text-[#1B4B6B] uppercase tracking-tighter">Vedi Profilo</span>
+									<ChevronRight size={14} class="text-[#1B4B6B]" />
 								</div>
 							</div>
 						{/each}
@@ -473,25 +471,25 @@
 	{#if showDipendenteModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[120] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
-				<div class="bg-purple-600 p-6 text-white flex justify-between items-center">
+				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Dipendente</h2>
 					<button onclick={() => (showDipendenteModal = false)}><X size={24}/></button>
 				</div>
 				<div class="p-8 space-y-4">
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nome *</label><input bind:value={formDipendente.nome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cognome *</label><input bind:value={formDipendente.cognome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Codice Fiscale *</label><input bind:value={formDipendente.codiceFiscale} maxlength="16" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nome *</label><input bind:value={formDipendente.nome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cognome *</label><input bind:value={formDipendente.cognome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Codice Fiscale *</label><input bind:value={formDipendente.codiceFiscale} maxlength="16" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-[#1B4B6B]" /></div>
 
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 
 					<div>
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password Temporanea *</label>
-						<input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" />
+						<input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" />
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
 					<button onclick={() => (showDipendenteModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-					<button onclick={salvaNuovoDipendente} disabled={!isDipendenteValid || isSavingDipendente} class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
+					<button onclick={salvaNuovoDipendente} disabled={!isDipendenteValid || isSavingDipendente} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54] transition-colors">
 						{#if isSavingDipendente}<Loader2 size={14} class="animate-spin" />{/if} {isSavingDipendente ? 'Salvataggio...' : 'Conferma e Salva'}
 					</button>
 				</div>
@@ -508,8 +506,8 @@
 				</div>
 				<div class="p-8 space-y-6">
 					<div class="grid grid-cols-2 gap-4">
-						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label><select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}</select></div>
-						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label><select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}</select></div>
+						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label><select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-[#1B4B6B]">{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}</select></div>
+						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label><select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-[#1B4B6B]">{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}</select></div>
 					</div>
 					<div>
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
@@ -518,12 +516,12 @@
 								min="1000-01-01"
 								max="9999-12-31"
 								bind:value={formDocumento.dataScadenza}
-								class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold"
+								class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-[#1B4B6B]"
 						/>
 					</div>
 					<div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group"><input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} /><label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3"><div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div><span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span></label></div>
 				</div>
-				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t"><button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button><button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}</button></div>
+				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t"><button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button><button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54]">{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}</button></div>
 			</div>
 		</div>
 	{/if}
@@ -544,32 +542,32 @@
 									<User size={20} class={!formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'} />
 									<span class="text-[10px] font-black uppercase {!formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'}">Ditta Individuale</span>
 								</button>
-								<button type="button" onclick={() => formAzienda.hasDipendenti = true} class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all {formAzienda.hasDipendenti ? 'border-purple-600 bg-purple-50' : 'border-gray-100 hover:border-gray-200'}">
-									<Users size={20} class={formAzienda.hasDipendenti ? 'text-purple-600' : 'text-gray-400'} />
-									<span class="text-[10px] font-black uppercase {formAzienda.hasDipendenti ? 'text-purple-600' : 'text-gray-400'}">Azienda con Personale</span>
+								<button type="button" onclick={() => formAzienda.hasDipendenti = true} class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all {formAzienda.hasDipendenti ? 'border-[#1B4B6B] bg-[#1B4B6B]/5' : 'border-gray-100 hover:border-gray-200'}">
+									<Users size={20} class={formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'} />
+									<span class="text-[10px] font-black uppercase {formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'}">Azienda con Personale</span>
 								</button>
 							</div>
 						</div>
 						<div class="space-y-4">
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Ragione Sociale *</label><input bind:value={formAzienda.ragioneSociale} placeholder="Es: Norlan Srl" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Partita IVA (11 cifre) *</label><input bind:value={formAzienda.partitaIva} maxlength="11" placeholder="01234567890" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">PEC Certificata</label><input bind:value={formAzienda.pec} placeholder="azienda@pec.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Sede Legale</label><input bind:value={formAzienda.sedeLegale} placeholder="Indirizzo completo" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Ragione Sociale *</label><input bind:value={formAzienda.ragioneSociale} placeholder="Es: Norlan Srl" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Partita IVA (11 cifre) *</label><input bind:value={formAzienda.partitaIva} maxlength="11" placeholder="01234567890" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">PEC Certificata</label><input bind:value={formAzienda.pec} placeholder="azienda@pec.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Sede Legale</label><input bind:value={formAzienda.sedeLegale} placeholder="Indirizzo completo" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 						</div>
 						<div class="space-y-4">
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label><input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Referente Aziendale</label><input bind:value={formAzienda.referenteAziendale} placeholder="Nome e Cognome" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label><input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Referente Aziendale</label><input bind:value={formAzienda.referenteAziendale} placeholder="Nome e Cognome" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 							<div class="grid grid-cols-2 gap-3">
-								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Telefono</label><input bind:value={formAzienda.telefono} placeholder="Fisso" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
-								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cellulare</label><input bind:value={formAzienda.cellulare} placeholder="Mobile" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm" /></div>
+								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Telefono</label><input bind:value={formAzienda.telefono} placeholder="Fisso" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cellulare</label><input bind:value={formAzienda.cellulare} placeholder="Mobile" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 							</div>
 						</div>
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
 					<button onclick={() => (showModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-					<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg flex items-center gap-2">
+					<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg flex items-center gap-2 hover:bg-[#153a54]">
 						{#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<Plus size={14}/>{/if} Salva Azienda
 					</button>
 				</div>
@@ -601,7 +599,7 @@
 					</div>
 
 					<div class="flex flex-col gap-3">
-						<button onclick={confermaEliminazione} disabled={!isConfermaValida} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 disabled:opacity-30 disabled:shadow-none transition-all">Sì, elimina definitivamente</button>
+						<button onclick={confermaEliminazione} disabled={!isConfermaValida} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 disabled:opacity-30 disabled:shadow-none transition-all hover:bg-red-700">Sì, elimina definitivamente</button>
 						<button onclick={() => { showDeleteModal = false; confermaTesto = ''; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla l'operazione</button>
 					</div>
 				</div>
