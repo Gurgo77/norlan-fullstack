@@ -3,7 +3,7 @@
     import { fade, scale } from 'svelte/transition';
     import {
         Building2, Mail, MapPin, Phone, Smartphone,
-        UserCheck, Hash, Lock, Save, Camera,
+        UserCheck, Lock, Save,
         ShieldCheck, Loader2, Globe
     } from 'lucide-svelte';
 
@@ -47,6 +47,7 @@
             setTimeout(() => (showSuccessMessage = false), 3000);
         } catch (error) {
             console.error("Errore salvataggio:", error);
+            alert("Si è verificato un errore durante il salvataggio dei dati.");
         } finally {
             isSaving = false;
         }
@@ -93,13 +94,8 @@
 
             <div class="space-y-8">
                 <div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
-                    <div class="relative group">
-                        <div class="w-36 h-36 bg-gray-50 rounded-[45px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
-                            <Building2 size={60} class="text-gray-200" />
-                        </div>
-                        <button class="absolute -bottom-2 -right-2 p-3 bg-[#1B4B6B] text-white rounded-2xl shadow-lg hover:scale-110 transition-transform">
-                            <Camera size={18} />
-                        </button>
+                    <div class="w-36 h-36 bg-gray-50 rounded-[45px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
+                        <Building2 size={60} class="text-gray-200" />
                     </div>
                     <h2 class="mt-8 text-xl font-black text-[#1B4B6B] uppercase tracking-tight text-center leading-tight">
                         {azienda.ragioneSociale}
@@ -144,9 +140,9 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                         <div class="space-y-2">
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email (Login)</label>
-                            <div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-60">
+                            <div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
                                 <Mail size={18} class="text-gray-400" />
-                                <span class="text-sm font-bold text-[#1B4B6B]">{azienda.email}</span>
+                                <input type="email" value={azienda.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
                             </div>
                         </div>
                         <div class="space-y-2">
@@ -168,6 +164,16 @@
                             <div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                                 <Smartphone size={18} class="text-gray-400" />
                                 <input type="text" bind:value={azienda.cellulare} class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full" />
+                            </div>
+                        </div>
+
+                        <!-- MODIFICA QUI: Referente Aziendale BLOCCATO -->
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Referente Aziendale</label>
+                            <div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
+                                <UserCheck size={18} class="text-gray-400" />
+                                <!-- Input in sola lettura (value e readonly), l'azienda non può cambiarlo -->
+                                <input type="text" value={azienda.referenteAziendale || 'Non specificato'} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
                             </div>
                         </div>
                     </div>
@@ -214,7 +220,7 @@
                                 <button
                                         onclick={handlePasswordChange}
                                         disabled={isChangingPassword}
-                                        class="w-full bg-[#1B4B6B] text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all">
+                                        class="w-full bg-[#1B4B6B] text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all disabled:opacity-50">
                                     {#if isChangingPassword}
                                         <Loader2 size={16} class="animate-spin" /> Aggiornamento...
                                     {:else}
