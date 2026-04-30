@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import {
-		FileText, Upload, X, Trash2, Search,
-		AlertCircle, CheckCircle, Clock, Building2, Download, ShieldAlert, FileCheck, Loader2
+		FileText, Trash2, Search,
+		AlertCircle, CheckCircle, Clock, Building2, Download, ShieldAlert, FileCheck
 	} from 'lucide-svelte';
 
 	// Import Modelli ed Enums
-	import { Documento, type DocumentoData } from '$lib/models/Documento';
+	import { Documento } from '$lib/models/Documento';
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
-	import { ModuloServizio, TipoDocumento, StatoDocumento } from '$lib/models/Enums';
+	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
 
 	// Import Servizi
 	import { DocumentoService } from '$lib/services/DocumentoService';
@@ -19,20 +19,7 @@
 	let documenti = $state<Documento[]>([]);
 	let aziende = $state<Azienda[]>([]);
 	let isLoading = $state(true);
-	let isSaving = $state(false);
 	let searchQuery = $state('');
-	let showModal = $state(false);
-
-	// Gestione File Upload
-	let selectedFile = $state<File | null>(null);
-
-	let formDoc = $state({
-		idAzienda: 0,
-		modulo: ModuloServizio.SICUREZZA,
-		tipologia: TipoDocumento.DVR,
-		dataScadenza: '',
-		stato: StatoDocumento.CARICATO
-	});
 
 	// --- AZIONI ---
 	onMount(async () => {
@@ -43,7 +30,7 @@
 				DocumentoService.getAllDocumenti()
 			]);
 
-			// Mappatura sicura dei dati (cast da unknown)
+			// Mappatura sicura dei dati
 			const aziendeRaw = resAziende as AziendaData[];
 			aziende = aziendeRaw.map(a => new Azienda(a));
 			documenti = resDocumenti;
@@ -54,46 +41,6 @@
 			isLoading = false;
 		}
 	});
-
-	async function salvaNuovoDocumento() {
-		if (!formDoc.idAzienda || !formDoc.dataScadenza || !selectedFile) {
-			alert("Compila tutti i campi e seleziona un file PDF.");
-			return;
-		}
-
-		isSaving = true;
-
-		try {
-			// Costruiamo il FormData per il backend (Multipart/Form-Data)
-			const formData = new FormData();
-			formData.append('file', selectedFile);
-			formData.append('modulo', formDoc.modulo);
-			formData.append('tipologia', formDoc.tipologia);
-			formData.append('dataScadenza', formDoc.dataScadenza);
-
-			// Invio al backend
-			const nuovoDoc = await DocumentoService.uploadDocumento(formDoc.idAzienda, formData);
-
-			// Aggiornamento UI locale
-			documenti = [nuovoDoc, ...documenti];
-
-			// Reset e chiusura
-			showModal = false;
-			selectedFile = null;
-			formDoc = {
-				idAzienda: 0,
-				modulo: ModuloServizio.SICUREZZA,
-				tipologia: TipoDocumento.DVR,
-				dataScadenza: '',
-				stato: StatoDocumento.CARICATO
-			};
-		} catch (error) {
-			console.error("Errore durante l'upload:", error);
-			alert("Errore durante il caricamento del documento.");
-		} finally {
-			isSaving = false;
-		}
-	}
 
 	async function eliminaDocumento(idDocumento: number) {
 		if (!confirm("Sei sicuro di voler eliminare questo documento in modo permanente?")) return;
@@ -107,18 +54,33 @@
 		}
 	}
 
+	// --- LOGICA DI DOWNLOAD ROBUSTA ---
 	async function handleDownload(idDocumento: number, filename: string) {
 		try {
 			const blob = await DocumentoService.downloadDocumento(idDocumento);
+
+			// Controllo di sicurezza: se il file è vuoto, fermiamo tutto
+			if (!blob || blob.size === 0) {
+				throw new Error("Il file restituito dal server è vuoto o corrotto.");
+			}
+
 			const url = window.URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
-			a.download = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+
+			// Puliamo il nome del file da eventuali spazi e assicuriamoci che abbia l'estensione pdf
+			const nomePulito = filename.replace(/\s+/g, '_');
+			a.download = nomePulito.toLowerCase().endsWith('.pdf') ? nomePulito : `${nomePulito}.pdf`;
+
+			// Aggiungiamo l'elemento al DOM, clicchiamo e lo rimuoviamo (fondamentale per Firefox/Safari)
 			document.body.appendChild(a);
 			a.click();
+			document.body.removeChild(a);
+
 			window.URL.revokeObjectURL(url);
 		} catch (error) {
 			console.error("Errore download:", error);
+			alert("Impossibile scaricare il file. Verifica che il documento sia effettivamente presente sul server.");
 		}
 	}
 
@@ -135,63 +97,64 @@
 	}
 
 	const filteredDocumenti = $derived(
-			documenti.filter(d =>
-					d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					d.tipologia.toLowerCase().includes(searchQuery.toLowerCase())
-			).sort((a, b) => new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime())
+			documenti.filter(d => {
+				// 1. Escludi gli attestati dei dipendenti
+				if (d.tipologia === TipoDocumento.ATTESTATO_CORSO) return false;
+
+				// 2. Mantieni solo documenti scaduti o in scadenza (entro 30 giorni)
+				const oggi = new Date().getTime();
+				const scadenza = new Date(d.dataScadenza).getTime();
+				const giorniRimanenti = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
+				if (giorniRimanenti > 30) return false;
+
+				// 3. Applica il filtro della barra di ricerca
+				const matchRicerca = d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						d.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
+
+				return matchRicerca;
+			}).sort((a, b) => new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime())
 	);
 
+	// SISTEMAZIONE CONTATORI
 	const statistiche = $derived({
-		totali: documenti.length,
-		scaduti: documenti.filter(d => new Date(d.dataScadenza) < new Date()).length,
-		inAttesa: documenti.filter(d => d.stato === StatoDocumento.IN_ATTESA_FIRMA).length
+		inScadenza: filteredDocumenti.filter(d => {
+			const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+			return giorni >= 0 && giorni <= 30; // Solo i documenti con scadenza imminente (esclude i già scaduti)
+		}).length,
+		scaduti: filteredDocumenti.filter(d => {
+			const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+			return giorni < 0; // Solo i documenti oltre la data di scadenza
+		}).length,
+		inAttesa: filteredDocumenti.filter(d => d.stato === StatoDocumento.IN_ATTESA_FIRMA).length
 	});
 
-	function handleFileChange(e: Event) {
-		const target = e.target as HTMLInputElement;
-		if (target.files && target.files.length > 0) {
-			selectedFile = target.files[0];
-		}
-	}
 </script>
 
 <div in:fade>
 	<div class="mb-10 flex justify-between items-start">
 		<div>
 			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">SCADENZIARIO</h1>
-			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Monitoraggio scadenze e archivio documentale.</p>
+			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Monitoraggio pratiche in scadenza.</p>
 		</div>
-
-		<button
-				onclick={() => showModal = true}
-				class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
-		>
-			<Upload size={18} />
-			Carica Documento
-		</button>
 	</div>
 
-	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+		<!-- Card Pratiche in Scadenza -->
 		<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md hover:border-[#1B4B6B]/30 transition-all cursor-default">
 			<div>
-				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Archivio Globale</p>
-				<h2 class="text-3xl font-extrabold text-[#1B4B6B]">{statistiche.totali}</h2>
+				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pratiche in Scadenza</p>
+				<h2 class="text-3xl font-extrabold text-[#1B4B6B]">{statistiche.inScadenza}</h2>
 			</div>
 			<div class="bg-blue-50 p-4 rounded-xl text-[#1B4B6B]"><FileText size={24} /></div>
 		</div>
+
+		<!-- Card Pratiche Scadute -->
 		<div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between hover:shadow-md transition-all cursor-default">
 			<div>
 				<p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Pratiche Scadute</p>
 				<h2 class="text-3xl font-extrabold text-red-600">{statistiche.scaduti}</h2>
 			</div>
 			<div class="bg-red-50 p-4 rounded-xl text-red-600"><ShieldAlert size={24} /></div>
-		</div>
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-yellow-100 flex items-center justify-between hover:shadow-md transition-all cursor-default">
-			<div>
-				<p class="text-[10px] font-bold text-yellow-500 uppercase tracking-wider mb-1">In Attesa di Firma</p>
-				<h2 class="text-3xl font-extrabold text-yellow-600">{statistiche.inAttesa}</h2>
-			</div>
-			<div class="bg-yellow-50 p-4 rounded-xl text-yellow-600"><Clock size={24} /></div>
 		</div>
 	</div>
 
@@ -223,7 +186,7 @@
 				{#if isLoading}
 					<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">Caricamento database NorLan...</td></tr>
 				{:else if filteredDocumenti.length === 0}
-					<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">Nessun documento trovato.</td></tr>
+					<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">Tutti i documenti aziendali sono attualmente in regola.</td></tr>
 				{:else}
 					{#each filteredDocumenti as doc (doc.idDocumento)}
 						{@const stato = getStatoScadenza(doc.dataScadenza)}
@@ -265,76 +228,6 @@
 	</div>
 </div>
 
-{#if showModal}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" in:scale>
-			<div class="bg-[#1B4B6B] p-8 text-white flex justify-between items-center shrink-0">
-				<h2 class="text-2xl font-extrabold uppercase tracking-tight">Caricamento Documento</h2>
-				<button onclick={() => showModal = false}><X size={28} /></button>
-			</div>
-			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-					<div class="col-span-2 space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Azienda *</label>
-						<select bind:value={formDoc.idAzienda} class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-extrabold uppercase text-xs text-[#1B4B6B] outline-none focus:ring-2 focus:ring-[#1B4B6B]">
-							<option value={0} disabled>Seleziona un'azienda...</option>
-							{#each aziende as azienda (azienda.idUtente)}
-								<option value={azienda.idUtente}>{azienda.ragioneSociale}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Modulo Servizio</label>
-						<select bind:value={formDoc.modulo} class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold uppercase text-xs outline-none">
-							{#each Object.values(ModuloServizio) as m}
-								<option value={m}>{m}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Tipologia Documentale</label>
-						<select bind:value={formDoc.tipologia} class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold uppercase text-xs outline-none">
-							{#each Object.values(TipoDocumento) as t}
-								<option value={t}>{t.replace('_', ' ')}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="col-span-2 md:col-span-1 space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Data Scadenza *</label>
-						<input bind:value={formDoc.dataScadenza} type="date" class="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-xs outline-none" />
-					</div>
-
-					<div class="col-span-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2 block">File Sorgente (PDF)</label>
-						<div class="relative group border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer {selectedFile ? 'border-green-400 bg-green-50' : 'hover:bg-gray-50 hover:border-[#1B4B6B]'}">
-							<input type="file" accept="application/pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange={handleFileChange} />
-							{#if selectedFile}
-								<FileCheck size={32} class="text-green-500 mb-3" />
-								<p class="font-black text-xs uppercase text-green-600 truncate max-w-xs">{selectedFile.name}</p>
-							{:else}
-								<Upload size={32} class="text-gray-400 mb-3 group-hover:text-[#1B4B6B]" />
-								<p class="font-bold text-xs uppercase tracking-widest text-gray-400 group-hover:text-[#1B4B6B]">Sfoglia o Trascina file</p>
-							{/if}
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="p-8 border-t border-gray-100 flex gap-4 bg-white rounded-b-3xl">
-				<button onclick={() => showModal = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl uppercase text-xs">Annulla</button>
-				<button
-						onclick={salvaNuovoDocumento}
-						disabled={isSaving}
-						class="flex-1 px-6 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl shadow-xl uppercase text-xs disabled:opacity-50 flex items-center justify-center gap-2"
-				>
-					{#if isSaving} <Loader2 size={16} class="animate-spin" /> Elaborazione... {:else} Carica Documento {/if}
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
 <style>
-	.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-	.custom-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 	tr:hover { background-color: white !important; }
 </style>

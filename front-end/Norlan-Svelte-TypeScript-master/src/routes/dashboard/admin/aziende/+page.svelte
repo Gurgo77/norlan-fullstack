@@ -34,6 +34,7 @@
 	let isUploading = $state(false);
 	let uploadFile = $state<File | null>(null);
 	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataScadenza: '' });
+	let idDocumentoDaAggiornare = $state<number | null>(null);
 
 	// Stato Personale
 	let showDipendenteModal = $state(false);
@@ -176,6 +177,22 @@
 		}
 	}
 
+	// Funzione dedicata per quando si carica un documento partendo da zero
+	function apriModalUploadNuovo() {
+		idDocumentoDaAggiornare = null;
+		formDocumento = { modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataScadenza: '' };
+		showUploadModal = true;
+	}
+
+	// Funzione per quando si preme "Aggiorna Ora" su un file scaduto
+	function preparaAggiornamento(doc: Documento) {
+		idDocumentoDaAggiornare = doc.idDocumento; // Memorizziamo chi dobbiamo cancellare
+		formDocumento.modulo = doc.modulo;
+		formDocumento.tipologia = doc.tipologia;
+		formDocumento.dataScadenza = ''; // Resettiamo la data per il nuovo file
+		showUploadModal = true;
+	}
+
 	async function gestisciUpload() {
 		if (!uploadFile || !selectedAzienda || !formDocumento.dataScadenza) return;
 		isUploading = true;
@@ -186,10 +203,20 @@
 			fd.append('tipologia', formDocumento.tipologia);
 			fd.append('dataScadenza', formDocumento.dataScadenza);
 
+			// 1. Prima facciamo l'upload del file nuovo (così se fallisce, non perdiamo nulla)
 			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
+
+			// 2. Se l'upload è andato a buon fine E stavamo aggiornando un file, eliminiamo il vecchio
+			if (idDocumentoDaAggiornare !== null) {
+				await DocumentoService.deleteDocumento(idDocumentoDaAggiornare);
+			}
+
+			// 3. Sincronizziamo la tabella
 			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedAzienda.idUtente);
+
 			showUploadModal = false;
 			uploadFile = null;
+			idDocumentoDaAggiornare = null; // Reset
 		} catch (error) {
 			console.error("Errore Dettagliato Upload:", error);
 			const err = error as { response?: { data?: Record<string, unknown> | string }, message?: string };
@@ -200,8 +227,6 @@
 			isUploading = false;
 		}
 	}
-
-	function preparaAggiornamento(doc: Documento) { formDocumento.modulo = doc.modulo; formDocumento.tipologia = doc.tipologia; showUploadModal = true; }
 
 	async function scaricaDoc(doc: Documento) {
 		try {
@@ -350,7 +375,7 @@
 						<div class="p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner"><FileText size={24} /></div>
 						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiAziendaliFiltrati.length})</h2>
 					</div>
-					<button onclick={() => (showUploadModal = true)} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
+					<button onclick={apriModalUploadNuovo} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
 						<Plus size={16} /> Carica Documento
 					</button>
 				</div>
