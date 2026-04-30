@@ -223,10 +223,6 @@
 			</div>
 
 			<div class="flex items-center gap-6">
-				<div class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 text-[10px] font-bold uppercase">
-					<Clock size={14} />
-					<span>Sistema Online</span>
-				</div>
 
 				<div class="relative" onclick={(e) => e.stopPropagation()}>
 					<button
