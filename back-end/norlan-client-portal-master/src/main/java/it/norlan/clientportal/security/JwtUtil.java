@@ -6,6 +6,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import java.util.function.Function;
 import java.util.Date;
 import it.norlan.clientportal.model.Utente;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -21,8 +22,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    private final String SECRET_KEY = "NorLan_Secret_Key_2026_Top_Security_Level_Molto_Lunga_E_Sicura";
-    private final long EXPIRATION_TIME = 1000 * 60 * 60 * 10; // 10 ore
+    @Value("${jwt.secret}")
+    private String SECRET_KEY;    private final long EXPIRATION_TIME = 1000 * 60 * 60 * 1;
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
