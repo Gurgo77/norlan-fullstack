@@ -14,9 +14,15 @@
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import httpClient from '$lib/api/httpClient';
 
+	// Estensione per gestire il numero iscritti
+	interface CorsoFormazioneEsteso extends CorsoFormazione {
+		numeroIscritti?: number;
+		isLoadingIscritti?: boolean;
+	}
+
 	// STATO CON RUNE SVELTE 5
 	let isLoading = $state(true);
-	let corsi = $state<CorsoFormazione[]>([]);
+	let corsi = $state<CorsoFormazioneEsteso[]>([]);
 	let queryRicerca = $state('');
 	let filtroStato = $state<StatoCorso | ''>('');
 
@@ -39,7 +45,27 @@
 
 		try {
 			const tuttiCorsi = await FormazioneService.getAllCorsi();
-			corsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
+			const mieiCorsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
+
+			// Inizializza i corsi con stato di caricamento iscritti
+			corsi = mieiCorsi.map(c => ({
+				...c,
+				numeroIscritti: 0,
+				isLoadingIscritti: true
+			}));
+
+			// Fetch asincrono per il numero di iscritti di ogni corso
+			for (let i = 0; i < corsi.length; i++) {
+				try {
+					const iscritti = await FormazioneService.getIscrizioniByCorso(corsi[i].idCorso);
+					corsi[i].numeroIscritti = iscritti.length;
+				} catch (e) {
+					console.warn("Errore caricamento iscritti per corso", corsi[i].idCorso);
+				} finally {
+					corsi[i].isLoadingIscritti = false;
+				}
+			}
+
 		} catch (error) {
 			console.error("Errore durante il recupero dei corsi assegnati:", error);
 		} finally {
@@ -76,7 +102,7 @@
 
 		try {
 			await FormazioneService.updateStatoCorso(idCorso, nuovoStato);
-			corsi = corsi.map(c => c.idCorso === idCorso ? { ...c, stato: nuovoStato } as CorsoFormazione : c);
+			corsi = corsi.map(c => c.idCorso === idCorso ? { ...c, stato: nuovoStato } as CorsoFormazioneEsteso : c);
 		} catch (error: any) {
 			console.error(error);
 			alert(error.response?.data?.message || "Errore durante l'aggiornamento dello stato del corso.");
@@ -98,10 +124,8 @@
 		try {
 			const formData = new FormData();
 			formData.append('file', fileMateriale);
-			// Corretto: il backend si aspetta esattamente "titoloDocumento"
 			formData.append('titoloDocumento', titoloMateriale);
 
-			// Corretto: rotta al plurale "/materiali" e rimosso l'header manuale
 			await httpClient.post(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`, formData, {
 				headers: {
 					'Content-Type': 'multipart/form-data'
@@ -141,7 +165,7 @@
 
 		try {
 			await FormazioneService.controfirmaRegistro(selectedCorso.idCorso);
-			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.VALIDATO } as CorsoFormazione : c);
+			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.VALIDATO } as CorsoFormazioneEsteso : c);
 			alert("Registro controfirmato con successo. Il corso è ora archiviato e gestito dall'amministrazione.");
 			showModalFirma = false;
 		} catch (error) {
@@ -210,7 +234,16 @@
 							<div class="absolute top-0 left-0 w-full h-1.5 bg-rose-500"></div>
 							<div class="p-6 flex-1 flex flex-col gap-3">
 								<h3 class="font-extrabold text-[#1B4B6B] uppercase leading-tight">{corso.titolo}</h3>
-								<p class="text-[10px] font-bold text-rose-600 uppercase">Validato da Admin - In attesa di tua firma legale</p>
+								<div class="flex items-center justify-between mt-2">
+									<p class="text-[10px] font-bold text-rose-600 uppercase">Validato da Admin - In attesa di tua firma</p>
+									{#if corso.isLoadingIscritti}
+										<Loader2 size={12} class="animate-spin text-gray-400" />
+									{:else}
+                                <span class="bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded-md flex items-center gap-1">
+                                    <Users size={10} /> {corso.numeroIscritti} Iscritti
+                                </span>
+									{/if}
+								</div>
 							</div>
 							<div class="p-4 bg-rose-50 border-t border-rose-100">
 								<button onclick={() => apriValidazioneRegistro(corso)} class="w-full py-3 bg-rose-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-rose-700 transition-colors">
@@ -233,7 +266,14 @@
 					{#each corsiConclusiAttesaAdmin as corso (corso.idCorso)}
 						<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-2 relative overflow-hidden group hover:border-amber-200 transition-colors">
 							<h3 class="font-extrabold text-[#1B4B6B] uppercase">{corso.titolo}</h3>
-							<p class="text-[10px] font-bold text-gray-500 uppercase mt-2">Lezioni terminate. Il responsabile amministrativo deve confermare le presenze prima della tua firma.</p>
+							<div class="flex items-center justify-between mt-1">
+								<p class="text-[10px] font-bold text-gray-500 uppercase mt-2">Lezioni terminate. Admin deve confermare le presenze.</p>
+								{#if !corso.isLoadingIscritti}
+                             <span class="bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded-md flex items-center gap-1 shrink-0">
+                                 <Users size={10} /> {corso.numeroIscritti} Iscritti
+                             </span>
+								{/if}
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -256,7 +296,14 @@
 								<h3 class="font-extrabold text-[#1B4B6B] uppercase mb-4 ml-2">{corso.titolo}</h3>
 								<div class="space-y-2 ml-2">
 									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><MapPin size={14} /> {corso.luogoFisico}</div>
-									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><Users size={14} /> {corso.capacitaMassima || 0} Iscritti</div>
+									<div class="flex items-center gap-2 text-xs font-bold text-gray-500">
+										<Users size={14} />
+										{#if corso.isLoadingIscritti}
+											<Loader2 size={12} class="animate-spin" />
+										{:else}
+											{corso.numeroIscritti} Iscritti)
+										{/if}
+									</div>
 								</div>
 							</div>
 
@@ -286,7 +333,14 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiProgrammati as corso (corso.idCorso)}
 						<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col hover:border-[#1B4B6B]/30 transition-all">
-							<h3 class="font-extrabold text-[#1B4B6B] text-sm uppercase mb-3 line-clamp-2">{corso.titolo}</h3>
+							<div class="flex items-start justify-between mb-3">
+								<h3 class="font-extrabold text-[#1B4B6B] text-sm uppercase line-clamp-2">{corso.titolo}</h3>
+								{#if !corso.isLoadingIscritti}
+                              <span class="bg-blue-50 text-blue-600 border border-blue-100 text-[9px] font-black px-2 py-1 rounded-lg flex items-center gap-1 shrink-0">
+                                  <Users size={10} /> {corso.numeroIscritti}
+                              </span>
+								{/if}
+							</div>
 							<div class="flex-1 space-y-2 mb-4">
 								<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><Clock size={12}/> {formattaData(corso.dataOrario)}</p>
 								<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><MapPin size={12}/> {corso.luogoFisico}</p>

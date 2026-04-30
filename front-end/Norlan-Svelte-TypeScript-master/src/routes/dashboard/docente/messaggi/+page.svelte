@@ -16,8 +16,8 @@
 	// IMPORT MODELLI
 	import { Messaggio } from '$lib/models/Messaggio';
 	import type { AziendaData } from '$lib/models/Azienda';
-	// Importo il modello completo per risolvere l'errore su idAzienda
 	import type { DipendenteData } from '$lib/models/Dipendente';
+	import { StatoCorso } from '$lib/models/Enums'; // Aggiunto import dello stato
 
 	// --- INTERFACCE PER LA RUBRICA ---
 	interface Contatto {
@@ -39,7 +39,7 @@
 	let isLoading = $state(true);
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
 
-	const STAFF_ID = 1; // ID convenzionale dello Staff NorLan
+	const STAFF_ID = 1;
 
 	onMount(async () => {
 		currentUser = AuthService.getSession();
@@ -49,18 +49,20 @@
 			try {
 				// 1. Recupero i corsi assegnati al Docente loggato
 				const tuttiCorsi = await FormazioneService.getAllCorsi();
-				const mieiCorsi = tuttiCorsi.filter(c => c.idDocente === currentUser!.idUtente);
+				// MODIFICA: Prendo solo i corsi del docente che NON sono certificati/conclusi definitivamente
+				const mieiCorsiAttivi = tuttiCorsi.filter(c =>
+						c.idDocente === currentUser!.idUtente &&
+						c.stato !== StatoCorso.CERTIFICATO
+				);
 
 				// 2. Estraggo tutti gli studenti unici e le loro aziende dai corsi
-				// Utilizzo DipendenteData al posto di DipendenteDTO
 				const studentiMap = new Map<number, DipendenteData>();
 
-				for (const corso of mieiCorsi) {
+				for (const corso of mieiCorsiAttivi) {
 					const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 					for (const iscr of iscritti) {
 						if (!studentiMap.has(iscr.idUtente)) {
 							try {
-								// Casting sicuro a DipendenteData per poter accedere a idAzienda
 								const studente = (await LavoratoreService.getById(iscr.idUtente)) as unknown as DipendenteData;
 								studentiMap.set(iscr.idUtente, studente);
 							} catch (e) {
