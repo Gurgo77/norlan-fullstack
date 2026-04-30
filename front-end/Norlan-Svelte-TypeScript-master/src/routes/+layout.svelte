@@ -34,5 +34,7 @@
 		{@render children()}
 	</main>
 
-	<Footer />
+	{#if !isDashboard}
+		<Footer />
+	{/if}
 </div>
