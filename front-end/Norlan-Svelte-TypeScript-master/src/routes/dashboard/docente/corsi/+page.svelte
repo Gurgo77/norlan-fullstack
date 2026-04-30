@@ -98,21 +98,20 @@
 		try {
 			const formData = new FormData();
 			formData.append('file', fileMateriale);
-			formData.append('titolo', titoloMateriale);
-			formData.append('idCorso', selectedCorsoMateriale.idCorso.toString());
+			// Corretto: il backend si aspetta esattamente "titoloDocumento"
+			formData.append('titoloDocumento', titoloMateriale);
 
-			// Utilizzo httpClient per forzare il multipart/form-data
-			await httpClient.post(`/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiale`, formData, {
+			// Corretto: rotta al plurale "/materiali" e rimosso l'header manuale
+			await httpClient.post(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`, formData, {
 				headers: {
 					'Content-Type': 'multipart/form-data'
 				}
 			});
-
 			alert("Materiale didattico caricato con successo!");
 			showModalMateriale = false;
 		} catch (error) {
 			console.error("Errore upload materiale:", error);
-			alert("Errore durante il caricamento del materiale. Assicurati che il formato del file sia supportato.");
+			alert("Errore durante il caricamento del materiale. Assicurati che il file sia valido.");
 		} finally {
 			isUploadingMateriale = false;
 		}

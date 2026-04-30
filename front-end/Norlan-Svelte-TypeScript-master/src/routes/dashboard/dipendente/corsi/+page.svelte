@@ -7,18 +7,25 @@
 		Loader2,
 		Search,
 		Calendar,
-		MapPin
+		Download
 	} from 'lucide-svelte';
 
 	// IMPORT SERVIZI E MODELLI UFFICIALI
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
+	import type { MaterialeDidatticoDTO } from '$lib/models/MaterialeDidatticoDTO';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
+
+	// Estensione dell'interfaccia per gestire i materiali nel frontend
+	interface IscrizioneConMateriali extends IscrizioneCorso {
+		materiali: MaterialeDidatticoDTO[];
+		isLoadingMateriali: boolean;
+	}
 
 	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
-	let iscrizioni = $state<IscrizioneCorso[]>([]);
+	let iscrizioni = $state<IscrizioneConMateriali[]>([]);
 
 	// --- CARICAMENTO DATI ---
 	onMount(async () => {
@@ -27,7 +34,30 @@
 
 		try {
 			// Recupero iscrizioni reali del dipendente loggato
-			iscrizioni = await FormazioneService.getIscrizioniUtente(session.idUtente);
+			const iscrizioniBase = await FormazioneService.getIscrizioniUtente(session.idUtente);
+
+			// Inizializziamo l'array con i campi extra per i materiali
+			iscrizioni = iscrizioniBase.map((isc: IscrizioneCorso) => ({
+				...isc,
+				materiali: [],
+				isLoadingMateriali: true
+			}));
+
+			// Recupero asincrono dei materiali per ogni corso attivo
+			for (let i = 0; i < iscrizioni.length; i++) {
+				const corsoId = iscrizioni[i].idCorso;
+				try {
+					const materialiList = await FormazioneService.getMaterialiByCorso(corsoId);
+					// @ts-ignore - aggiriamo i controlli reattivi per l'aggiornamento diretto
+					iscrizioni[i].materiali = materialiList;
+				} catch (e) {
+					console.warn(`Impossibile caricare materiali per il corso ${corsoId}`, e);
+				} finally {
+					// @ts-ignore
+					iscrizioni[i].isLoadingMateriali = false;
+				}
+			}
+
 		} catch (error) {
 			console.error('Errore nel recupero dei corsi:', error);
 		} finally {
@@ -57,6 +87,22 @@
 					minute: '2-digit'
 				})
 				.toUpperCase();
+	}
+
+	async function scaricaMateriale(idMateriale: number, titolo: string) {
+		try {
+			const blob = await FormazioneService.downloadMateriale(idMateriale);
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${titolo.replace(/\s+/g, '_')}.pdf`;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+		} catch (error) {
+			console.error('Errore download materiale:', error);
+			alert("Impossibile scaricare il materiale al momento.");
+		}
 	}
 </script>
 
@@ -111,18 +157,41 @@
 							<h3 class="mb-4 text-xl font-black uppercase leading-tight text-[#1B4B6B]">
 								{iscrizione.titoloCorso}
 							</h3>
-							<div class="flex flex-wrap gap-4">
+							<div class="flex flex-wrap gap-4 mb-4">
 								<div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
 									<Calendar size={14} class="text-[#1B4B6B]" />
 									{formatData(iscrizione.dataOrarioCorso)}
 								</div>
 							</div>
-						</div>
 
-						<div class="mt-8 flex gap-3">
-							<button class="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1B4B6B] py-4 text-[10px] font-black uppercase text-white shadow-lg shadow-blue-900/10 transition-all hover:bg-[#153a54]">
-								<PlayCircle size={18} /> Materiali
-							</button>
+							<!-- AREA MATERIALI DIDATTICI -->
+							{#if iscrizione.isLoadingMateriali}
+								<div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
+									<Loader2 size={12} class="animate-spin" /> Controllo materiali...
+								</div>
+							{:else if iscrizione.materiali.length > 0}
+								<div class="space-y-2 mt-4 pt-4 border-t border-gray-100">
+									<p class="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2">Materiali Didattici</p>
+									{#each iscrizione.materiali as mat}
+										<button
+												onclick={() => scaricaMateriale(mat.idMateriale, mat.titoloDocumento)}
+												class="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-[#1B4B6B] hover:bg-blue-50 transition-colors group/mat"
+										>
+											<div class="flex items-center gap-2 overflow-hidden">
+												<PlayCircle size={14} class="text-[#1B4B6B] shrink-0" />
+												<span class="text-[10px] font-bold text-[#1B4B6B] uppercase truncate">{mat.titoloDocumento}</span>
+											</div>
+											<Download size={14} class="text-gray-400 group-hover/mat:text-[#1B4B6B]" />
+										</button>
+									{/each}
+								</div>
+							{:else}
+								<div class="mt-4 pt-4 border-t border-gray-100">
+									<p class="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+										Nessun materiale caricato dal docente.
+									</p>
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
