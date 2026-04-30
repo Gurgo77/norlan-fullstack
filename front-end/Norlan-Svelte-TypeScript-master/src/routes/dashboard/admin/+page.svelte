@@ -212,7 +212,7 @@
 			<!-- Card Aziende -->
 			<a href="/dashboard/admin/aziende" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 0}}>
 				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<Building2 size={24} />
 					</div>
 					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
@@ -224,12 +224,12 @@
 			</a>
 
 			<!-- Card Dipendenti -->
-			<a href="/dashboard/admin/dipendenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-purple-600/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 50}}>
+			<a href="/dashboard/admin/dipendenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 50}}>
 				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<Users size={24} />
 					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-purple-600 transition-colors" />
+					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
 				</div>
 				<div>
 					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.dipendenti}</h2>
@@ -238,12 +238,12 @@
 			</a>
 
 			<!-- Card Docenti -->
-			<a href="/dashboard/admin/docenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-teal-600/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 100}}>
+			<a href="/dashboard/admin/docenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 100}}>
 				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-teal-50 text-teal-600 rounded-2xl group-hover:bg-teal-600 group-hover:text-white transition-colors">
+					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<UserSquare2 size={24} />
 					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-teal-600 transition-colors" />
+					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
 				</div>
 				<div>
 					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.docenti}</h2>
@@ -252,12 +252,12 @@
 			</a>
 
 			<!-- Card Formazione -->
-			<a href="/dashboard/admin/formazione" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-orange-500/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 150}}>
+			<a href="/dashboard/admin/formazione" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 150}}>
 				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-orange-50 text-orange-600 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors">
+					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<GraduationCap size={24} />
 					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-orange-600 transition-colors" />
+					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
 				</div>
 				<div>
 					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.corsiAttivi}</h2>
@@ -266,12 +266,12 @@
 			</a>
 
 			<!-- Card DPI -->
-			<a href="/dashboard/admin/dpi" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-green-600/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 200}}>
+			<a href="/dashboard/admin/dpi" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 200}}>
 				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-green-50 text-green-600 rounded-2xl group-hover:bg-green-600 group-hover:text-white transition-colors">
+					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<HardHat size={24} />
 					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-green-600 transition-colors" />
+					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
 				</div>
 				<div>
 					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.dpiTotali}</h2>
@@ -304,13 +304,14 @@
 						{#each scadenzeFiltrate as scadenza (scadenza.id)}
 							<tr class="hover:bg-gray-50/50 transition-colors group">
 								<td class="px-6 py-4 font-black text-[#1B4B6B] text-xs uppercase">
-									<a href="/dashboard/admin/aziende?id={scadenza.idAzienda}" class="hover:text-blue-600 transition-colors">
+									<a href="/dashboard/admin/aziende?id={scadenza.idAzienda}" class="hover:text-[#1B4B6B] transition-colors">
 										{scadenza.azienda}
 									</a>
 								</td>
 								<td class="px-6 py-4">
 									<div class="flex items-center gap-2">
-										<div class="p-1.5 rounded-lg {scadenza.tipo === 'DOCUMENTO' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}">
+										<!-- Icona unificata per tutto al Blu Norlan -->
+										<div class="p-1.5 rounded-lg bg-[#1B4B6B]/10 text-[#1B4B6B]">
 											{#if scadenza.tipo === 'DOCUMENTO'}
 												<FileText size={14} />
 											{:else}
@@ -382,7 +383,7 @@
 						<h4 class="text-xs font-black text-[#1B4B6B] uppercase mb-1">Supporto Clienti</h4>
 						<p class="text-[10px] font-bold text-gray-400 uppercase">Apri la Chat NorLan</p>
 					</div>
-					<div class="p-3 bg-gray-50 text-gray-400 rounded-xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
+					<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<ArrowRight size={18} />
 					</div>
 				</a>
