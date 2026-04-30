@@ -5,8 +5,7 @@
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, MessageSquare, GraduationCap,
-		FileText, LogOut, Home, Bell, Clock,
-		Building2, HardHat, Users, Search, User, Loader2
+		FileText, LogOut, Home, Bell, Building2, HardHat, Users, User, Loader2
 	} from 'lucide-svelte';
 
 	// Import Servizi e Modelli
@@ -15,7 +14,6 @@
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import type { AziendaData } from '$lib/models/Azienda';
 	import type { Notifica } from '$lib/models/Notifica';
-	import { searchState } from '$lib/searchState.svelte';
 
 	let { children } = $props();
 
@@ -164,21 +162,9 @@
 	<main class="flex-1 flex flex-col min-w-0">
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 shrink-0 sticky top-0 z-40">
 			<div class="relative w-1/3 group">
-				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={18} />
-				<input
-						bind:value={searchState.query}
-						type="text"
-						placeholder="Cerca dipendente o documento..."
-						class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-4 focus:ring-[#1B4B6B]/5 focus:bg-white focus:border-[#1B4B6B] outline-none transition-all font-medium"
-				/>
 			</div>
 
 			<div class="flex items-center gap-6">
-				<div class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 text-[10px] font-bold uppercase">
-					<Clock size={14} />
-					<span>Portale Sincronizzato</span>
-				</div>
-
 				<div class="relative" onclick={(e) => e.stopPropagation()}>
 					<button
 							onclick={handleToggleNotifiche}
@@ -228,7 +214,6 @@
 				<div class="flex items-center gap-4">
 					<div class="text-right hidden sm:block">
 						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">{aziendaNome ? aziendaNome.split(' ')[0] : 'Area'}</p>
-						<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Premium User</p>
 					</div>
 					<div class="w-10 h-10 bg-[#1B4B6B] rounded-lg flex items-center justify-center text-white shadow-md">
 						<Building2 size={20} />

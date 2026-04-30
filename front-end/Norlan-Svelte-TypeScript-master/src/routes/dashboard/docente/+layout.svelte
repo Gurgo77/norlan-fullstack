@@ -177,20 +177,11 @@
 	<main class="flex-1 flex flex-col min-w-0">
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 shrink-0 sticky top-0 z-40">
 			<div class="relative w-1/3 group">
-				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={18} />
-				<input
-						bind:value={searchState.query}
-						type="text"
-						placeholder="CERCA CORSI O STUDENTI..."
-						class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-4 focus:ring-[#1B4B6B]/5 focus:bg-white focus:border-[#1B4B6B] outline-none transition-all font-medium"
-				/>
+
 			</div>
 
 			<div class="flex items-center gap-6">
-				<div class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 text-[10px] font-bold uppercase">
-					<Clock size={14} />
-					<span>Portale Sincronizzato</span>
-				</div>
+
 
 				<div class="relative" onclick={(e) => e.stopPropagation()}>
 					<button

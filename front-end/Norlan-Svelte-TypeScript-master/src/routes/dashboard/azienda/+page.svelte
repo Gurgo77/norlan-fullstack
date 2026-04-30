@@ -215,7 +215,7 @@
 			</div>
 			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">{utenteAzienda?.ragioneSociale || 'Area Azienda'}</h1>
 			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-				Pannello di controllo NorLan Safety
+				Pannello di controllo aziendale
 			</p>
 		</div>
 	</div>
