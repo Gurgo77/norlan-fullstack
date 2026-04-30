@@ -1,11 +1,11 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { goto } from '$app/navigation'; // <-- Aggiunto per la chat
+    import { goto } from '$app/navigation';
     import { fade, scale, slide } from 'svelte/transition';
     import {
         ShieldCheck, Search, Building2, User, Loader2, Calendar,
         AlertTriangle, CheckCircle2, ChevronDown, ChevronRight,
-        Mail, MessageSquare // <-- Aggiunte le icone per i bottoni
+        Mail, MessageSquare
     } from 'lucide-svelte';
 
     // Servizi
@@ -13,13 +13,26 @@
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
 
+    // --- INTERFACCE LOCALI (Type-Safe, no ANY) ---
+    // Mappa la struttura reale ritornata dal backend (AssegnazioneDPIDTO)
+    interface DpiSafe extends AssegnazioneDPIDTO {
+        nomeDpi?: string;
+        dataScadenza?: string;
+    }
+
     // Interfaccia estesa per comodità grafica
     interface DipendenteEsteso extends DipendenteDTO {
         idAzienda?: number | string;
         nomeAzienda?: string;
-        dpis?: AssegnazioneDPIDTO[];
+        dpis?: DpiSafe[];
     }
 
+    interface GruppoAzienda {
+        idAzienda: string;
+        dipendenti: DipendenteEsteso[];
+    }
+
+    // --- STATO REATTIVO ---
     let isLoading = $state(true);
     let searchQuery = $state('');
 
@@ -43,7 +56,7 @@
             aziende = aziendeList;
 
             // Mappiamo i dipendenti associandoli alla loro azienda
-            const dipendentiConAzienda = resDipendenti.map(d => {
+            const dipendentiConAzienda = (resDipendenti as DipendenteDTO[]).map(d => {
                 const item = d as DipendenteDTO & { idAzienda?: number | string };
                 const aziendaAssoc = aziendeList.find(a => String(a.idUtente) === String(item.idAzienda));
                 return {
@@ -59,7 +72,8 @@
                     if (!dip.idUtente) return { ...dip, dpis: [] };
 
                     try {
-                        const dpis = await LavoratoreService.getDpiByLavoratore(dip.idUtente);
+                        const dpisRaw = await LavoratoreService.getDpiByLavoratore(dip.idUtente);
+                        const dpis = dpisRaw as DpiSafe[];
                         return { ...dip, dpis };
                     } catch (e) {
                         return { ...dip, dpis: [] };
@@ -92,7 +106,7 @@
     );
 
     const dipendentiRaggruppati = $derived(() => {
-        const gruppi: Record<string, { idAzienda: string, dipendenti: DipendenteEsteso[] }> = {};
+        const gruppi: Record<string, GruppoAzienda> = {};
 
         const ordinati = [...filteredDipendenti].sort((a, b) => {
             const azA = a.nomeAzienda || "Senza Azienda";
@@ -112,7 +126,8 @@
         return gruppi;
     });
 
-    function isScaduto(data: string) {
+    // Helpers
+    function isScaduto(data: string | undefined) {
         if (!data || data === '9999-12-31') return false;
         const oggi = new Date();
         oggi.setHours(0, 0, 0, 0);
@@ -121,13 +136,13 @@
         return scad < oggi;
     }
 
-    function formattaData(data: string) {
+    function formattaData(data: string | undefined) {
         if (!data || data === '9999-12-31') return 'Nessuna Scadenza';
         return new Date(data).toLocaleDateString();
     }
 
     // --- NUOVE FUNZIONI DI SOLLECITO ---
-    function sollecitaViaEmail(dpi: AssegnazioneDPIDTO, dipendente: DipendenteEsteso) {
+    function sollecitaViaEmail(dpi: DpiSafe, dipendente: DipendenteEsteso) {
         if (!dipendente || !dipendente.idAzienda) return;
         const azienda = aziende.find(a => String(a.idUtente) === String(dipendente.idAzienda));
 
@@ -138,9 +153,10 @@
 
         const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${dipendente.nome} ${dipendente.cognome}`);
 
-        const dataScadenzaReale = dpi.dataScadenza || (dpi as any).dataScadenzaRevisione || '';
+        // Tentativo di estrazione del campo scadenza per evitare l'any
+        const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || '';
         const dataScad = dataScadenzaReale ? new Date(dataScadenzaReale).toLocaleDateString() : 'N/D';
-        const nomeDpiReale = dpi.nomeDpi || (dpi as any).tipo || 'DPI Non Specificato';
+        const nomeDpiReale = dpi.tipo || dpi.nomeDpi || 'DPI Non Specificato';
 
         const body = encodeURIComponent(
             `Gentile ${azienda.ragioneSociale},\n\n` +
@@ -150,12 +166,12 @@
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
     }
 
-    async function sollecitaViaChat(dpi: AssegnazioneDPIDTO, dipendente: DipendenteEsteso) {
+    async function sollecitaViaChat(dpi: DpiSafe, dipendente: DipendenteEsteso) {
         if (!dipendente || !dipendente.idAzienda) return;
 
-        const dataScadenzaReale = dpi.dataScadenza || (dpi as any).dataScadenzaRevisione || '';
+        const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || '';
         const dataScad = dataScadenzaReale ? new Date(dataScadenzaReale).toLocaleDateString() : 'N/D';
-        const nomeDpiReale = dpi.nomeDpi || (dpi as any).tipo || 'DPI Non Specificato';
+        const nomeDpiReale = dpi.tipo || dpi.nomeDpi || 'DPI Non Specificato';
 
         const testoMessaggio = encodeURIComponent(
             `Salve, vi segnaliamo che il DPI (${String(nomeDpiReale).replace(/_/g, ' ')}) assegnato al lavoratore ${dipendente.nome} ${dipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
@@ -203,7 +219,8 @@
         </div>
     {:else}
         <div class="space-y-8">
-            {#each Object.entries(dipendentiRaggruppati()) as [nomeAzienda, gruppo]}
+            <!-- Correzione dell'errore (key) aggiunta qui: (nomeAzienda) -->
+            {#each Object.entries(dipendentiRaggruppati()) as [nomeAzienda, gruppo] (nomeAzienda)}
                 <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" in:scale={{start: 0.98, duration: 300}}>
                     <button
                             onclick={() => toggleAzienda(gruppo.idAzienda)}
@@ -237,7 +254,8 @@
                                 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col h-full hover:shadow-md transition-shadow overflow-hidden">
 
                                     <div class="p-4 border-b border-gray-50 flex items-center gap-3 bg-white">
-                                        <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
+                                        <!-- Uniformato al Blu NorLan (#1B4B6B) -->
+                                        <div class="w-10 h-10 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl flex items-center justify-center font-black text-sm shrink-0">
                                             {dip.nome[0]}{dip.cognome[0]}
                                         </div>
                                         <div class="overflow-hidden">
@@ -262,8 +280,8 @@
 
                                             <div class="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
                                                 {#each dip.dpis as dpi}
-                                                    {@const nomeDpiReale = dpi.nomeDpi || (dpi as any).tipo || 'DPI Non Specificato'}
-                                                    {@const dataScadenzaReale = dpi.dataScadenza || (dpi as any).dataScadenzaRevisione || ''}
+                                                    {@const nomeDpiReale = dpi.tipo || dpi.nomeDpi || 'DPI Non Specificato'}
+                                                    {@const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || ''}
                                                     {@const scaduto = isScaduto(dataScadenzaReale)}
 
                                                     <div class="p-3 rounded-xl border {scaduto ? 'bg-red-50 border-red-200 shadow-sm shadow-red-100' : 'bg-white border-gray-100 shadow-sm'} flex flex-col gap-2 transition-all">
