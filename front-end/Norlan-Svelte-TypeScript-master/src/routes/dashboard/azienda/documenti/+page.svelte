@@ -4,7 +4,6 @@
 	import {
 		FileText,
 		Download,
-		RefreshCw,
 		Search,
 		Calendar,
 		ShieldCheck,
@@ -58,17 +57,6 @@
 			console.error('Errore download:', error);
 		}
 	}
-
-	async function richiediAggiornamento(id: number) {
-		if (!confirm('Inviare richiesta di aggiornamento allo Staff NorLan?')) return;
-		try {
-			await DocumentoService.richiediRinnovo(id);
-			alert('Richiesta inviata con successo.');
-		} catch (error) {
-			console.error('Errore rinnovo:', error);
-		}
-	}
-
 	// --- LOGICA REATTIVA ---
 	const filteredDocs = $derived(
 			documenti.filter((doc) => {
@@ -222,12 +210,6 @@
 								class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-[10px] font-black uppercase text-[#1B4B6B] transition-all hover:border-[#1B4B6B] hover:bg-[#1B4B6B] hover:text-white"
 						>
 							<Download size={14} /> Scarica
-						</button>
-						<button
-								onclick={() => richiediAggiornamento(doc.idDocumento)}
-								class="rounded-xl border border-gray-200 bg-white p-3 text-gray-400 transition-all hover:text-yellow-600"
-						>
-							<RefreshCw size={14} />
 						</button>
 					</div>
 				</div>
