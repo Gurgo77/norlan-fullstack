@@ -26,31 +26,23 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Salva un file su disco con un nome univoco per evitare sovrascritture.
-     */
     public String storeFile(MultipartFile file, String subFolder) {
-        // Pulizia del nome file
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
 
         try {
-            // Generiamo un nome univoco (UUID) per evitare conflitti tra utenti diversi
             String fileName = UUID.randomUUID().toString() + "_" + originalFileName;
 
             Path targetLocation = this.fileStorageLocation.resolve(subFolder).resolve(fileName);
-            Files.createDirectories(targetLocation.getParent()); // Crea la sottocartella se non esiste
+            Files.createDirectories(targetLocation.getParent());
 
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-            return subFolder + "/" + fileName; // Restituiamo il percorso relativo da salvare nel DB
+            return subFolder + "/" + fileName;
         } catch (IOException ex) {
             throw new RuntimeException("Errore nel salvataggio del file " + originalFileName, ex);
         }
     }
 
-    /**
-     * Carica un file come risorsa per il download.
-     */
     public Resource loadFileAsResource(String relativePath) {
         try {
             Path filePath = this.fileStorageLocation.resolve(relativePath).normalize();

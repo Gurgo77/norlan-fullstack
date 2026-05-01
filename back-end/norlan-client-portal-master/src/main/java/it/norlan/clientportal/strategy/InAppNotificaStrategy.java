@@ -15,7 +15,7 @@ public class InAppNotificaStrategy implements NotificaStrategy {
     @Override
     public void invia(Notifica notifica) {
         notificaRepository.save(notifica);
-        System.out.println("✅ [IN-APP] Notifica salvata nel database per l'utente " + notifica.getDestinatario().getEmail());
+        System.out.println("[IN-APP] Notifica salvata nel database per l'utente " + notifica.getDestinatario().getEmail());
     }
 
     @Override

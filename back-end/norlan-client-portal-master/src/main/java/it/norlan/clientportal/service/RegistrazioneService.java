@@ -102,7 +102,7 @@ public class RegistrazioneService {
                 utenteSalvato,
                 messaggioBenvenuto,
                 Notifica.Priorita.MEDIA,
-                Notifica.CanaleNotifica.EMAIL // Questo parametro seleziona automaticamente la EmailNotificaStrategy
+                Notifica.CanaleNotifica.EMAIL
         );
 
         return utenteSalvato;

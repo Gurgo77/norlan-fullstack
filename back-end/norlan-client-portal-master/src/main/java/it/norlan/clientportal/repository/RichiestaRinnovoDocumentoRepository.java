@@ -10,5 +10,4 @@ import java.util.List;
 public interface RichiestaRinnovoDocumentoRepository extends JpaRepository<RichiestaRinnovoDocumento, Integer> {
 
     List<RichiestaRinnovoDocumento> findByStato(RichiestaRinnovoDocumento.StatoRinnovo stato);
-    List<RichiestaRinnovoDocumento> findByDocumentoIdDocumento(Integer idDocumento);
 }

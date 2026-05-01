@@ -20,26 +20,17 @@ public class AdminService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    /**
-     * Ritorna l'unico amministratore del sistema (se presente).
-     */
     @Transactional(readOnly = true)
     public Optional<Admin> getUnicoAdmin() {
         return adminRepository.findAll().stream().findFirst();
     }
 
-    /**
-     * Registra l'unico amministratore.
-     * Se ne esiste già uno, lancia un'eccezione.
-     */
     @Transactional
     public Admin salvaAdmin(Admin admin) {
-        // Controllo scientifico di esistenza (Cardinalità 1:1)
         if (adminRepository.count() >= 1) {
             throw new IllegalStateException("Configurazione negata: Il sistema prevede un unico Amministratore globale.");
         }
 
-        // Configurazione sicurezza
         admin.setRuolo(Utente.Ruolo.ADMIN);
 
         if (admin.getPasswordHash() != null) {
@@ -49,21 +40,14 @@ public class AdminService {
         return adminRepository.save(admin);
     }
 
-    /**
-     * Permette di aggiornare i dati dell'unico admin esistente senza crearne di nuovi.
-     */
     @Transactional
     public Admin aggiornaAdmin(Integer id, AdminDTO dto) {
-        // 1. Recupera l'entità esistente dal database
-        Admin adminEsistente = adminRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Amministratore non trovato"));
+        Admin adminEsistente = adminRepository.findById(id).orElseThrow(() -> new RuntimeException("Amministratore non trovato"));
 
-        // 2. Aggiorna SOLO i campi consentiti (nel nostro caso, solo l'email)
         if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
             adminEsistente.setEmail(dto.getEmail());
         }
 
-        // 3. Salva e restituisci l'entità aggiornata
         return adminRepository.save(adminEsistente);
     }
 

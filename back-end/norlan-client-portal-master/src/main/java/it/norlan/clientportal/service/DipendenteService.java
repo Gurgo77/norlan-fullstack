@@ -90,7 +90,6 @@ public class DipendenteService {
     public DipendenteDTO convertToDTO(Dipendente dipendente) {
         DipendenteDTO dto = new DipendenteDTO();
 
-        // Campi base
         dto.setIdUtente(dipendente.getIdUtente());
         dto.setEmail(dipendente.getEmail());
         dto.setRuolo(dipendente.getRuolo());
@@ -98,7 +97,6 @@ public class DipendenteService {
         dto.setCognome(dipendente.getCognome());
         dto.setCodiceFiscale(dipendente.getCodiceFiscale());
 
-        // Estrazione dati dall'azienda collegata
         if (dipendente.getAzienda() != null) {
             dto.setIdAzienda(dipendente.getAzienda().getIdUtente());
             dto.setRagioneSocialeAzienda(dipendente.getAzienda().getRagioneSociale());

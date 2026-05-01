@@ -34,7 +34,6 @@ public class DocenteService {
 
     @Transactional
     public Docente salvaDocente(Docente docente) {
-        // Validazione: un docente deve avere almeno una specializzazione indicata
         if (docente.getSpecializzazioneTecnica() == null || docente.getSpecializzazioneTecnica().isBlank()) {
             throw new IllegalArgumentException("La specializzazione del docente è obbligatoria.");
         }
@@ -63,14 +62,11 @@ public class DocenteService {
     public DocenteDTO convertToDTO(Docente docente) {
         DocenteDTO dto = new DocenteDTO();
 
-        // Travaso dati comuni (ereditati)
         dto.setIdUtente(docente.getIdUtente());
         dto.setNome(docente.getNome());
         dto.setCognome(docente.getCognome());
         dto.setEmail(docente.getEmail());
         dto.setRuolo(docente.getRuolo());
-
-        // Travaso dato specifico
         dto.setSpecializzazioneTecnica(docente.getSpecializzazioneTecnica());
 
         return dto;

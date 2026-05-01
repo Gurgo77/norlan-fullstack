@@ -14,22 +14,21 @@ import java.security.Key;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 @Component
 public class JwtUtil {
 
     @Value("${jwt.secret}")
-    private String SECRET_KEY;    private final long EXPIRATION_TIME = 1000 * 60 * 60 * 1;
+    private String SECRET_KEY;
+
+    private final long EXPIRATION_TIME = 1000 * 60 * 60 * 1;
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Genera il token inserendo id e ruolo
     public String generateToken(Utente utente) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("ruolo", utente.getRuolo().name());
@@ -47,12 +46,10 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Estrae l'email dal token
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // Estrae la scadenza
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
@@ -74,7 +71,6 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    // Valida crittograficamente il token rispetto all'utente che sta facendo la richiesta
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));

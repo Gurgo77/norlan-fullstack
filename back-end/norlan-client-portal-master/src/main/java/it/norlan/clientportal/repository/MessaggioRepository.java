@@ -13,6 +13,4 @@ public interface MessaggioRepository extends JpaRepository<Messaggio, Integer> {
             "(m.mittente.idUtente = :id2 AND m.destinatario.idUtente = :id1) " +
             "ORDER BY m.timestampInvio ASC")
     List<Messaggio> findConversazione(@Param("id1") Integer id1, @Param("id2") Integer id2);
-
-    long countByDestinatarioIdUtenteAndLettoFalse(Integer idUtente);
 }

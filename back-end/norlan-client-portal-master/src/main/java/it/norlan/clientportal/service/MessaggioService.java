@@ -71,20 +71,15 @@ public class MessaggioService {
 
 
     private boolean puoComunicare(Utente m, Utente d) {
-        // 1. PASS PARTOUT PER L'ADMIN: L'Amministratore può comunicare con CHIUNQUE
         if (m.getRuolo() == Utente.Ruolo.ADMIN || d.getRuolo() == Utente.Ruolo.ADMIN) {
             return true;
         }
-
-        // 2. Comunicazione Azienda <-> Dipendente
         if (m.getRuolo() == Utente.Ruolo.AZIENDA && d.getRuolo() == Utente.Ruolo.DIPENDENTE) {
             return dipendenteRepository.existsByIdUtenteAndAziendaIdUtente(d.getIdUtente(), m.getIdUtente());
         }
         if (m.getRuolo() == Utente.Ruolo.DIPENDENTE && d.getRuolo() == Utente.Ruolo.AZIENDA) {
             return dipendenteRepository.existsByIdUtenteAndAziendaIdUtente(m.getIdUtente(), d.getIdUtente());
         }
-
-        // 3. Comunicazione Docente <-> Dipendente (solo se iscritto al corso)
         if (m.getRuolo() == Utente.Ruolo.DOCENTE && d.getRuolo() == Utente.Ruolo.DIPENDENTE) {
             return iscrizioneCorsoRepository.isDipendenteIscrittoAlCorsoDelDocente(d.getIdUtente(), m.getIdUtente());
         }

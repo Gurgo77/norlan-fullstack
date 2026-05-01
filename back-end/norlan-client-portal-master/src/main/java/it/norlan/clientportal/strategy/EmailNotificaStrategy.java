@@ -71,7 +71,7 @@ public class EmailNotificaStrategy implements NotificaStrategy {
             helper.setText(htmlBody, true);
 
             mailSender.send(message);
-            System.out.println("📧 [EMAIL HTML] Inviata con successo a: " + emailDestinatario);
+            System.out.println("[EMAIL HTML] Inviata con successo a: " + emailDestinatario);
 
         } catch (Exception e) {
             String erroreDettagliato = e.getMessage();

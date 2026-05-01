@@ -98,9 +98,6 @@ public class IscrizioneCorsoService {
         iscrizioneRepository.save(iscrizione);
     }
 
-    /**
-     * Estrazione sicura del path fisico tramite navigazione della relazione FSM.
-     */
     @Transactional(readOnly = true)
     public String getPathAttestato(Integer idLavoratore, Integer idCorso) {
         return iscrizioneRepository.findById(new IscrizioneId(idLavoratore, idCorso))
@@ -132,7 +129,6 @@ public class IscrizioneCorsoService {
 
         dto.setPresenzaConfermata(iscrizione.getPresenzaConfermata());
 
-        // Mappatura FSM: propagazione dell'ID relazionale al posto del percorso stringa piatto
         if (iscrizione.getDocumentoAttestato() != null) {
             dto.setIdDocumento(iscrizione.getDocumentoAttestato().getIdDocumento());
         }
@@ -140,9 +136,6 @@ public class IscrizioneCorsoService {
         if (iscrizione.getCorso() != null) {
             dto.setTitoloCorso(iscrizione.getCorso().getTitolo());
             dto.setDataOrarioCorso(iscrizione.getCorso().getDataOrario());
-
-            // RECUPERO SCIENTIFICO DALL'ENTITA' CORSO:
-            // Leggiamo lo stato dal corso associato e lo passiamo al DTO come stringa
             if (iscrizione.getCorso().getStato() != null) {
                 dto.setStatoCorso(iscrizione.getCorso().getStato().name());
             }

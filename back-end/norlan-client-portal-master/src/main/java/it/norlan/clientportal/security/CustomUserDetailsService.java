@@ -19,14 +19,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // Recuperiamo l'utente dal database
-        Utente utente = utenteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Utente non trovato con email: " + email));
+        Utente utente = utenteRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("Utente non trovato con email: " + email));
 
-        // Mappiamo il Ruolo (es. "ADMIN") in uno standard Spring (es. "ROLE_ADMIN")
         SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + utente.getRuolo().name());
 
-        // Restituiamo un oggetto UserDetails standard di Spring Security
         return new org.springframework.security.core.userdetails.User(
                 utente.getEmail(),
                 utente.getPasswordHash(),

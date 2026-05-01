@@ -1,6 +1,7 @@
 package it.norlan.clientportal.service;
 
 import it.norlan.clientportal.dto.UtenteDTO;
+import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.repository.UtenteRepository;
 import jakarta.transaction.Transactional;
@@ -19,6 +20,9 @@ public class UtenteService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private NotificaService notificaService;
 
     public Utente registraUtente(Utente utente) {
 
@@ -49,8 +53,19 @@ public class UtenteService {
         }
 
         utente.setPasswordHash(passwordEncoder.encode(nuovaPassword));
-        utente.setRichiedeCambioPassword(false); // SBLOCCO DELL'UTENTE
+        utente.setRichiedeCambioPassword(false);
         utenteRepository.save(utente);
+
+        String messaggioSicurezza = "Ti informiamo che la password del tuo account NorLan è stata appena modificata con successo.<br><br>"
+                + "Se sei stato tu ad effettuare questa operazione, puoi ignorare questa email.<br><br>"
+                + "<b>Se NON hai richiesto questa modifica</b>, ti invitiamo a contattare immediatamente l'amministratore di sistema o il supporto tecnico.";
+
+        notificaService.inviaNotifica(
+                utente,
+                messaggioSicurezza,
+                Notifica.Priorita.ALTA,
+                Notifica.CanaleNotifica.EMAIL
+        );
     }
 
     public UtenteDTO convertToDTO(Utente utente) {
@@ -58,8 +73,6 @@ public class UtenteService {
         dto.setIdUtente(utente.getIdUtente());
         dto.setEmail(utente.getEmail());
         dto.setRuolo(utente.getRuolo());
-
-        // Possiamo impostare una stringa leggibile per il frontend
         dto.setTipoUtente(utente.getRuolo().name());
 
         return dto;

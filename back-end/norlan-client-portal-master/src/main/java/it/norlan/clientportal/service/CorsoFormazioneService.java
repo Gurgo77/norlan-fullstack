@@ -126,23 +126,6 @@ public class CorsoFormazioneService {
         return corsoRepository.findByStato(stato);
     }
 
-    public CorsoFormazioneDTO convertToDTO(CorsoFormazione corso) {
-        CorsoFormazioneDTO dto = new CorsoFormazioneDTO();
-
-        dto.setIdCorso(corso.getIdCorso());
-        dto.setTitolo(corso.getTitolo());
-        dto.setDataOrario(corso.getDataOrario());
-        dto.setLuogoFisico(corso.getLuogoFisico());
-        dto.setStato(corso.getStato());
-
-        if (corso.getDocente() != null) {
-            dto.setIdDocente(corso.getDocente().getIdUtente());
-            dto.setEmailDocente(corso.getDocente().getEmail());
-        }
-
-        return dto;
-    }
-
     @Transactional
     public void validaPresenzeAdmin(Integer idCorso, List<Integer> idUtentiPresenti) {
         CorsoFormazione corso = corsoRepository.findById(idCorso)
@@ -192,5 +175,22 @@ public class CorsoFormazioneService {
 
         corso.setStato(CorsoFormazione.StatoCorso.VALIDATO);
         corsoRepository.save(corso);
+    }
+
+    public CorsoFormazioneDTO convertToDTO(CorsoFormazione corso) {
+        CorsoFormazioneDTO dto = new CorsoFormazioneDTO();
+
+        dto.setIdCorso(corso.getIdCorso());
+        dto.setTitolo(corso.getTitolo());
+        dto.setDataOrario(corso.getDataOrario());
+        dto.setLuogoFisico(corso.getLuogoFisico());
+        dto.setStato(corso.getStato());
+
+        if (corso.getDocente() != null) {
+            dto.setIdDocente(corso.getDocente().getIdUtente());
+            dto.setEmailDocente(corso.getDocente().getEmail());
+        }
+
+        return dto;
     }
 }

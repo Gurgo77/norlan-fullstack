@@ -13,8 +13,6 @@ public interface DipendenteRepository extends JpaRepository<Dipendente, Integer>
 
     List<Dipendente> findByAziendaIdUtente(Integer idAzienda);
     boolean existsByIdUtenteAndAziendaIdUtente(Integer idDipendente, Integer idAzienda);
-
-    // Metodo per il controllo rapido dell'esistenza dipendenti
     boolean existsByAziendaIdUtente(Integer idAzienda); // <--- AGGIUNTO
 
     @Modifying

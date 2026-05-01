@@ -146,30 +146,6 @@ public class DocumentoService {
         documentoRepository.save(doc);
     }
 
-    public DocumentoDTO convertToDTO(Documento documento) {
-        DocumentoDTO dto = new DocumentoDTO();
-
-        dto.setIdDocumento(documento.getIdDocumento());
-
-        if (documento.getAzienda() != null) {
-            dto.setIdAzienda(documento.getAzienda().getIdUtente());
-            dto.setRagioneSocialeAzienda(documento.getAzienda().getRagioneSociale());
-        }
-
-        dto.setModulo(documento.getModulo());
-        dto.setTipologia(documento.getTipologia());
-        dto.setStato(documento.getStato().getNomeStato());
-        dto.setFilePath(documento.getFilePath());
-        dto.setDataCaricamento(documento.getDataCaricamento());
-        dto.setDataScadenza(documento.getDataScadenza());
-
-        if (documento.getDataScadenza() != null) {
-            dto.setScaduto(documento.getDataScadenza().isBefore(LocalDate.now()));
-        }
-
-        return dto;
-    }
-
     @Transactional
     public void distribuisciAttestatiMassivi(Integer idCorso, Map<Integer, String> pathFileUpload) {
         CorsoFormazione corso = corsoRepository.findById(idCorso)
@@ -245,5 +221,29 @@ public class DocumentoService {
                 true,
                 "Generati e collegati " + totaleAttestatiGenerati + " attestati per il Corso ID: " + idCorso + ". Stato corso aggiornato a 'CERTIFICATO'."
         );
+    }
+
+    public DocumentoDTO convertToDTO(Documento documento) {
+        DocumentoDTO dto = new DocumentoDTO();
+
+        dto.setIdDocumento(documento.getIdDocumento());
+
+        if (documento.getAzienda() != null) {
+            dto.setIdAzienda(documento.getAzienda().getIdUtente());
+            dto.setRagioneSocialeAzienda(documento.getAzienda().getRagioneSociale());
+        }
+
+        dto.setModulo(documento.getModulo());
+        dto.setTipologia(documento.getTipologia());
+        dto.setStato(documento.getStato().getNomeStato());
+        dto.setFilePath(documento.getFilePath());
+        dto.setDataCaricamento(documento.getDataCaricamento());
+        dto.setDataScadenza(documento.getDataScadenza());
+
+        if (documento.getDataScadenza() != null) {
+            dto.setScaduto(documento.getDataScadenza().isBefore(LocalDate.now()));
+        }
+
+        return dto;
     }
 }

@@ -14,11 +14,11 @@ public interface IscrizioneCorsoRepository extends JpaRepository<IscrizioneCorso
 
     List<IscrizioneCorso> findByUtenteIdUtente(Integer idUtente);
     List<IscrizioneCorso> findByCorsoIdCorso(Integer idCorso);
+
     @Query("SELECT COUNT(i) > 0 FROM IscrizioneCorso i " +
             "WHERE i.id.idUtente = :idDipendente " +
             "AND i.corso.docente.idUtente = :idDocente")
-    boolean isDipendenteIscrittoAlCorsoDelDocente(@Param("idDipendente") Integer idDipendente,
-                                                  @Param("idDocente") Integer idDocente);
+    boolean isDipendenteIscrittoAlCorsoDelDocente(@Param("idDipendente") Integer idDipendente, @Param("idDocente") Integer idDocente);
 
     List<IscrizioneCorso> findByCorsoAndPresenzaConfermataTrue(CorsoFormazione corso);
 }

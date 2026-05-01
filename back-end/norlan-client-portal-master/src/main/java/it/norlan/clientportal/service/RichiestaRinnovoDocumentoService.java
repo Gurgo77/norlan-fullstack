@@ -76,15 +76,12 @@ public class RichiestaRinnovoDocumentoService {
         dto.setDataRichiesta(richiesta.getDataRichiesta());
         dto.setStato(richiesta.getStato());
 
-        // Navigazione sicura nelle relazioni
         if (richiesta.getDocumento() != null) {
             dto.setIdDocumento(richiesta.getDocumento().getIdDocumento());
-            // Prendiamo la tipologia dal documento collegato
             if (richiesta.getDocumento().getTipologia() != null) {
                 dto.setTipologiaDocumento(richiesta.getDocumento().getTipologia().name());
             }
 
-            // Risaliamo fino all'azienda proprietaria del documento
             if (richiesta.getDocumento().getAzienda() != null) {
                 dto.setRagioneSocialeAzienda(richiesta.getDocumento().getAzienda().getRagioneSociale());
             }

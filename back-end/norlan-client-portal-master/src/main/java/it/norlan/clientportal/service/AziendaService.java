@@ -81,17 +81,12 @@ public class AziendaService {
         dto.setRuolo(azienda.getRuolo());
         dto.setRagioneSociale(azienda.getRagioneSociale());
         dto.setPartitaIva(azienda.getPartitaIva());
-
         dto.setEtichettaDisplay(azienda.getRagioneSociale() + " (" + azienda.getPartitaIva() + ")");
-
-        // --- CAMPI PER LA UI ---
         dto.setSedeLegale(azienda.getSedeLegale());
         dto.setPec(azienda.getPec());
         dto.setTelefono(azienda.getTelefono());
         dto.setCellulare(azienda.getCellulare());
         dto.setReferenteAziendale(azienda.getReferenteAziendale());
-
-        // --- CALCOLO STATO DIPENDENTI ---
         dto.setHasDipendenti(dipendenteRepository.existsByAziendaIdUtente(azienda.getIdUtente())); // <--- AGGIUNTO
 
         return dto;
