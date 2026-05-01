@@ -71,14 +71,19 @@ public class AnagraficaController {
     }
 
     @PutMapping("/aziende/{id}")
-    public ResponseEntity<AziendaDTO> updateAzienda(@PathVariable Integer id, @RequestBody Azienda datiAggiornati) {
+    public ResponseEntity<AziendaDTO> updateAzienda(@PathVariable Integer id, @RequestBody AziendaDTO datiAggiornati) { // <-- 1. Cambiato Azienda in AziendaDTO
         return aziendaService.findById(id).map(aziendaEsistente -> {
             aziendaEsistente.setRagioneSociale(datiAggiornati.getRagioneSociale());
             aziendaEsistente.setPartitaIva(datiAggiornati.getPartitaIva());
-
             if (datiAggiornati.getEmail() != null) {
                 aziendaEsistente.setEmail(datiAggiornati.getEmail());
             }
+
+            // Aggiorniamo i dati della sede e recapiti
+            aziendaEsistente.setSedeLegale(datiAggiornati.getSedeLegale());
+            aziendaEsistente.setPec(datiAggiornati.getPec());
+            aziendaEsistente.setTelefono(datiAggiornati.getTelefono());
+            aziendaEsistente.setCellulare(datiAggiornati.getCellulare());
 
             Azienda salvata = aziendaService.salvaAzienda(aziendaEsistente);
             return ResponseEntity.ok(aziendaService.convertToDTO(salvata));
