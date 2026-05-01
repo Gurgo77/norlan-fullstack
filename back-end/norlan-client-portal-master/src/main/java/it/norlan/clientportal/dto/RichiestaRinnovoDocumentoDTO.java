@@ -13,13 +13,9 @@ import java.time.LocalDateTime;
 public class RichiestaRinnovoDocumentoDTO {
 
     private Integer idRichiesta;
-
-    // --- FLATTENING DOCUMENTO ---
     private Integer idDocumento;
-    private String tipologiaDocumento; // es. "DVR", "HACCP"
-    private String ragioneSocialeAzienda; // Per l'Admin è utile sapere di chi è il documento
-
-    // --- DATI RICHIESTA ---
+    private String tipologiaDocumento;
+    private String ragioneSocialeAzienda;
     private LocalDateTime dataRichiesta;
     private RichiestaRinnovoDocumento.StatoRinnovo stato;
 }

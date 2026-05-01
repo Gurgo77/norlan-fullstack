@@ -26,7 +26,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // CRITICO: Abilita i filtri @PreAuthorize sui metodi dei Controller
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -41,40 +41,31 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // 0. SBLOCCO CORS PREFLIGHT (Risolve i blocchi Axios/Browser)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 1. ROTTE PUBBLICHE
                         .requestMatchers("/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers("/chat-prod.html", "/js/**", "/css/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
-                        // 2. PERMESSI SPECIFICI PER L'AZIENDA (Corretto lo strict path matching)
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
 
-                        // 3. SBLOCCO ANAGRAFICA DOCENTE
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti", "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE", "DIPENDENTE", "LAVORATORE")
                         .requestMatchers(HttpMethod.PUT, "/api/anagrafica/docenti", "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE")
 
-                        // 4. SBLOCCO SCHEDA ADMIN PER CHAT E ASSISTENZA
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/admin", "/api/anagrafica/admin/**").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE", "DIPENDENTE", "LAVORATORE")
 
-                        // 5. SBLOCCO LISTA DIPENDENTI PER RUBRICA
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/dipendenti", "/api/anagrafica/dipendenti/**").hasAnyRole("ADMIN", "AZIENDA", "DOCENTE")
 
-                        // 6. PROTEZIONE RESTO ANAGRAFICA (Solo Admin per tutto ciò che non è specificato sopra)
                         .requestMatchers("/api/anagrafica/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // 7. SBLOCCO LAVORATORI
                         .requestMatchers(HttpMethod.POST, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
                         .requestMatchers(HttpMethod.PUT, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
                         .requestMatchers(HttpMethod.DELETE, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA")
                         .requestMatchers(HttpMethod.GET, "/api/lavoratori", "/api/lavoratori/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE", "DOCENTE")
 
-                        // 8. FALLBACK GLOBALE (Impedisce accessi non autorizzati alle rotte non mappate)
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

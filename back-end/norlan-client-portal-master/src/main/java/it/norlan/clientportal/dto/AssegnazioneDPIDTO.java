@@ -13,15 +13,9 @@ import java.time.LocalDate;
 public class AssegnazioneDPIDTO {
 
     private Integer idAssegnazione;
-
-    // --- FLATTENING DIPENDENTE ---
     private Integer idDipendente;
-
-    // --- DATI DPI ---
     private AssegnazioneDPI.TipoDPI tipo;
     private LocalDate dataConsegna;
     private LocalDate dataScadenzaRevisione;
-
-    // --- LOGICA DI SICUREZZA ---
     private boolean daRevisionare;
 }

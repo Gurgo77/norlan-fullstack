@@ -12,12 +12,8 @@ import java.time.LocalDateTime;
 public class MaterialeDidatticoDTO {
 
     private Integer idMateriale;
-
-    // --- FLATTENING DEL CORSO ---
     private Integer idCorso;
     private String titoloCorso;
-
-    // --- DATI DEL DOCUMENTO ---
     private String titoloDocumento;
     private String percorsoFile;
     private LocalDateTime dataCaricamento;

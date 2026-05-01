@@ -10,13 +10,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DocenteDTO {
 
-    // Dati ereditati dalla gerarchia Utente
     private Integer idUtente;
     private String nome;
     private String cognome;
     private String email;
     private Utente.Ruolo ruolo;
-
-    // Dati specifici del Docente
     private String specializzazioneTecnica;
 }

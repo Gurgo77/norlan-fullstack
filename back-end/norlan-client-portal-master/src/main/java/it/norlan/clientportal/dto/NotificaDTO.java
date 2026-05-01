@@ -13,12 +13,8 @@ import java.time.LocalDateTime;
 public class NotificaDTO {
 
     private Integer idNotifica;
-
-    // --- FLATTENING DESTINATARIO ---
     private Integer idDestinatario;
     private String emailDestinatario;
-
-    // --- DATI NOTIFICA ---
     private String messaggio;
     private Boolean letta;
     private Notifica.Priorita priorita;

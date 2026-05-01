@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 
 @Data
 public class FeedbackDTO {
+
     @NotNull(message = "L'ID utente è obbligatorio")
     private Integer idUtente;
 

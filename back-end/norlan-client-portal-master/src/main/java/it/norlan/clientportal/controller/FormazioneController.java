@@ -34,7 +34,7 @@ public class FormazioneController {
     private FileStorageService fileStorageService;
 
     @Autowired
-    private CorsoFormazioneService corsoService; // Consolidato l'uso di questo service
+    private CorsoFormazioneService corsoService;
 
     @Autowired
     private IscrizioneCorsoService iscrizioneService;
@@ -132,9 +132,6 @@ public class FormazioneController {
         }
     }
 
-    /**
-     * API FSM Fase 1: Validazione Presenze (Admin)
-     */
     @PostMapping("/corsi/{id}/valida-presenze")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> validaPresenzeAdmin(
@@ -145,9 +142,6 @@ public class FormazioneController {
         return ResponseEntity.ok(Map.of("message", "Presenze validate. Registro in attesa di firma docente."));
     }
 
-    /**
-     * API FSM Fase 2: Controfirma del Registro (Docente)
-     */
     @PostMapping("/corsi/{id}/firma-docente")
     @PreAuthorize("hasRole('DOCENTE')")
     public ResponseEntity<?> controfirmaRegistro(
@@ -179,20 +173,14 @@ public class FormazioneController {
             Integer idAzienda = idAziende.get(i);
             org.springframework.web.multipart.MultipartFile file = files.get(i);
 
-            // Salviamo il file fisico.
             String percorsoFisico = fileStorageService.storeFile(file, "attestati/corso_" + id + "/azienda_" + idAzienda);
             percorsiFileGenerati.put(idAzienda, percorsoFisico);
         }
-
-        // Passiamo la MAPPA al Service
         documentoService.distribuisciAttestatiMassivi(id, percorsiFileGenerati);
 
         return ResponseEntity.ok(Map.of("message", "Attestati distribuiti con successo."));
     }
 
-    /**
-     * Download dell'attestato finale per il dipendente (naviga la relazione Iscrizione -> Documento)
-     */
     @GetMapping("/corsi/{idCorso}/iscrizioni/{idUtente}/certificato/download")
     public ResponseEntity<Resource> downloadCertificato(
             @PathVariable Integer idCorso,

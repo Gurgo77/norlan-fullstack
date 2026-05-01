@@ -13,20 +13,13 @@ import java.time.LocalDate;
 public class DocumentoDTO {
 
     private Integer idDocumento;
-
-    // --- FLATTENING AZIENDA ---
     private Integer idAzienda;
     private String ragioneSocialeAzienda;
-
-    // --- ENUM E DATI ---
     private Documento.ModuloServizio modulo;
     private Documento.TipoDocumento tipologia;
     private String stato;
-
     private String filePath;
     private LocalDate dataCaricamento;
     private LocalDate dataScadenza;
-
-    // --- CAMPI CALCOLATI PER IL FRONTEND ---
     private boolean scaduto;
 }

@@ -16,6 +16,7 @@ public class FeedbackController {
 
     @PostMapping("/invia")
     public ResponseEntity<?> inviaFeedback(@Valid @RequestBody FeedbackDTO feedbackDTO) {
+
         try {
             feedbackService.registraFeedback(feedbackDTO);
             return ResponseEntity.ok().body("Feedback archiviato con successo e metriche aggiornate.");

@@ -18,8 +18,6 @@ public class CorsoFormazioneDTO {
     private String luogoFisico;
     private Integer capacitaMassima;
     private CorsoFormazione.StatoCorso stato;
-
-    // --- FLATTENING DOCENTE ---
     private Integer idDocente;
-    private String emailDocente; // Recuperata dall'oggetto Utente padre del Docente
+    private String emailDocente;
 }

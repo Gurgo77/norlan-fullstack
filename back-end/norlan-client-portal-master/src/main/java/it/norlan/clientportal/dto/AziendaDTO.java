@@ -10,20 +10,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AziendaDTO {
 
-    // Dati ereditati da Utente
     private Integer idUtente;
     private String email;
     private Utente.Ruolo ruolo;
-
-    // Dati specifici di Azienda
     private String ragioneSociale;
     private String partitaIva;
-
-    // Campo per la UI
     private String etichettaDisplay;
-    private boolean hasDipendenti; // <--- AGGIUNTO
-
-    // Campi extra
+    private boolean hasDipendenti;
     private String sedeLegale;
     private String pec;
     private String telefono;

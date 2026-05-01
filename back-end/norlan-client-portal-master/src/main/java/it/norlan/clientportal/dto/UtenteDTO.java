@@ -13,7 +13,5 @@ public class UtenteDTO {
     private Integer idUtente;
     private String email;
     private Utente.Ruolo ruolo;
-
-    // Campo opzionale utile per il frontend
     private String tipoUtente;
 }

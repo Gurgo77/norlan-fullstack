@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IscrizioneCorsoDTO {
+
     private Integer idUtente;
     private Integer idCorso;
     private String emailUtente;

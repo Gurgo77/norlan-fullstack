@@ -17,6 +17,7 @@ public class ComplianceController {
     private ComplianceService complianceService;
 
     @GetMapping("/azienda/{idAzienda}")
+
     public ResponseEntity<ComplianceDTO> getComplianceStatus(@PathVariable Integer idAzienda) {
         return ResponseEntity.ok(complianceService.calcolaComplianceAzienda(idAzienda));
     }

@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class MessaggioDTO {
+
     private Integer idMessaggio;
     private Integer idMittente;
     private String nomeMittente;

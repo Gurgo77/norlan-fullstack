@@ -28,10 +28,6 @@ public class SistemaController {
     @Autowired
     private LogSincronizzazioneService logService;
 
-    // ==========================================
-    // SEZIONE 1: NOTIFICHE
-    // ==========================================
-
     @GetMapping("/notifiche/utente/{idUtente}")
     public ResponseEntity<List<NotificaDTO>> getNotificheUtente(@PathVariable Integer idUtente) {
         List<NotificaDTO> notifiche = notificaService.getNotificheUtente(idUtente)
@@ -43,7 +39,6 @@ public class SistemaController {
 
     @GetMapping("/notifiche/utente/{idUtente}/non-lette")
     public ResponseEntity<List<NotificaDTO>> getNotificheNonLette(@PathVariable Integer idUtente) {
-        // Recupera solo le notifiche con letta = false
         List<NotificaDTO> notifiche = notificaService.getNotificheNonLette(idUtente)
                 .stream()
                 .map(notificaService::convertToDTO)
@@ -59,21 +54,15 @@ public class SistemaController {
 
     @PatchMapping("/notifiche/{idNotifica}/letta")
     public ResponseEntity<Void> segnaNotificaComeLetta(@PathVariable Integer idNotifica) {
-        // Presuppone che NotificaService abbia un metodo existsById o gestisca l'id in modo sicuro
         notificaService.segnaComeLetta(idNotifica);
         return ResponseEntity.ok().<Void>build();
     }
 
     @DeleteMapping("/notifiche/{idNotifica}")
     public ResponseEntity<Void> deleteNotifica(@PathVariable Integer idNotifica) {
-        // Richiederà l'aggiunta di eliminaNotifica nel Service
         notificaService.eliminaNotifica(idNotifica);
         return ResponseEntity.noContent().<Void>build();
     }
-
-    // ==========================================
-    // SEZIONE 2: LOG E MONITORAGGIO
-    // ==========================================
 
     @GetMapping("/logs")
     public ResponseEntity<List<LogSincronizzazioneDTO>> getAllLogs() {

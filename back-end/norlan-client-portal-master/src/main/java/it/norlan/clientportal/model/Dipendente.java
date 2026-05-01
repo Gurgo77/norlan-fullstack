@@ -19,7 +19,7 @@ public class Dipendente extends Utente{
     @Column(name = "codice_fiscale", unique = true, nullable = false, length = 16)
     private String codiceFiscale;
 
-    @ManyToOne(fetch = FetchType.LAZY) //carica azienda di appartenenza solo se necessario
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_azienda", nullable = false)
     private Azienda azienda;
 }

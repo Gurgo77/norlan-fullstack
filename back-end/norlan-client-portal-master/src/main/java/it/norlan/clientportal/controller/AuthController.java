@@ -84,7 +84,7 @@ public class AuthController {
     }
 
     @Autowired
-    private it.norlan.clientportal.service.UtenteService utenteService; // Aggiungi l'injection del service
+    private it.norlan.clientportal.service.UtenteService utenteService;
 
     @PutMapping("/cambia-password")
     public ResponseEntity<String> cambiaPassword(

@@ -26,13 +26,6 @@ public class LavoratoreController {
     @Autowired
     private AssegnazioneDPIService dpiService;
 
-    // ==========================================
-    // SEZIONE DIPENDENTI (Risorsa principale)
-    // ==========================================
-
-    /**
-     * Recupera tutti i dipendenti del sistema
-     */
     @GetMapping
     public ResponseEntity<List<DipendenteDTO>> getAllDipendenti() {
         List<DipendenteDTO> dipendenti = dipendenteService.findAll()
@@ -42,9 +35,6 @@ public class LavoratoreController {
         return ResponseEntity.ok(dipendenti);
     }
 
-    /**
-     * Recupera un dipendente specifico tramite ID
-     */
     @GetMapping("/{id}")
     public ResponseEntity<DipendenteDTO> getDipendenteById(@PathVariable Integer id) {
         return dipendenteService.findById(id)
@@ -52,9 +42,6 @@ public class LavoratoreController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Filtra i dipendenti appartenenti a una specifica azienda
-     */
     @GetMapping("/azienda/{idAzienda}")
     public ResponseEntity<List<DipendenteDTO>> getDipendentiByAzienda(@PathVariable Integer idAzienda) {
         List<DipendenteDTO> dipendenti = dipendenteService.findByAzienda(idAzienda)
@@ -64,9 +51,6 @@ public class LavoratoreController {
         return ResponseEntity.ok(dipendenti);
     }
 
-    /**
-     * Crea un nuovo dipendente associandolo all'azienda specificata
-     */
     @PostMapping("/azienda/{idAzienda}")
     public ResponseEntity<DipendenteDTO> createDipendente(@PathVariable Integer idAzienda, @RequestBody Dipendente dipendente) {
         dipendente.setRuolo(Utente.Ruolo.DIPENDENTE);
@@ -74,14 +58,10 @@ public class LavoratoreController {
             Dipendente salvato = dipendenteService.salvaDipendente(dipendente, idAzienda);
             return new ResponseEntity<>(dipendenteService.convertToDTO(salvato), HttpStatus.CREATED);
         } catch (RuntimeException e) {
-            // Ritorna 400 se l'azienda non esiste o il CF è errato, senza sporcare i log
             return ResponseEntity.badRequest().build();
         }
     }
 
-    /**
-     * Aggiorna i dati anagrafici di un dipendente
-     */
     @PutMapping("/{id}")
     public ResponseEntity<DipendenteDTO> updateDipendente(@PathVariable Integer id, @RequestBody Dipendente dipendenteDati) {
         return dipendenteService.findById(id).map(dipendenteEsistente -> {
@@ -102,9 +82,6 @@ public class LavoratoreController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Rimuove un dipendente dal sistema
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDipendente(@PathVariable Integer id) {
         return dipendenteService.findById(id).map(dipendente -> {
@@ -112,10 +89,6 @@ public class LavoratoreController {
             return ResponseEntity.noContent().<Void>build();
         }).orElse(ResponseEntity.notFound().build());
     }
-
-    // ==========================================
-    // SEZIONE DPI (Sotto-risorsa nidificata)
-    // ==========================================
 
     @GetMapping("/{idDipendente}/dpi")
     public ResponseEntity<List<AssegnazioneDPIDTO>> getDpiByDipendente(@PathVariable Integer idDipendente) {
