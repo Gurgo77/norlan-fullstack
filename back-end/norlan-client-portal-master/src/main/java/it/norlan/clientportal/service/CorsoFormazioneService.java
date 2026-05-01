@@ -33,6 +33,9 @@ public class CorsoFormazioneService {
     @Autowired
     private LogSincronizzazioneService logService;
 
+    @Autowired
+    private AdminService adminService;
+
     @Transactional(readOnly = true)
     public List<CorsoFormazione> findAll() {
         return corsoRepository.findAll();
@@ -77,6 +80,25 @@ public class CorsoFormazioneService {
                     true,
                     "Creato corso '" + salvato.getTitolo() + "' (ID: " + salvato.getIdCorso() + "). Assegnato al docente ID: " + salvato.getDocente().getIdUtente()
             );
+
+            String messaggioAssegnazione = "Ti è stato assegnato un nuovo corso: " + salvato.getTitolo() + ".\n"
+                    + "Data e Ora: " + salvato.getDataOrario() + "\n"
+                    + "Luogo: " + salvato.getLuogoFisico() + "\n"
+                    + "Accedi alla tua area riservata per gestire il materiale e le iscrizioni.";
+
+            notificaService.inviaNotifica(
+                    salvato.getDocente(),
+                    "Ti è stato assegnato il corso: " + salvato.getTitolo(),
+                    Notifica.Priorita.ALTA,
+                    Notifica.CanaleNotifica.IN_APP
+            );
+
+            notificaService.inviaNotifica(
+                    salvato.getDocente(),
+                    messaggioAssegnazione,
+                    Notifica.Priorita.ALTA,
+                    Notifica.CanaleNotifica.EMAIL
+            );
         }
         return salvato;
     }
@@ -98,12 +120,32 @@ public class CorsoFormazioneService {
         CorsoFormazione salvato = corsoRepository.save(corso);
 
         if (salvato.getDocente() != null) {
+            String msgBase = "Lo stato del corso '" + salvato.getTitolo() + "' è cambiato in: " + nuovoStato;
+
             notificaService.inviaNotifica(
                     salvato.getDocente(),
-                    "Avviso: Lo stato del corso '" + salvato.getTitolo() + "' è stato modificato in: " + nuovoStato,
+                    msgBase,
                     Notifica.Priorita.ALTA,
                     Notifica.CanaleNotifica.IN_APP
             );
+            notificaService.inviaNotifica(
+                    salvato.getDocente(),
+                    msgBase + "<br>Accedi al portale per verificare i dettagli.",
+                    Notifica.Priorita.MEDIA,
+                    Notifica.CanaleNotifica.EMAIL
+            );
+        }
+
+        if (nuovoStato == CorsoFormazione.StatoCorso.IN_SVOLGIMENTO) {
+            List<IscrizioneCorso> iscritti = iscrizioneRepository.findByCorsoIdCorso(idCorso);
+            for (IscrizioneCorso isc : iscritti) {
+                notificaService.inviaNotifica(
+                        isc.getUtente(),
+                        "Il corso '" + salvato.getTitolo() + "' è appena iniziato! Benvenuto in aula.",
+                        Notifica.Priorita.MEDIA,
+                        Notifica.CanaleNotifica.EMAIL
+                );
+            }
         }
     }
 
@@ -117,8 +159,36 @@ public class CorsoFormazioneService {
 
         for (IscrizioneCorso partecipante : partecipanti) {
             String messaggio = "Il corso '" + corso.getTitolo() + "' si è concluso. Ti invitiamo a lasciare un feedback qualitativo sulla piattaforma.";
-            notificaService.inviaNotifica(partecipante.getUtente(), messaggio, Notifica.Priorita.MEDIA, Notifica.CanaleNotifica.IN_APP);
+            notificaService.inviaNotifica(
+                    partecipante.getUtente(),
+                    messaggio,
+                    Notifica.Priorita.MEDIA,
+                    Notifica.CanaleNotifica.IN_APP
+            );
+
+            notificaService.inviaNotifica(
+                    partecipante.getUtente(),
+                    messaggio, Notifica.Priorita.MEDIA,
+                    Notifica.CanaleNotifica.EMAIL
+            );
         }
+
+        adminService.getUnicoAdmin().ifPresent(admin -> {
+            String msgAdmin = "Il corso '" + corso.getTitolo() + "' è terminato. È richiesta la tua attenzione per la validazione delle presenze.";
+            notificaService.inviaNotifica(
+                    admin,
+                    msgAdmin,
+                    Notifica.Priorita.ALTA,
+                    Notifica.CanaleNotifica.IN_APP
+            );
+
+            notificaService.inviaNotifica(
+                    admin,
+                    msgAdmin,
+                    Notifica.Priorita.ALTA,
+                    Notifica.CanaleNotifica.EMAIL
+            );
+        });
     }
 
     @Transactional(readOnly = true)

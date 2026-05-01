@@ -5,4 +5,5 @@ export interface AssegnazioneDPIRequest {
 	idDipendente: number;
 	tipo: TipoDPI;
 	dataScadenzaRevisione: string; // ISO date
+	nomeDpi?: string;
 }

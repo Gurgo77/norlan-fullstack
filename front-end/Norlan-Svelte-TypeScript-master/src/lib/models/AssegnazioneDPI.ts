@@ -7,6 +7,7 @@ export interface AssegnazioneDPIData {
 	dataConsegna: string;
 	dataScadenzaRevisione: string;
 	daRevisionare: boolean;
+	nomeDpi?: string;
 }
 
 export class AssegnazioneDPI {
@@ -16,6 +17,7 @@ export class AssegnazioneDPI {
 	dataConsegna: string;
 	dataScadenzaRevisione: string;
 	daRevisionare: boolean;
+	nomeDpi?: string;
 
 	constructor(data: AssegnazioneDPIData) {
 		this.idAssegnazione = data.idAssegnazione;
@@ -24,5 +26,6 @@ export class AssegnazioneDPI {
 		this.dataConsegna = data.dataConsegna;
 		this.dataScadenzaRevisione = data.dataScadenzaRevisione;
 		this.daRevisionare = data.daRevisionare;
+		this.nomeDpi = data.nomeDpi;
 	}
 }

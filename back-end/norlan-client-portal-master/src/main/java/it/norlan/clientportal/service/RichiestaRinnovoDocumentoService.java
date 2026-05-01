@@ -61,6 +61,17 @@ public class RichiestaRinnovoDocumentoService {
                         Notifica.CanaleNotifica.IN_APP
                 );
             }
+
+            String messaggioEmailStato = "La tua richiesta di rinnovo per il documento <b>" + salvata.getDocumento().getTipologia().name().replace("_", " ") + "</b> ha subito una variazione nell'iter di lavorazione.<br><br>"
+                    + "Il nuovo stato operativo assegnato dalla segreteria è: <b>" + nuovoStato.name().replace("_", " ") + "</b>.<br><br>"
+                    + "Accedi al portale per monitorare l'avanzamento della pratica.";
+
+            notificaService.inviaNotifica(
+                    salvata.getDocumento().getAzienda(),
+                    messaggioEmailStato,
+                    Notifica.Priorita.MEDIA,
+                    Notifica.CanaleNotifica.EMAIL
+            );
         });
     }
 

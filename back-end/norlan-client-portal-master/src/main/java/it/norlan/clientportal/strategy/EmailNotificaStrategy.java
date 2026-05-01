@@ -37,11 +37,10 @@ public class EmailNotificaStrategy implements NotificaStrategy {
             String htmlBody;
             String subject;
 
-            if (payload != null && payload.startsWith("")) {
+            if (payload != null && payload.startsWith("[CHAT]")) {
 
-                String data = payload.replace("", "");
+                String data = payload.substring("[CHAT]".length());
                 int separatorIndex = data.indexOf("|");
-
                 String mittenteEmail = "Sistema";
                 String contenutoMessaggio = data;
 
@@ -52,11 +51,11 @@ public class EmailNotificaStrategy implements NotificaStrategy {
 
                 context.setVariable("mittenteEmail", mittenteEmail);
                 context.setVariable("contenutoMessaggio", contenutoMessaggio);
-
                 htmlBody = templateEngine.process("email/messaggio-chat", context);
                 subject = "NorLan Portal - Nuovo Messaggio in Chat";
 
             } else {
+
                 context.setVariable("messaggioCorpo", payload);
                 htmlBody = templateEngine.process("email/notifica", context);
                 subject = "Norlan - Aggiornamento Importante";

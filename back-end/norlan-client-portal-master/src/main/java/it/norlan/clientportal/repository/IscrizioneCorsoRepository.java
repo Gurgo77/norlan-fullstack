@@ -21,5 +21,6 @@ public interface IscrizioneCorsoRepository extends JpaRepository<IscrizioneCorso
     boolean isDipendenteIscrittoAlCorsoDelDocente(@Param("idDipendente") Integer idDipendente, @Param("idDocente") Integer idDocente);
 
     List<IscrizioneCorso> findByCorsoAndPresenzaConfermataTrue(CorsoFormazione corso);
+    List<IscrizioneCorso> findByDocumentoAttestatoIdDocumento(Integer idDocumento);
 }
 

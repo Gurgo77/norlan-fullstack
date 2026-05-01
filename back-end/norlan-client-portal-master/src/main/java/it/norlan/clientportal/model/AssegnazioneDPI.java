@@ -28,4 +28,7 @@ public class AssegnazioneDPI {
     private LocalDate dataScadenzaRevisione;
 
     public enum TipoDPI { ELMETTO, GUANTI, SCARPE_ANTINFORTUNISTICHE, OCCHIALI, ALTRO }
+
+    @Column(name = "nome_dpi_personalizzato")
+    private String nomeDpi;
 }

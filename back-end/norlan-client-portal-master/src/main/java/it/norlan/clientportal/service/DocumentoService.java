@@ -30,6 +30,9 @@ public class DocumentoService {
     @Autowired
     private LogSincronizzazioneService logService;
 
+    @Autowired
+    private AdminService adminService;
+
     @Transactional(readOnly = true)
     public List<Documento> findAll() {
         return documentoRepository.findAll();
@@ -64,6 +67,16 @@ public class DocumentoService {
                 "È stato caricato un nuovo documento: " + salvato.getIdDocumento(),
                 Notifica.Priorita.MEDIA,
                 Notifica.CanaleNotifica.IN_APP
+        );
+
+        String messaggioEmailUpload = "Un nuovo documento (Tipologia: <b>" + salvato.getTipologia().name().replace("_", " ") + "</b>) è stato caricato nel tuo archivio digitale aziendale.<br><br>"
+                + "Ti invitiamo ad accedere al portale NorLan per visionarne il contenuto e verificarne i dettagli di validità.";
+
+        notificaService.inviaNotifica(
+                destinatario,
+                messaggioEmailUpload,
+                Notifica.Priorita.MEDIA,
+                Notifica.CanaleNotifica.EMAIL
         );
 
         return salvato;
@@ -126,6 +139,16 @@ public class DocumentoService {
                 Notifica.Priorita.ALTA,
                 Notifica.CanaleNotifica.IN_APP
         );
+
+        String messaggioEmailFirma = "<b>AZIONE RICHIESTA:</b> È necessaria l'approvazione e la firma per il documento <b>" + doc.getTipologia().name().replace("_", " ") + "</b>.<br><br>"
+                + "Al fine di garantire la compliance normativa, ti invitiamo ad accedere tempestivamente al portale NorLan per validare e apporre la conferma elettronica sul documento indicato.";
+
+        notificaService.inviaNotifica(
+                doc.getAzienda(),
+                messaggioEmailFirma,
+                Notifica.Priorita.ALTA,
+                Notifica.CanaleNotifica.EMAIL
+        );
     }
 
     @Transactional
@@ -135,6 +158,35 @@ public class DocumentoService {
 
         doc.approva();
         documentoRepository.save(doc);
+
+        if (doc.getTipologia() == Documento.TipoDocumento.ATTESTATO_CORSO) {
+            List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByDocumentoAttestatoIdDocumento(doc.getIdDocumento());
+
+            for (IscrizioneCorso isc : iscrizioni) {
+                String titoloCorso = isc.getCorso().getTitolo();
+                String msgDipendente = "Il tuo attestato per il corso '" + titoloCorso + "' è stato validato dalla tua azienda ed è ora disponibile nel tuo archivio personale.";
+
+                notificaService.inviaNotifica(
+                        isc.getUtente(),
+                        msgDipendente,
+                        Notifica.Priorita.ALTA,
+                        Notifica.CanaleNotifica.IN_APP
+                );
+
+                notificaService.inviaNotifica(
+                        isc.getUtente(),
+                        msgDipendente,
+                        Notifica.Priorita.ALTA,
+                        Notifica.CanaleNotifica.EMAIL
+                );
+            }
+            adminService.getUnicoAdmin().ifPresent(admin -> {
+                String msgFirma = "L'azienda " + doc.getAzienda().getRagioneSociale() + " ha firmato il documento ID " + doc.getIdDocumento() + " (" + doc.getTipologia().name() + ").";
+
+                notificaService.inviaNotifica(admin, msgFirma, Notifica.Priorita.MEDIA, Notifica.CanaleNotifica.IN_APP);
+                notificaService.inviaNotifica(admin, msgFirma, Notifica.Priorita.MEDIA, Notifica.CanaleNotifica.EMAIL);
+            });
+        }
     }
 
     @Transactional
@@ -207,8 +259,7 @@ public class DocumentoService {
 
             notificaService.inviaNotifica(
                     azienda,
-                    "Azione Richiesta: Firma gli attestati per il corso '" + corso.getTitolo() + "'.",
-                    Notifica.Priorita.ALTA,
+                    "Azione Richiesta: Sono disponibili i nuovi attestati formativi per il corso '" + corso.getTitolo() + "'. Accedi per apporre la firma aziendale.",                    Notifica.Priorita.ALTA,
                     Notifica.CanaleNotifica.IN_APP
             );
         }

@@ -18,4 +18,5 @@ public class AssegnazioneDPIDTO {
     private LocalDate dataConsegna;
     private LocalDate dataScadenzaRevisione;
     private boolean daRevisionare;
+    private String nomeDpi;
 }

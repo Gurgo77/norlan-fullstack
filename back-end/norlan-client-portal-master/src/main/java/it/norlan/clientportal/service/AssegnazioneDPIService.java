@@ -61,22 +61,40 @@ public class AssegnazioneDPIService {
         }
 
         boolean isNuovo = (assegnazione.getIdAssegnazione() == null);
-
         AssegnazioneDPI salvata = dpiRepository.save(assegnazione);
+        String nomeDpiEffettivo = (salvata.getTipo() == AssegnazioneDPI.TipoDPI.ALTRO && salvata.getNomeDpi() != null && !salvata.getNomeDpi().isBlank())
+                ? salvata.getNomeDpi()
+                : salvata.getTipo().name().replace("_", " ");
 
         if (isNuovo) {
             logService.registraEvento(
                     "Aggiornamento registro DPI",
                     true,
-                    "Assegnato DPI '" + salvata.getTipo().name() + "' al dipendente ID: " + salvata.getDipendente().getIdUtente()
+                    "Assegnato DPI '" + nomeDpiEffettivo + "' al dipendente ID: " + salvata.getDipendente().getIdUtente()
             );
         }
 
         notificaService.inviaNotifica(
                 salvata.getDipendente(),
-                "Ti è stato assegnato un nuovo DPI: " + salvata.getTipo(),
+                "Ti è stato assegnato un nuovo DPI: " + nomeDpiEffettivo,
                 Notifica.Priorita.ALTA,
                 Notifica.CanaleNotifica.IN_APP
+        );
+
+        String dataConsegnaStr = salvata.getDataConsegna() != null ? salvata.getDataConsegna().toString() : LocalDate.now().toString();
+        String messaggioEmailDPI = "Ti è stato assegnato un nuovo Dispositivo di Protezione Individuale (DPI).<br><br>"
+                + "Dettagli della fornitura:<br>"
+                + "<ul>"
+                + "<li><b>Tipologia:</b> " + nomeDpiEffettivo + "</li>"
+                + "<li><b>Data di consegna:</b> " + dataConsegnaStr + "</li>"
+                + "</ul><br>"
+                + "Ti ricordiamo l'obbligo di utilizzare correttamente i DPI forniti, come previsto dalla normativa vigente in materia di sicurezza sul lavoro.";
+
+        notificaService.inviaNotifica(
+                salvata.getDipendente(),
+                messaggioEmailDPI,
+                Notifica.Priorita.ALTA,
+                Notifica.CanaleNotifica.EMAIL
         );
 
         return salvata;
@@ -109,6 +127,8 @@ public class AssegnazioneDPIService {
         if (assegnazione.getDataScadenzaRevisione() != null) {
             dto.setDaRevisionare(assegnazione.getDataScadenzaRevisione().isBefore(LocalDate.now()));
         }
+
+        dto.setNomeDpi(assegnazione.getNomeDpi());
 
         return dto;
     }

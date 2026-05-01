@@ -50,7 +50,7 @@ public class MessaggioService {
         m.setTimestampInvio(LocalDateTime.now());
 
         String testoNotificaInApp = "Hai ricevuto un nuovo messaggio da " + mittente.getEmail();
-        String testoNotificaEmail = "" + mittente.getEmail() + "|" + testo;
+        String testoNotificaEmail = "[CHAT]" + mittente.getEmail() + "|" + testo;
 
         notificaService.inviaNotifica(
                 destinatario,

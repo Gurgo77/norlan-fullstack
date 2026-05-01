@@ -1,7 +1,9 @@
 package it.norlan.clientportal.service;
 
 import it.norlan.clientportal.dto.MaterialeDidatticoDTO;
+import it.norlan.clientportal.model.IscrizioneCorso;
 import it.norlan.clientportal.model.MaterialeDidattico;
+import it.norlan.clientportal.repository.IscrizioneCorsoRepository;
 import it.norlan.clientportal.repository.MaterialeDidatticoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,9 @@ public class MaterialeDidatticoService {
 
     @Autowired
     private NotificaService notificaService;
+
+    @Autowired
+    private IscrizioneCorsoRepository iscrizioneRepository;
 
     @Transactional(readOnly = true)
     public List<MaterialeDidattico> trovaPerCorso(Integer idCorso) {
@@ -47,6 +52,30 @@ public class MaterialeDidatticoService {
                     "È stato caricato con successo il materiale didattico: " + salvato.getTitoloDocumento(),
                     Notifica.Priorita.BASSA,
                     Notifica.CanaleNotifica.IN_APP
+            );
+        }
+
+        List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(salvato.getCorso().getIdCorso());
+
+        String msgDiscenteInApp = "Nuovo materiale caricato per il corso: " + salvato.getCorso().getTitolo();
+
+        String msgDiscenteEmail = "Nuovo materiale didattico disponibile per il corso <b>" + salvato.getCorso().getTitolo() + "</b>.<br>"
+                + "Il docente ha reso disponibile il documento: <i>" + salvato.getTitoloDocumento() + "</i>.<br>"
+                + "Ti invitiamo ad accedere alla tua area riservata per scaricarlo e prepararti adeguatamente alla lezione.";
+
+        for (IscrizioneCorso isc : iscrizioni) {
+            notificaService.inviaNotifica(
+                    isc.getUtente(),
+                    msgDiscenteInApp,
+                    Notifica.Priorita.MEDIA,
+                    Notifica.CanaleNotifica.IN_APP
+            );
+
+            notificaService.inviaNotifica(
+                    isc.getUtente(),
+                    msgDiscenteEmail,
+                    Notifica.Priorita.MEDIA,
+                    Notifica.CanaleNotifica.EMAIL
             );
         }
 
