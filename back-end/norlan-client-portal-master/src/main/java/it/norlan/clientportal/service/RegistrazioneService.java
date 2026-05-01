@@ -29,6 +29,9 @@ public class RegistrazioneService {
     @Autowired
     private NotificaService notificaService;
 
+    @Autowired
+    private LogSincronizzazioneService logService;
+
     @Transactional
     public Utente registraNuovoUtente(AuthRequestDTO dto) {
         Utente nuovoUtente = utenteFactory.creaUtente(dto.getRuolo());
@@ -46,6 +49,7 @@ public class RegistrazioneService {
             azienda.setTelefono(dto.getTelefono());
             azienda.setCellulare(dto.getCellulare());
             azienda.setReferenteAziendale(dto.getReferenteAziendale());
+
         }
         else if (nuovoUtente instanceof Docente) {
             Docente docente = (Docente) nuovoUtente;
@@ -65,10 +69,26 @@ public class RegistrazioneService {
             }
         }
 
-        // 2. Salvataggio nel database
         Utente utenteSalvato = utenteRepository.save(nuovoUtente);
 
-        // 3. Innesco dello Strategy Pattern per l'invio della mail
+        String noteTecniche = "";
+        if (utenteSalvato instanceof Azienda) {
+            Azienda az = (Azienda) utenteSalvato;
+            noteTecniche = "Creata azienda '" + az.getRagioneSociale() + "' (P.IVA: " + az.getPartitaIva() + "). ID assegnato: " + az.getIdUtente();
+        } else if (utenteSalvato instanceof Docente) {
+            Docente doc = (Docente) utenteSalvato;
+            noteTecniche = "Creato docente '" + doc.getNome() + " " + doc.getCognome() + "'. ID assegnato: " + doc.getIdUtente();
+        } else if (utenteSalvato instanceof Dipendente) {
+            Dipendente dip = (Dipendente) utenteSalvato;
+            noteTecniche = "Creato dipendente '" + dip.getNome() + " " + dip.getCognome() + "'. ID assegnato: " + dip.getIdUtente() + " (Azienda ID: " + dip.getAzienda().getIdUtente() + ")";
+        }
+
+        logService.registraEvento(
+                "Registrazione nuova anagrafica: " + utenteSalvato.getRuolo().name(),
+                true,
+                noteTecniche
+        );
+
         String messaggioBenvenuto = "Benvenuto nel portale Norlan! La tua registrazione come "
                 + dto.getRuolo() + " è stata completata con successo.<br><br>"
                 + "Di seguito le tue credenziali temporanee per effettuare il primo accesso:<br>"

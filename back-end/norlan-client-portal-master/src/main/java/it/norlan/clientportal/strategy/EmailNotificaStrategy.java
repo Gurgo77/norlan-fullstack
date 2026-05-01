@@ -2,6 +2,7 @@ package it.norlan.clientportal.strategy;
 
 import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Notifica.CanaleNotifica;
+import it.norlan.clientportal.service.LogSincronizzazioneService;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,9 @@ public class EmailNotificaStrategy implements NotificaStrategy {
     @Autowired
     private TemplateEngine templateEngine;
 
+    @Autowired
+    private LogSincronizzazioneService logService;
+
     @Value("${spring.mail.username}")
     private String mittente;
 
@@ -33,23 +37,19 @@ public class EmailNotificaStrategy implements NotificaStrategy {
             String htmlBody;
             String subject;
 
-            // CONTROLLO TEMPLATE: Se il messaggio inizia con il marker della chat
             if (payload != null && payload.startsWith("")) {
 
-                // Rimuoviamo il marker per ottenere solo i dati (email|testo)
                 String data = payload.replace("", "");
                 int separatorIndex = data.indexOf("|");
 
                 String mittenteEmail = "Sistema";
                 String contenutoMessaggio = data;
 
-                // Dividiamo la stringa: a sinistra l'email, a destra il testo del messaggio
                 if (separatorIndex != -1) {
                     mittenteEmail = data.substring(0, separatorIndex);
                     contenutoMessaggio = data.substring(separatorIndex + 1);
                 }
 
-                // Iniettiamo i dati specifici per il template della chat
                 context.setVariable("mittenteEmail", mittenteEmail);
                 context.setVariable("contenutoMessaggio", contenutoMessaggio);
 
@@ -57,7 +57,6 @@ public class EmailNotificaStrategy implements NotificaStrategy {
                 subject = "NorLan Portal - Nuovo Messaggio in Chat";
 
             } else {
-                // COMPORTAMENTO STANDARD: Per tutte le altre notifiche
                 context.setVariable("messaggioCorpo", payload);
                 htmlBody = templateEngine.process("email/notifica", context);
                 subject = "Norlan - Aggiornamento Importante";
@@ -75,7 +74,16 @@ public class EmailNotificaStrategy implements NotificaStrategy {
             System.out.println("📧 [EMAIL HTML] Inviata con successo a: " + emailDestinatario);
 
         } catch (Exception e) {
-            System.err.println("❌ [EMAIL HTML] Errore critico durante l'invio a: " + emailDestinatario);
+            String erroreDettagliato = e.getMessage();
+            if (e.getCause() != null) {
+                erroreDettagliato += " - Causa: " + e.getCause().getMessage();
+            }
+
+            logService.registraEvento(
+                    "Fallimento invio notifica Email",
+                    false,
+                    "Impossibile contattare il server SMTP per l'utente " + emailDestinatario + ". Dettaglio eccezione: " + erroreDettagliato
+            );
             e.printStackTrace();
         }
     }

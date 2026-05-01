@@ -24,6 +24,9 @@ public class DipendenteService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private LogSincronizzazioneService logService;
+
     @Transactional(readOnly = true)
     public List<Dipendente> findByAzienda(Integer aziendaId) {
         return dipendenteRepository.findByAziendaIdUtente(aziendaId);
@@ -41,22 +44,46 @@ public class DipendenteService {
 
     @Transactional
     public void eliminaDipendente(Integer id) {
+
+        Dipendente dip = dipendenteRepository.findById(id).orElseThrow();
+        String nomeCompleto = dip.getNome() + " " + dip.getCognome();
+        String ragioneSociale = dip.getAzienda().getRagioneSociale();
+
         dipendenteRepository.deleteById(id);
+
+        logService.registraEvento(
+                "Eliminazione anagrafica: DIPENDENTE",
+                true,
+                "Cancellato dipendente ID: " + id + " (" + nomeCompleto + ") appartenente all'Azienda: " + ragioneSociale
+        );
     }
 
     @Transactional
     public Dipendente salvaDipendente(Dipendente dipendente, Integer aziendaId) {
-        // Logica scientifica: un dipendente deve appartenere a un'azienda esistente
+        boolean isNuovo = (dipendente.getIdUtente() == null);
+
         return aziendaRepository.findById(aziendaId).map(azienda -> {
             dipendente.setAzienda(azienda);
-            // Qui potremmo aggiungere la validazione del Codice Fiscale (16 caratteri)
+
             if (dipendente.getCodiceFiscale() != null && dipendente.getCodiceFiscale().length() != 16) {
                 throw new IllegalArgumentException("Codice Fiscale non valido.");
             }
+
             if (dipendente.getPasswordHash() != null) {
                 dipendente.setPasswordHash(passwordEncoder.encode(dipendente.getPasswordHash()));
             }
-            return dipendenteRepository.save(dipendente);
+
+            Dipendente salvato = dipendenteRepository.save(dipendente);
+
+            if (isNuovo) {
+                logService.registraEvento(
+                        "Registrazione nuova anagrafica: DIPENDENTE",
+                        true,
+                        "Creato dipendente '" + salvato.getNome() + " " + salvato.getCognome() + "'. ID assegnato: " + salvato.getIdUtente() + " (Azienda ID: " + aziendaId + ")"
+                );
+            }
+            return salvato;
+
         }).orElseThrow(() -> new RuntimeException("Azienda non trovata con ID: " + aziendaId));
     }
 

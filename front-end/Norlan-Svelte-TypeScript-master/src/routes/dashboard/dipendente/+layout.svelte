@@ -5,14 +5,13 @@
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, HardHat, MessageSquare, BookOpen,
-		FileBadge, User, Bell, LogOut, Home, Clock, Search, Loader2
+		FileBadge, User, Bell, LogOut, Home, Loader2
 	} from 'lucide-svelte';
 
 	// Import Servizi e Modelli
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
 	import type { Notifica } from '$lib/models/Notifica';
-	import { searchState } from '$lib/searchState.svelte';
 
 	let { children } = $props();
 

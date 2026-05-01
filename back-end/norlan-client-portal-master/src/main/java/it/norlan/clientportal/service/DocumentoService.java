@@ -27,6 +27,9 @@ public class DocumentoService {
     @Autowired
     private NotificaService notificaService;
 
+    @Autowired
+    private LogSincronizzazioneService logService;
+
     @Transactional(readOnly = true)
     public List<Documento> findAll() {
         return documentoRepository.findAll();
@@ -49,6 +52,12 @@ public class DocumentoService {
 
         Documento salvato = documentoRepository.save(documento);
         Utente destinatario = salvato.getAzienda();
+
+        logService.registraEvento(
+                "Upload nuovo documento aziendale",
+                true,
+                "Caricato file '" + salvato.getTipologia().name() + "' per Azienda ID: " + destinatario.getIdUtente() + ". Path: " + salvato.getFilePath()
+        );
 
         notificaService.inviaNotifica(
                 destinatario,
@@ -78,7 +87,17 @@ public class DocumentoService {
 
     @Transactional
     public void eliminaDocumento(Integer id) {
+        Documento doc = documentoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Documento non trovato con ID: " + id));
+        String tipologia = doc.getTipologia().name();
+
         documentoRepository.deleteById(id);
+
+        logService.registraEvento(
+                "Eliminazione documento di sistema",
+                true,
+                "Rimosso definitivamente il documento ID: " + id + " (Tipologia: " + tipologia + ")"
+        );
     }
 
     @Transactional(readOnly = true)
@@ -153,7 +172,6 @@ public class DocumentoService {
 
     @Transactional
     public void distribuisciAttestatiMassivi(Integer idCorso, Map<Integer, String> pathFileUpload) {
-        // 1. Recupero entità e Guardia di Stato FSM
         CorsoFormazione corso = corsoRepository.findById(idCorso)
                 .orElseThrow(() -> new IllegalArgumentException("Errore di integrità: Corso non trovato"));
 
@@ -161,26 +179,20 @@ public class DocumentoService {
             throw new IllegalStateException("Violazione FSM: Impossibile generare gli attestati. Stato attuale: " + corso.getStato());
         }
 
-        // 2. Estrazione Iscrizioni
         List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(idCorso);
 
-        // 3. Algoritmo di Raggruppamento (Anti-Proxy Hibernate)
         Map<Azienda, List<IscrizioneCorso>> dipendentiPerAzienda = new HashMap<>();
 
         for (IscrizioneCorso isc : iscrizioni) {
-            // Controlla che il dipendente abbia effettivamente partecipato
             if (Boolean.TRUE.equals(isc.getPresenzaConfermata())) {
 
-                // CRITICO: Forza Hibernate a rivelare la VERA classe dell'oggetto (rimuove il Proxy)
                 Utente utenteReale = (Utente) org.hibernate.Hibernate.unproxy(isc.getUtente());
 
-                // Ora l'instanceof funzionerà perfettamente
                 if (utenteReale instanceof Dipendente) {
                     Dipendente dip = (Dipendente) utenteReale;
                     Azienda azienda = dip.getAzienda();
 
                     if (azienda != null) {
-                        // Raggruppa l'iscrizione sotto questa azienda
                         dipendentiPerAzienda.computeIfAbsent(azienda, k -> new ArrayList<>()).add(isc);
                     }
                 }
@@ -191,10 +203,13 @@ public class DocumentoService {
             throw new IllegalStateException("Anomalia elaborazione: Nessun dipendente con presenza confermata trovato. (Oppure i presenti non sono dipendenti).");
         }
 
-        // 4. Instanziazione Multipla e Linking Relazionale
+        int totaleAttestatiGenerati = 0;
+
         for (Map.Entry<Azienda, List<IscrizioneCorso>> entry : dipendentiPerAzienda.entrySet()) {
             Azienda azienda = entry.getKey();
             List<IscrizioneCorso> iscrizioniAzienda = entry.getValue();
+
+            totaleAttestatiGenerati += iscrizioniAzienda.size();
 
             String filePath = pathFileUpload.getOrDefault(azienda.getIdUtente(), "path/temporaneo/da_definire.pdf");
 
@@ -222,8 +237,13 @@ public class DocumentoService {
             );
         }
 
-        // 5. Risoluzione della FSM: Mutazione allo stato terminale operativo
         corso.setStato(CorsoFormazione.StatoCorso.CERTIFICATO);
         corsoRepository.save(corso);
+
+        logService.registraEvento(
+                "Distribuzione attestati formativi",
+                true,
+                "Generati e collegati " + totaleAttestatiGenerati + " attestati per il Corso ID: " + idCorso + ". Stato corso aggiornato a 'CERTIFICATO'."
+        );
     }
 }

@@ -21,6 +21,9 @@ public class AssegnazioneDPIService {
     @Autowired
     private NotificaService notificaService;
 
+    @Autowired
+    private LogSincronizzazioneService logService;
+
     @Transactional(readOnly = true)
     public List<AssegnazioneDPI> findAll() {
         return dpiRepository.findAll();
@@ -33,7 +36,18 @@ public class AssegnazioneDPIService {
 
     @Transactional
     public void eliminaAssegnazione(Integer id) {
+        AssegnazioneDPI dpi = dpiRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("DPI non trovato con ID: " + id));
+        String tipoDpi = dpi.getTipo().name();
+        Integer idDipendente = dpi.getDipendente().getIdUtente();
+
         dpiRepository.deleteById(id);
+
+        logService.registraEvento(
+                "Aggiornamento registro DPI",
+                true,
+                "Rimosso DPI '" + tipoDpi + "' dal dipendente ID: " + idDipendente
+        );
     }
 
     @Transactional
@@ -46,9 +60,18 @@ public class AssegnazioneDPIService {
             assegnazione.setDataConsegna(LocalDate.now());
         }
 
+        boolean isNuovo = (assegnazione.getIdAssegnazione() == null);
+
         AssegnazioneDPI salvata = dpiRepository.save(assegnazione);
 
-        // Modifica la chiamata dopo dpiRepository.save(assegnazione)
+        if (isNuovo) {
+            logService.registraEvento(
+                    "Aggiornamento registro DPI",
+                    true,
+                    "Assegnato DPI '" + salvata.getTipo().name() + "' al dipendente ID: " + salvata.getDipendente().getIdUtente()
+            );
+        }
+
         notificaService.inviaNotifica(
                 salvata.getDipendente(),
                 "Ti è stato assegnato un nuovo DPI: " + salvata.getTipo(),
@@ -64,9 +87,6 @@ public class AssegnazioneDPIService {
         return dpiRepository.findByDipendenteIdUtente(idDipendente);
     }
 
-    /**
-     * Restituisce i DPI che necessitano di revisione a breve (es. entro 30 giorni).
-     */
     @Transactional(readOnly = true)
     public List<AssegnazioneDPI> trovaInScadenzaRevisione(int giorni) {
         LocalDate limite = LocalDate.now().plusDays(giorni);
@@ -78,7 +98,6 @@ public class AssegnazioneDPIService {
 
         dto.setIdAssegnazione(assegnazione.getIdAssegnazione());
 
-        // Estrazione dati dal Dipendente (Flattening)
         if (assegnazione.getDipendente() != null) {
             dto.setIdDipendente(assegnazione.getDipendente().getIdUtente());
         }
@@ -87,7 +106,6 @@ public class AssegnazioneDPIService {
         dto.setDataConsegna(assegnazione.getDataConsegna());
         dto.setDataScadenzaRevisione(assegnazione.getDataScadenzaRevisione());
 
-        // Calcolo stato revisione
         if (assegnazione.getDataScadenzaRevisione() != null) {
             dto.setDaRevisionare(assegnazione.getDataScadenzaRevisione().isBefore(LocalDate.now()));
         }

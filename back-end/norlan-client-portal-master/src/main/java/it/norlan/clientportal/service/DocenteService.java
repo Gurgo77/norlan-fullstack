@@ -19,6 +19,9 @@ public class DocenteService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private LogSincronizzazioneService logService;
+
     @Transactional(readOnly = true)
     public List<Docente> findAll() {
         return docenteRepository.findAll();
@@ -44,7 +47,17 @@ public class DocenteService {
 
     @Transactional
     public void eliminaDocente(Integer id) {
+
+        Docente docente = docenteRepository.findById(id).orElseThrow();
+        String nomeCompleto = docente.getNome() + " " + docente.getCognome();
+
         docenteRepository.deleteById(id);
+
+        logService.registraEvento(
+                "Eliminazione anagrafica: DOCENTE",
+                true,
+                "Cancellato docente ID: " + id + " (" + nomeCompleto + ")"
+        );
     }
 
     public DocenteDTO convertToDTO(Docente docente) {

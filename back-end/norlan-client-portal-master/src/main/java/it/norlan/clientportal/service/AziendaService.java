@@ -17,12 +17,18 @@ public class AziendaService {
 
     @Autowired
     private AziendaRepository aziendaRepository;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
+
     @Autowired
     private DipendenteRepository dipendenteRepository;
+
     @Autowired
     private NotificaService notificaService;
+
+    @Autowired
+    private LogSincronizzazioneService logService;
 
     @Transactional(readOnly = true)
     public List<Azienda> findAll() {
@@ -54,8 +60,18 @@ public class AziendaService {
 
     @Transactional
     public void eliminaAzienda(Integer id) {
+        Azienda azienda = aziendaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Errore: Azienda non trovata con ID " + id));
+        String ragioneSociale = azienda.getRagioneSociale();
+
         dipendenteRepository.deleteByAziendaId(id);
         aziendaRepository.deleteById(id);
+
+        logService.registraEvento(
+                "Eliminazione anagrafica: AZIENDA",
+                true,
+                "Cancellata azienda ID: " + id + " (" + ragioneSociale + ")"
+        );
     }
 
     public AziendaDTO convertToDTO(Azienda azienda) {

@@ -24,12 +24,14 @@ public class CorsoFormazioneService {
     @Autowired
     private IscrizioneCorsoRepository iscrizioneRepository;
 
-    // Aggiunto il repository per gestire i materiali didattici collegati
     @Autowired
     private MaterialeDidatticoRepository materialeRepository;
 
     @Autowired
     private NotificaService notificaService;
+
+    @Autowired
+    private LogSincronizzazioneService logService;
 
     @Transactional(readOnly = true)
     public List<CorsoFormazione> findAll() {
@@ -43,19 +45,16 @@ public class CorsoFormazioneService {
 
     @Transactional
     public void eliminaCorso(Integer id) {
-        // 1. Eliminiamo prima tutti i materiali didattici associati al corso
         List<MaterialeDidattico> materiali = materialeRepository.findByCorsoIdCorso(id);
         if (!materiali.isEmpty()) {
             materialeRepository.deleteAll(materiali);
         }
 
-        // 2. Eliminiamo tutte le iscrizioni associate al corso
         List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(id);
         if (!iscrizioni.isEmpty()) {
             iscrizioneRepository.deleteAll(iscrizioni);
         }
 
-        // 3. Ora possiamo eliminare il corso in modo totalmente sicuro per il DB
         corsoRepository.deleteById(id);
     }
 
@@ -65,10 +64,21 @@ public class CorsoFormazioneService {
             throw new IllegalArgumentException("Non puoi programmare un corso nel passato.");
         }
 
+        boolean isNuovo = (corso.getIdCorso() == null);
+
         if (corso.getStato() == null) {
             corso.setStato(CorsoFormazione.StatoCorso.PROGRAMMATO);
         }
-        return corsoRepository.save(corso);
+        CorsoFormazione salvato = corsoRepository.save(corso);
+
+        if (isNuovo) {
+            logService.registraEvento(
+                    "Programmazione nuovo corso",
+                    true,
+                    "Creato corso '" + salvato.getTitolo() + "' (ID: " + salvato.getIdCorso() + "). Assegnato al docente ID: " + salvato.getDocente().getIdUtente()
+            );
+        }
+        return salvato;
     }
 
     @Transactional
@@ -135,11 +145,9 @@ public class CorsoFormazioneService {
 
     @Transactional
     public void validaPresenzeAdmin(Integer idCorso, List<Integer> idUtentiPresenti) {
-        // 1. Recupero dell'entità principale
         CorsoFormazione corso = corsoRepository.findById(idCorso)
                 .orElseThrow(() -> new IllegalArgumentException("Errore di integrità: Corso non trovato"));
 
-        // 2. Guardia di Stato (State Guard): L'azione è permessa solo se il corso è fisicamente terminato
         if (corso.getStato() != CorsoFormazione.StatoCorso.CONCLUSO) {
             throw new IllegalStateException("Violazione FSM: Impossibile validare le presenze. Il corso si trova nello stato: " + corso.getStato());
         }
@@ -160,6 +168,13 @@ public class CorsoFormazioneService {
 
         corso.setStato(CorsoFormazione.StatoCorso.ATTESA_FIRMA_DOCENTE);
         corsoRepository.save(corso);
+
+        int numeroPresentiValidati = idUtentiPresenti.size();
+        logService.registraEvento(
+                "Validazione registro didattico",
+                true,
+                "Corso ID: " + idCorso + " passato allo stato 'ATTESA_FIRMA_DOCENTE'. Validati " + numeroPresentiValidati + " presenti."
+        );
     }
 
     @Transactional

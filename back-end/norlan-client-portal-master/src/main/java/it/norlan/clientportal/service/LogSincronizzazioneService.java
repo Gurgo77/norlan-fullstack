@@ -6,6 +6,7 @@ import it.norlan.clientportal.repository.LogSincronizzazioneRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,17 +17,11 @@ public class LogSincronizzazioneService {
     @Autowired
     private LogSincronizzazioneRepository repository;
 
-    /**
-     * Recupera tutti i log registrati nel sistema.
-     */
     @Transactional(readOnly = true)
     public List<LogSincronizzazione> findAll() {
         return repository.findAllByOrderByDataEventoDesc();
     }
 
-    /**
-     * Registra un nuovo evento di sincronizzazione o operazione di sistema.
-     */
     @Transactional
     public LogSincronizzazione registraEvento(String descrizione, boolean esito, String note) {
         LogSincronizzazione log = new LogSincronizzazione();
@@ -38,10 +33,6 @@ public class LogSincronizzazioneService {
         return repository.save(log);
     }
 
-    /**
-     * Recupera solo i log che hanno avuto un esito negativo.
-     * Utile per monitorare errori di sistema.
-     */
     @Transactional(readOnly = true)
     public List<LogSincronizzazione> trovaErrori() {
         return repository.findByEsitoPositivoFalse();
@@ -49,7 +40,25 @@ public class LogSincronizzazioneService {
 
     @Transactional
     public void pulisciLogVecchi(LocalDateTime dataLimite) {
+
         repository.deleteByDataEventoBefore(dataLimite);
+    }
+
+    @Scheduled(cron = "0 0 3 ? * SUN")
+    @Transactional
+    public void esecuzionePuliziaAutomatica() {
+        int giorniRetention = 30;
+
+        LocalDateTime dataLimite = LocalDateTime.now().minusDays(giorniRetention);
+
+        repository.deleteByDataEventoBefore(dataLimite);
+
+        System.out.println("  [SYSTEM-JOB] Eseguita pulizia automatica dei log precedenti al: " + dataLimite);
+        this.registraEvento(
+                "Manutenzione di Sistema",
+                true,
+                "Eseguita pulizia automatica (Log Retention). Rimossi i record antecedenti a 30 giorni."
+        );
     }
 
     public LogSincronizzazioneDTO convertToDTO(LogSincronizzazione log) {
