@@ -239,7 +239,7 @@
 		</div>
 	{/if}
 
-	<div class="group relative max-w-md">
+	<div class="group relative w-full">
 		<Search
 				class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]"
 				size={20}
