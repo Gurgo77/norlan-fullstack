@@ -9,15 +9,22 @@
     } from 'lucide-svelte';
 
     // Servizi
-    import { LavoratoreService, type DipendenteDTO, type AssegnazioneDPIDTO } from '$lib/services/LavoratoreService';
+    import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
 
     // --- INTERFACCE LOCALI (Type-Safe, no ANY) ---
-    // Mappa la struttura reale ritornata dal backend (AssegnazioneDPIDTO)
-    interface DpiSafe extends AssegnazioneDPIDTO {
+    // Svincoliamo DpiSafe da AssegnazioneDPIDTO per evitare i conflitti di overlap di TypeScript
+    interface DpiSafe {
+        idAssegnazione?: number;
+        id?: number;
+        idDipendente?: number;
+        tipo: string;
         nomeDpi?: string;
+        dataConsegna?: string;
+        dataScadenzaRevisione?: string;
         dataScadenza?: string;
+        daRevisionare?: boolean;
     }
 
     // Interfaccia estesa per comodità grafica
@@ -73,7 +80,7 @@
 
                     try {
                         const dpisRaw = await LavoratoreService.getDpiByLavoratore(dip.idUtente);
-                        const dpis = dpisRaw as DpiSafe[];
+                        const dpis = dpisRaw as unknown as DpiSafe[];
                         return { ...dip, dpis };
                     } catch (e) {
                         return { ...dip, dpis: [] };
@@ -97,12 +104,17 @@
     });
 
     const filteredDipendenti = $derived(
-        dipendenti.filter(d =>
-            d.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            d.cognome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            d.codiceFiscale.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (d.nomeAzienda && d.nomeAzienda.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
+        dipendenti.filter(d => {
+            // Regola di ottimizzazione: Escludiamo chi non ha DPI
+            if (!d.dpis || d.dpis.length === 0) return false;
+
+            // Applichiamo il filtro di ricerca
+            const query = searchQuery.toLowerCase();
+            return d.nome.toLowerCase().includes(query) ||
+                d.cognome.toLowerCase().includes(query) ||
+                d.codiceFiscale.toLowerCase().includes(query) ||
+                (d.nomeAzienda && d.nomeAzienda.toLowerCase().includes(query));
+        })
     );
 
     const dipendentiRaggruppati = $derived(() => {
@@ -153,14 +165,15 @@
 
         const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${dipendente.nome} ${dipendente.cognome}`);
 
-        // Tentativo di estrazione del campo scadenza per evitare l'any
         const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || '';
         const dataScad = dataScadenzaReale ? new Date(dataScadenzaReale).toLocaleDateString() : 'N/D';
-        const nomeDpiReale = dpi.tipo || dpi.nomeDpi || 'DPI Non Specificato';
+
+        // Logica condizionale stringente
+        const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
         const body = encodeURIComponent(
             `Gentile ${azienda.ragioneSociale},\n\n` +
-            `Vi segnaliamo che il DPI (${String(nomeDpiReale).replace(/_/g, ' ')}) assegnato a ${dipendente.nome} ${dipendente.cognome} è SCADUTO il ${dataScad}.\n\n` +
+            `Vi segnaliamo che il DPI (${nomeDpiReale}) assegnato a ${dipendente.nome} ${dipendente.cognome} è SCADUTO il ${dataScad}.\n\n` +
             `Vi invitiamo a provvedere al rinnovo immediato.\n\nCordiali saluti,\nTeam NorLan`
         );
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
@@ -171,10 +184,12 @@
 
         const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || '';
         const dataScad = dataScadenzaReale ? new Date(dataScadenzaReale).toLocaleDateString() : 'N/D';
-        const nomeDpiReale = dpi.tipo || dpi.nomeDpi || 'DPI Non Specificato';
+
+        // Logica condizionale stringente
+        const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
         const testoMessaggio = encodeURIComponent(
-            `Salve, vi segnaliamo che il DPI (${String(nomeDpiReale).replace(/_/g, ' ')}) assegnato al lavoratore ${dipendente.nome} ${dipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
+            `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${dipendente.nome} ${dipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
         // eslint-disable-next-line svelte/no-navigation-without-resolve
@@ -215,11 +230,10 @@
     {:else if filteredDipendenti.length === 0}
         <div class="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
             <ShieldCheck size={48} class="mx-auto text-gray-300 mb-4" />
-            <p class="text-gray-400 font-bold uppercase text-xs">Nessun lavoratore trovato per i filtri di ricerca</p>
+            <p class="text-gray-400 font-bold uppercase text-xs">Nessun lavoratore con DPI assegnati trovato</p>
         </div>
     {:else}
         <div class="space-y-8">
-            <!-- Correzione dell'errore (key) aggiunta qui: (nomeAzienda) -->
             {#each Object.entries(dipendentiRaggruppati()) as [nomeAzienda, gruppo] (nomeAzienda)}
                 <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" in:scale={{start: 0.98, duration: 300}}>
                     <button
@@ -235,7 +249,7 @@
                                     {nomeAzienda}
                                 </h2>
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">
-                                    {gruppo.dipendenti.length} Lavorator{gruppo.dipendenti.length === 1 ? 'e' : 'i'} Associat{gruppo.dipendenti.length === 1 ? 'o' : 'i'}
+                                    {gruppo.dipendenti.length} Lavorator{gruppo.dipendenti.length === 1 ? 'e' : 'i'} Con DPI assegnati
                                 </p>
                             </div>
                         </div>
@@ -254,7 +268,6 @@
                                 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col h-full hover:shadow-md transition-shadow overflow-hidden">
 
                                     <div class="p-4 border-b border-gray-50 flex items-center gap-3 bg-white">
-                                        <!-- Uniformato al Blu NorLan (#1B4B6B) -->
                                         <div class="w-10 h-10 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl flex items-center justify-center font-black text-sm shrink-0">
                                             {dip.nome[0]}{dip.cognome[0]}
                                         </div>
@@ -267,70 +280,63 @@
                                     </div>
 
                                     <div class="p-4 flex-1 flex flex-col gap-3 bg-gray-50/50">
-                                        {#if !dip.dpis || dip.dpis.length === 0}
-                                            <div class="flex-1 flex flex-col items-center justify-center py-6 text-gray-300">
-                                                <ShieldCheck size={28} class="mb-2 opacity-30" />
-                                                <p class="text-[9px] font-black uppercase text-center tracking-widest opacity-80">Nessun DPI Assegnato</p>
-                                            </div>
-                                        {:else}
-                                            <p class="text-[9px] font-black text-[#1B4B6B] uppercase tracking-widest border-b border-gray-200 pb-1.5 flex items-center justify-between">
-                                                Elenco DPI
-                                                <span class="bg-[#1B4B6B]/10 px-1.5 py-0.5 rounded text-[#1B4B6B]">{dip.dpis.length}</span>
-                                            </p>
+                                        <p class="text-[9px] font-black text-[#1B4B6B] uppercase tracking-widest border-b border-gray-200 pb-1.5 flex items-center justify-between">
+                                            Elenco DPI
+                                            <span class="bg-[#1B4B6B]/10 px-1.5 py-0.5 rounded text-[#1B4B6B]">{dip.dpis?.length || 0}</span>
+                                        </p>
 
-                                            <div class="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
-                                                {#each dip.dpis as dpi}
-                                                    {@const nomeDpiReale = dpi.tipo || dpi.nomeDpi || 'DPI Non Specificato'}
-                                                    {@const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || ''}
-                                                    {@const scaduto = isScaduto(dataScadenzaReale)}
+                                        <div class="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
+                                            {#each dip.dpis || [] as dpi}
+                                                {@const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ')}
+                                                {@const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || ''}
+                                                {@const scaduto = isScaduto(dataScadenzaReale)}
 
-                                                    <div class="p-3 rounded-xl border {scaduto ? 'bg-red-50 border-red-200 shadow-sm shadow-red-100' : 'bg-white border-gray-100 shadow-sm'} flex flex-col gap-2 transition-all">
+                                                <div class="p-3 rounded-xl border {scaduto ? 'bg-red-50 border-red-200 shadow-sm shadow-red-100' : 'bg-white border-gray-100 shadow-sm'} flex flex-col gap-2 transition-all">
 
-                                                        <div class="flex items-start justify-between gap-2">
-                                                            <div class="overflow-hidden">
-                                                                <p class="text-[10px] font-extrabold uppercase truncate {scaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">
-                                                                    {String(nomeDpiReale).replace(/_/g, ' ')}
-                                                                </p>
-                                                                <div class="flex items-center gap-1.5 mt-1.5">
-                                                                    <Calendar size={10} class={scaduto ? 'text-red-500' : 'text-green-500'} />
-                                                                    <span class="text-[8px] font-bold uppercase {scaduto ? 'text-red-600' : 'text-gray-500'}">
-                                                                        {scaduto ? 'Scaduto il:' : 'Scade:'} {formattaData(dataScadenzaReale)}
-                                                                    </span>
-                                                                </div>
+                                                    <div class="flex items-start justify-between gap-2">
+                                                        <div class="overflow-hidden">
+                                                            <p class="text-[10px] font-extrabold uppercase truncate {scaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">
+                                                                {nomeDpiReale}
+                                                            </p>
+                                                            <div class="flex items-center gap-1.5 mt-1.5">
+                                                                <Calendar size={10} class={scaduto ? 'text-red-500' : 'text-green-500'} />
+                                                                <span class="text-[8px] font-bold uppercase {scaduto ? 'text-red-600' : 'text-gray-500'}">
+                                                                    {scaduto ? 'Scaduto il:' : 'Scade:'} {formattaData(dataScadenzaReale)}
+                                                                </span>
                                                             </div>
-                                                            {#if scaduto}
-                                                                <AlertTriangle size={16} class="text-red-600 shrink-0 mt-0.5" />
-                                                            {:else}
-                                                                <CheckCircle2 size={16} class="text-green-500 shrink-0 mt-0.5" />
-                                                            {/if}
                                                         </div>
-
                                                         {#if scaduto}
-                                                            <div class="mt-1 pt-2 border-t border-red-200/50 border-dashed w-full">
-                                                                <p class="text-[8px] font-black uppercase text-red-400 mb-1.5 text-center tracking-tighter">
-                                                                    Invia sollecito a {dip.nomeAzienda}:
-                                                                </p>
-                                                                <div class="flex gap-2 w-full">
-                                                                    <button
-                                                                            onclick={() => sollecitaViaEmail(dpi, dip)}
-                                                                            class="flex-1 py-1.5 bg-red-600 text-white rounded-md text-[8px] font-black uppercase flex items-center justify-center gap-1 shadow-sm hover:bg-red-700 transition-colors"
-                                                                    >
-                                                                        <Mail size={10} /> Email
-                                                                    </button>
-                                                                    <button
-                                                                            onclick={() => sollecitaViaChat(dpi, dip)}
-                                                                            class="flex-1 py-1.5 bg-[#1B4B6B] text-white rounded-md text-[8px] font-black uppercase flex items-center justify-center gap-1 shadow-sm hover:bg-[#1B4B6B]/90 transition-colors"
-                                                                    >
-                                                                        <MessageSquare size={10} /> Chat
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                            <AlertTriangle size={16} class="text-red-600 shrink-0 mt-0.5" />
+                                                        {:else}
+                                                            <CheckCircle2 size={16} class="text-green-500 shrink-0 mt-0.5" />
                                                         {/if}
-
                                                     </div>
-                                                {/each}
-                                            </div>
-                                        {/if}
+
+                                                    {#if scaduto}
+                                                        <div class="mt-1 pt-2 border-t border-red-200/50 border-dashed w-full">
+                                                            <p class="text-[8px] font-black uppercase text-red-400 mb-1.5 text-center tracking-tighter">
+                                                                Invia sollecito a {dip.nomeAzienda}:
+                                                            </p>
+                                                            <div class="flex gap-2 w-full">
+                                                                <button
+                                                                        onclick={() => sollecitaViaEmail(dpi, dip)}
+                                                                        class="flex-1 py-1.5 bg-red-600 text-white rounded-md text-[8px] font-black uppercase flex items-center justify-center gap-1 shadow-sm hover:bg-red-700 transition-colors"
+                                                                >
+                                                                    <Mail size={10} /> Email
+                                                                </button>
+                                                                <button
+                                                                        onclick={() => sollecitaViaChat(dpi, dip)}
+                                                                        class="flex-1 py-1.5 bg-[#1B4B6B] text-white rounded-md text-[8px] font-black uppercase flex items-center justify-center gap-1 shadow-sm hover:bg-[#1B4B6B]/90 transition-colors"
+                                                                >
+                                                                    <MessageSquare size={10} /> Chat
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    {/if}
+
+                                                </div>
+                                            {/each}
+                                        </div>
                                     </div>
                                 </div>
                             {/each}

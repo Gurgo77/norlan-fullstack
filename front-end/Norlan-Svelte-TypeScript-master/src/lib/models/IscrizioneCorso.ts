@@ -27,7 +27,6 @@ export interface IscrizioneCorso {
 	documentoAttestato?: Documento;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class IscrizioneCorso {
 	idUtente: number;
 	idCorso: number;
@@ -46,7 +45,6 @@ export class IscrizioneCorso {
 		this.presenzaConfermata = data.presenzaConfermata;
 		this.statoCorso = data.statoCorso;
 
-		// Mappatura condizionale: se l'API restituisce il documento (Fase VALIDATO), lo assegnamo
 		if (data.idDocumento !== undefined) {
 			this.idDocumento = data.idDocumento;
 		}

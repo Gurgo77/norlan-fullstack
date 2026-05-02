@@ -2,7 +2,6 @@ import httpClient from '$lib/api/httpClient';
 import { Notifica, type NotificaData } from '$lib/models/Notifica';
 import { LogSincronizzazione, type LogSincronizzazioneData } from '$lib/models/LogSincronizzazione';
 
-// Definiamo l'interfaccia esatta che il backend si aspetta per creare un log
 export interface CreateLogRequest {
 	descrizioneEvento: string;
 	esitoPositivo: boolean;
@@ -10,17 +9,8 @@ export interface CreateLogRequest {
 }
 
 export class SistemaService {
-	// Allineato con @RequestMapping("/api/sistema")
 	private static readonly basePath = '/api/sistema';
 
-	// ==========================================
-	// SEZIONE 1: NOTIFICHE
-	// ==========================================
-
-	/**
-	 * Recupera tutte le notifiche (lette e non lette) di un determinato utente.
-	 * BE: GET /api/sistema/notifiche/utente/{idUtente}
-	 */
 	static async getNotificheUtente(idUtente: number | string): Promise<Notifica[]> {
 		const response = await httpClient.get<NotificaData[]>(
 			`${this.basePath}/notifiche/utente/${idUtente}`
@@ -28,11 +18,6 @@ export class SistemaService {
 		return response.data.map((item) => new Notifica(item));
 	}
 
-	/**
-	 * NUOVO METODO: Recupera SOLO le notifiche NON LETTE di un determinato utente.
-	 * Ideale per popolare il menu a tendina della campanella in modo veloce e leggero.
-	 * BE: GET /api/sistema/notifiche/utente/{idUtente}/non-lette
-	 */
 	static async getNotificheNonLette(idUtente: number | string): Promise<Notifica[]> {
 		const response = await httpClient.get<NotificaData[]>(
 			`${this.basePath}/notifiche/utente/${idUtente}/non-lette`
@@ -40,10 +25,6 @@ export class SistemaService {
 		return response.data.map((item) => new Notifica(item));
 	}
 
-	/**
-	 * Conta quante notifiche non lette ha un utente. Perfetto per il badge rosso.
-	 * BE: GET /api/sistema/notifiche/utente/{idUtente}/non-lette/count
-	 */
 	static async countNotificheNonLette(idUtente: number | string): Promise<number> {
 		const response = await httpClient.get(
 			`${this.basePath}/notifiche/utente/${idUtente}/non-lette/count`
@@ -53,10 +34,6 @@ export class SistemaService {
 		return isNaN(count) ? 0 : count;
 	}
 
-	/**
-	 * Segna una notifica come letta.
-	 * BE: PATCH /api/sistema/notifiche/{idNotifica}/letta
-	 */
 	static async segnaLetta(idNotifica: number | string): Promise<void> {
 		await httpClient.patch(`${this.basePath}/notifiche/${idNotifica}/letta`);
 	}
@@ -69,23 +46,11 @@ export class SistemaService {
 		await httpClient.delete(`${this.basePath}/notifiche/${idNotifica}`);
 	}
 
-	// ==========================================
-	// SEZIONE 2: LOG E MONITORAGGIO
-	// ==========================================
-
-	/**
-	 * Recupera la cronologia completa di tutti i log.
-	 * BE: GET /api/sistema/logs
-	 */
 	static async getAllLogs(): Promise<LogSincronizzazione[]> {
 		const response = await httpClient.get<LogSincronizzazioneData[]>(`${this.basePath}/logs`);
 		return response.data.map((item) => new LogSincronizzazione(item));
 	}
 
-	/**
-	 * Recupera solo i log che contengono errori (Esito Positivo = false).
-	 * BE: GET /api/sistema/logs/errori
-	 */
 	static async getErrorLogs(): Promise<LogSincronizzazione[]> {
 		const response = await httpClient.get<LogSincronizzazioneData[]>(
 			`${this.basePath}/logs/errori`
@@ -93,19 +58,11 @@ export class SistemaService {
 		return response.data.map((item) => new LogSincronizzazione(item));
 	}
 
-	/**
-	 * Registra manualmente un evento di sistema.
-	 * BE: POST /api/sistema/logs
-	 */
 	static async createLog(dati: CreateLogRequest): Promise<LogSincronizzazione> {
 		const response = await httpClient.post<LogSincronizzazioneData>(`${this.basePath}/logs`, dati);
 		return new LogSincronizzazione(response.data);
 	}
 
-	/**
-	 * Pulisce il database eliminando i log più vecchi di X giorni.
-	 * BE: DELETE /api/sistema/logs/pulizia
-	 */
 	static async pulisciLogVecchi(giorniVecchiaia: number = 30): Promise<void> {
 		await httpClient.delete(`${this.basePath}/logs/pulizia`, {
 			params: { giorniVecchiaia } // Inviato come query param ?giorniVecchiaia=30

@@ -1,6 +1,5 @@
 import httpClient from '$lib/api/httpClient';
 import type {AuthRequest} from "$lib/models/AuthRequest";
-import type {AuthResponse} from "$lib/models/AuthResponse";
 
 export interface LoginRequest {
 	email: string;
@@ -25,7 +24,6 @@ export interface UserSession {
 export class AuthService {
 	private static readonly basePath = '/api/auth';
 
-	// MODIFICA 1: Restituisce LoginResponse per allineare i tipi
 	static async login(credentials: AuthRequest): Promise<LoginResponse> {
 		// Assicurati che credentials sia un oggetto {email, password}
 		const response = await httpClient.post<LoginResponse>(`${this.basePath}/login`, credentials);
@@ -46,7 +44,6 @@ export class AuthService {
 			idUtente: authData.idUtente,
 			email: authData.email,
 			ruolo: authData.ruolo,
-			// MODIFICA 2: Inserito il salvataggio del campo mancante
 			richiedeCambioPassword: authData.richiedeCambioPassword ?? false
 		};
 

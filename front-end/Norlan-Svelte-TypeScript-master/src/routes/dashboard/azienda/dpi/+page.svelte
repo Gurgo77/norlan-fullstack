@@ -5,16 +5,20 @@
 		Search, Plus, ShieldCheck, AlertTriangle, Clock, Loader2
 	} from 'lucide-svelte';
 
-	// Import Servizi e Interfacce
-	import { LavoratoreService, type AssegnazioneDPIDTO } from '$lib/services/LavoratoreService';
+	// Import Servizi e Interfacce (rimosso l'import inutilizzato di AssegnazioneDPIDTO)
+	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { AuthService } from '$lib/services/AuthService';
 
 	// --- INTERFACCE LOCALI ---
-	// Aggiungiamo esplicitamente i campi "tipo" e "dataScadenzaRevisione" per risolvere l'errore TypeScript
-	interface DpiRegistro extends AssegnazioneDPIDTO {
+	// Svincoliamo l'interfaccia dal DTO per evitare errori TypeScript, dichiarando tutti i campi necessari
+	interface DpiRegistro {
+		idAssegnazione?: number;
+		id?: number;
 		nomeCompletoDipendente: string;
 		statoDerivato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
 		tipo?: string;
+		nomeDpi?: string;
+		dataConsegna?: string;
 		dataScadenzaRevisione?: string;
 	}
 
@@ -78,8 +82,10 @@
 	const filteredRegistro = $derived(
 			registro.filter(d => {
 				const tipoSafe = d.tipo ? d.tipo.toString().toLowerCase() : '';
+				const nomeDpiSafe = d.nomeDpi ? d.nomeDpi.toLowerCase() : '';
 				const matchSearch = d.nomeCompletoDipendente.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						tipoSafe.includes(searchQuery.toLowerCase());
+						tipoSafe.includes(searchQuery.toLowerCase()) ||
+						nomeDpiSafe.includes(searchQuery.toLowerCase());
 				const matchFiltro = filtroAttivo === 'TUTTI' || d.statoDerivato === filtroAttivo;
 				return matchSearch && matchFiltro;
 			})
@@ -156,7 +162,10 @@
 				{#if isLoading}
 					<tr><td colspan="6" class="px-8 py-20 text-center text-gray-300 font-black uppercase text-xs tracking-widest"><Loader2 size={32} class="animate-spin mx-auto mb-2" />Sincronizzazione...</td></tr>
 				{:else}
-					{#each filteredRegistro as item (item.id)}
+					{#each filteredRegistro as item (item.idAssegnazione || item.id)}
+						<!-- Logica condizionale stringente per il nome DPI -->
+						{@const nomeDpiReale = (item.tipo === 'ALTRO' && item.nomeDpi) ? item.nomeDpi : (item.tipo || 'NON DEFINITO').replace(/_/g, ' ')}
+
 						<tr class="hover:bg-white hover:shadow-xl hover:shadow-blue-900/5 transition-all group relative">
 
 							<td class="px-8 py-6 text-center">
@@ -168,7 +177,7 @@
 							<td class="px-6 py-6 text-center"><span class="font-black text-[#1B4B6B] text-xs uppercase">{item.nomeCompletoDipendente}</span></td>
 
 							<td class="px-6 py-6 text-center">
-								<span class="font-bold text-[#1B4B6B] text-xs uppercase">{item.tipo ? item.tipo.replace(/_/g, ' ') : 'NON DEFINITO'}</span>
+								<span class="font-bold text-[#1B4B6B] text-xs uppercase">{nomeDpiReale}</span>
 							</td>
 
 							<td class="px-6 py-6 text-xs text-gray-400 font-medium text-center">{formattaData(item.dataConsegna)}</td>

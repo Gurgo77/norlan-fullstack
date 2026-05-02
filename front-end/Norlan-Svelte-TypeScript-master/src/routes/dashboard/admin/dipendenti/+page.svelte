@@ -6,7 +6,7 @@
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Calendar, MessageSquare
+        FileText, ShieldCheck, Download, Calendar, MessageSquare, Plus
     } from 'lucide-svelte';
 
     // Servizi e Modelli
@@ -22,6 +22,18 @@
         idAzienda?: string | number;
     }
 
+    // Interfaccia estesa per tollerare la nuova proprietà nomeDpi senza far arrabbiare ESLint/TS
+    interface DpiEsteso extends AssegnazioneDPI {
+        nomeDpi?: string;
+    }
+
+    interface FormDPI {
+        tipo: string;
+        nomeDpi: string;
+        dataConsegna: string;
+        dataScadenzaRevisione: string;
+    }
+
     // --- STATO REATTIVO ---
     let lavoratori = $state<DipendenteEsteso[]>([]);
     let aziende = $state<Azienda[]>([]);
@@ -30,7 +42,7 @@
 
     let selectedDipendente = $state<DipendenteEsteso | null>(null);
     let documentiCorrenti = $state<Documento[]>([]);
-    let dpiCorrenti = $state<AssegnazioneDPI[]>([]);
+    let dpiCorrenti = $state<DpiEsteso[]>([]);
     let isLoadingDettaglio = $state(false);
 
     let showAddModal = $state(false);
@@ -43,12 +55,21 @@
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
-    // --- STATI ATTESTATI E DPI (Solo eliminazione) ---
+    // --- STATI ATTESTATI E DPI (Aggiunta ed eliminazione) ---
     let showDeleteDocModal = $state(false);
     let docDaEliminare = $state<Documento | null>(null);
 
     let showDeleteDpiModal = $state(false);
-    let dpiDaEliminare = $state<AssegnazioneDPI | null>(null);
+    let dpiDaEliminare = $state<DpiEsteso | null>(null);
+
+    let showAddDpiModal = $state(false);
+    let isSavingDpi = $state(false);
+    let formDpi = $state<FormDPI>({
+        tipo: '',
+        nomeDpi: '',
+        dataConsegna: '',
+        dataScadenzaRevisione: ''
+    });
 
     // --- LOGICA DERIVATA ---
     const filteredLavoratori = $derived(
@@ -129,7 +150,6 @@
                 LavoratoreService.getDpiByLavoratore(lavoratore.idUtente)
             ]);
 
-            // ORDINAMENTO ATTESTATI: Prima gli scaduti, poi i restanti per data crescente
             documentiCorrenti = resDocs.sort((a, b) => {
                 const oggi = new Date().getTime();
                 const scadA = new Date(a.dataScadenza).getTime();
@@ -139,11 +159,10 @@
 
                 if (aScaduto && !bScaduto) return -1;
                 if (!aScaduto && bScaduto) return 1;
-                return scadA - scadB; // Mette in alto quelli che scadono prima
+                return scadA - scadB;
             });
 
-            // ORDINAMENTO DPI: Prima gli scaduti, poi i restanti per data crescente
-            const dpis = resDpis as unknown as AssegnazioneDPI[];
+            const dpis = resDpis as unknown as DpiEsteso[];
             dpiCorrenti = dpis.sort((a, b) => {
                 const aScaduto = isDPIScaduto(a.dataScadenzaRevisione);
                 const bScaduto = isDPIScaduto(b.dataScadenzaRevisione);
@@ -261,7 +280,7 @@
         }
     }
 
-    function isDPIScaduto(dataScadenza: string) {
+    function isDPIScaduto(dataScadenza?: string) {
         if (!dataScadenza || dataScadenza === '9999-12-31') return false;
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const oggi = new Date();
@@ -272,7 +291,7 @@
         return scad < oggi;
     }
 
-    function sollecitaViaEmail(dpi: AssegnazioneDPI) {
+    function sollecitaViaEmail(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
         const azienda = aziende.find(a => String(a.idUtente) === String(selectedDipendente?.idAzienda));
 
@@ -283,38 +302,65 @@
 
         const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${selectedDipendente.nome} ${selectedDipendente.cognome}`);
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
-        const dataScad = new Date(dpi.dataScadenzaRevisione).toLocaleDateString();
+        const dataScad = new Date(dpi.dataScadenzaRevisione || '').toLocaleDateString();
+        const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
         const body = encodeURIComponent(
             `Gentile ${azienda.ragioneSociale},\n\n` +
-            `Vi segnaliamo che il DPI (${dpi.tipo.replace(/_/g, ' ')}) assegnato a ${selectedDipendente.nome} ${selectedDipendente.cognome} è SCADUTO il ${dataScad}.\n\n` +
+            `Vi segnaliamo che il DPI (${nomeDpiReale}) assegnato a ${selectedDipendente.nome} ${selectedDipendente.cognome} è SCADUTO il ${dataScad}.\n\n` +
             `Vi invitiamo a provvedere al rinnovo immediato.\n\nCordiali saluti,\nTeam NorLan`
         );
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
     }
 
-    async function sollecitaViaChat(dpi: AssegnazioneDPI) {
+    async function sollecitaViaChat(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
 
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
-        const dataScad = new Date(dpi.dataScadenzaRevisione).toLocaleDateString();
+        const dataScad = new Date(dpi.dataScadenzaRevisione || '').toLocaleDateString();
+        const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
         const testoMessaggio = encodeURIComponent(
-            `Salve, vi segnaliamo che il DPI (${dpi.tipo.replace(/_/g, ' ')}) assegnato al lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
+            `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
-        // eslint-disable-next-line svelte/no-navigation-without-resolve
         await goto(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`);
     }
 
-    function preparaEliminaDPI(dpi: AssegnazioneDPI) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
+    async function salvaDpi() {
+        if (!selectedDipendente) return;
+        isSavingDpi = true;
+        try {
+            const payload = {
+                tipo: formDpi.tipo,
+                nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : undefined,
+                dataConsegna: formDpi.dataConsegna ? formDpi.dataConsegna : undefined,
+                dataScadenzaRevisione: formDpi.dataScadenzaRevisione
+            };
+
+            const nuovoDpi = await LavoratoreService.assegnaDpi(
+                selectedDipendente.idUtente,
+                payload as any
+            );
+
+            dpiCorrenti = [...dpiCorrenti, nuovoDpi as unknown as DpiEsteso];
+
+            showAddDpiModal = false;
+            formDpi = { tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
+        } catch (error) {
+            console.error("Errore salvataggio DPI:", error);
+            alert("Errore durante l'assegnazione del DPI.");
+        } finally {
+            isSavingDpi = false;
+        }
+    }
+
+    function preparaEliminaDPI(dpi: DpiEsteso) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
 
     async function confermaEliminaDPI() {
         if (!dpiDaEliminare) return;
         try {
-            const dpi = dpiDaEliminare as unknown as { idAssegnazione?: number; id?: number };
-            const idReale = dpi.idAssegnazione || dpi.id;
-
+            const idReale = dpiDaEliminare.idAssegnazione || (dpiDaEliminare as any).id;
             if (idReale) {
                 await LavoratoreService.deleteDpi(idReale);
             }
@@ -328,7 +374,7 @@
         }
     }
 
-    function formattaScadenza(data: string) {
+    function formattaScadenza(data?: string) {
         if (!data || data === '9999-12-31') return 'Senza scadenza';
         // eslint-disable-next-line svelte/prefer-svelte-reactivity
         return new Date(data).toLocaleDateString();
@@ -523,12 +569,16 @@
                                 <div class="p-2.5 bg-green-100 text-green-600 rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
                                 <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
                             </div>
+                            <button onclick={() => showAddDpiModal = true} class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-green-700 transition-all shadow-md">
+                                <Plus size={16} /> Assegna DPI
+                            </button>
                         </div>
 
                         {#if dpiCorrenti.length > 0}
                             <div class="space-y-4">
                                 {#each dpiCorrenti as dpi (dpi.idAssegnazione)}
                                     {@const scaduto = isDPIScaduto(dpi.dataScadenzaRevisione)}
+                                    {@const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ')}
 
                                     <div class="p-5 rounded-2xl border shadow-sm transition-all {scaduto ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
                                         <div class="flex justify-between items-start mb-3">
@@ -538,7 +588,7 @@
                                                 </div>
                                                 <div>
                                                     <h4 class="font-extrabold uppercase text-xs leading-tight {scaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">
-                                                        {dpi.tipo.replace(/_/g, ' ')}
+                                                        {nomeDpiReale}
                                                     </h4>
                                                 </div>
                                             </div>
@@ -550,7 +600,7 @@
                                         <div class="flex flex-col gap-2 pt-3 border-t {scaduto ? 'border-red-100' : 'border-gray-50'}">
                                             <div class="flex items-center gap-1.5 {scaduto ? 'text-red-400' : 'text-gray-400'}">
                                                 <Calendar size={10} />
-                                                <span class="text-[9px] font-bold uppercase">Consegnato: {new Date(dpi.dataConsegna).toLocaleDateString()}</span>
+                                                <span class="text-[9px] font-bold uppercase">Consegnato: {formattaScadenza(dpi.dataConsegna)}</span>
                                             </div>
                                             <div class="flex items-center justify-between">
                                                 <div class="flex items-center gap-1.5 {scaduto ? 'text-red-600 font-black' : 'text-gray-400'}">
@@ -660,6 +710,61 @@
                             class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54] transition-colors"
                     >
                         {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- MODALE INSERIMENTO DPI -->
+    {#if showAddDpiModal}
+        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
+                <div class="bg-green-600 p-6 text-white flex justify-between items-center">
+                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><ShieldCheck size={20}/> Assegna DPI</h2>
+                    <button onclick={() => (showAddDpiModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
+                </div>
+
+                <div class="p-8 space-y-4">
+                    <div class="space-y-1">
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Tipologia DPI *</label>
+                        <select bind:value={formDpi.tipo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none font-bold">
+                            <option value="">Seleziona tipologia...</option>
+                            <option value="ELMETTO">Elmetto</option>
+                            <option value="GUANTI">Guanti</option>
+                            <option value="SCARPE_ANTINFORTUNISTICHE">Scarpe Antinfortunistiche</option>
+                            <option value="OCCHIALI">Occhiali</option>
+                            <option value="ALTRO">Altro</option>
+                        </select>
+                    </div>
+
+                    {#if formDpi.tipo === 'ALTRO'}
+                        <div class="space-y-1" transition:slide>
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
+                            <input bind:value={formDpi.nomeDpi} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
+                        </div>
+                    {/if}
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Data Consegna</label>
+                            <input bind:value={formDpi.dataConsegna} type="date" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Scadenza Revisione *</label>
+                            <input bind:value={formDpi.dataScadenzaRevisione} type="date" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
+                    <button onclick={() => (showAddDpiModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
+                    <button
+                            onclick={salvaDpi}
+                            disabled={!formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataScadenzaRevisione || isSavingDpi}
+                            class="bg-green-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-green-700 transition-colors"
+                    >
+                        {#if isSavingDpi}<Loader2 size={14} class="animate-spin"/>{:else}<ShieldCheck size={14}/>{/if} Assegna
                     </button>
                 </div>
             </div>

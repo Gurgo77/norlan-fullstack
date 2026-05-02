@@ -3,7 +3,6 @@ import type { DipendenteData } from '$lib/models/Dipendente';
 import type { AziendaData } from '$lib/models/Azienda'; // <-- AGGIUNGI QUESTO
 import type {AdminData} from '$lib/models/Admin';
 
-// Payload per la registrazione unificata
 export interface AuthRequestDTO {
 	email: string;
 	password?: string;
@@ -64,10 +63,8 @@ export class AnagraficaService {
 	}
 
 	static async hasDipendenti(idAzienda: number | string): Promise<boolean> {
-		// Metodo 2: Tipizzazione esplicita con DipendenteData[]
 		const response = await httpClient.get<DipendenteData[]>(`/api/lavoratori/azienda/${idAzienda}`);
 
-		// Restituisce true se l'array contiene almeno un dipendente
 		return response.data.length > 0;
 	}
 
@@ -75,10 +72,6 @@ export class AnagraficaService {
 	static async deleteAzienda(idAzienda: number | string): Promise<void> {
 		await httpClient.delete(`${this.basePath}/aziende/${idAzienda}`);
 	}
-
-	// ==========================================
-	// SEZIONE DOCENTI
-	// ==========================================
 
 	static async getAllDocenti(): Promise<unknown[]> {
 		const response = await httpClient.get<unknown[]>(`${this.basePath}/docenti`);
@@ -90,9 +83,6 @@ export class AnagraficaService {
 		return response.data;
 	}
 
-	/**
-	 * @PutMapping("/docenti/{id}") - Aggiorna specializzazioneTecnica ed email
-	 */
 	static async updateDocente(
 		idDocente: number | string,
 		datiAggiornati: DocenteUpdate
