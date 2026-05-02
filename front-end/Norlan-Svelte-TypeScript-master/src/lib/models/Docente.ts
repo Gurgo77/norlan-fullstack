@@ -1,9 +1,8 @@
-// src/lib/models/Docente.ts
 export interface DocenteData {
 	idUtente: number;
 	nome: string;
 	cognome: string;
-	titolo: string; // Es: Prof., Dott., Ing.
+	titolo: string;
 	email: string;
 	specializzazioneTecnica: string;
 	bio: string;

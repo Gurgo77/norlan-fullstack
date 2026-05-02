@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Registrazione ufficiale dei colori per il tema Docenti */
   --color-docente: #0D9488;
   --color-docente-light: #F0FDFA;
   --color-docente-dark: #0F766E;
@@ -40,7 +39,6 @@
   animation: slideInFromBottom 0.8s ease-out forwards;
 }
 
-/* Pulsazione per il pulsante */
 @keyframes pulse {
   0% {
     transform: scale(1);
@@ -90,9 +88,9 @@
 }
 
 .ombraHome {
-  box-shadow: 0 10px 20px 10px rgba(0, 0, 0, 0.3); /* Ombra più forte */
+  box-shadow: 0 10px 20px 10px rgba(0, 0, 0, 0.3);
 }
 
 .ombraChiSiamo {
-  box-shadow: 0 10px 10px 10px rgba(0, 0, 0, 0.3); /* Ombra più forte */
+  box-shadow: 0 10px 10px 10px rgba(0, 0, 0, 0.3);
 }

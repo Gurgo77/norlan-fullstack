@@ -3,35 +3,28 @@
 	import { fade } from 'svelte/transition';
 	import {
 		Activity, FileText, ShieldAlert, Search, Download,
-		Clock, User, ChevronLeft, ChevronRight, Filter
+		User, ChevronLeft, ChevronRight, Filter
 	} from 'lucide-svelte';
 
-	// Importiamo il servizio e il modello reale
 	import { SistemaService } from '$lib/services/SistemaService';
 	import type { LogSincronizzazione } from '$lib/models/LogSincronizzazione';
 
-	// --- STATO REATTIVO ---
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
-
-	// Filtri e Paginazione
 	let searchQuery = $state('');
 	let filtroGravita = $state<'TUTTI' | 'INFO' | 'ERROR'>('TUTTI');
 	let currentPage = $state(1);
 	const itemsPerPage = 15;
 
-	// Resetta la pagina quando i filtri cambiano
 	$effect(() => {
 		searchQuery;
 		filtroGravita;
 		currentPage = 1;
 	});
 
-	// --- AZIONI ---
 	onMount(async () => {
 		try {
 			logs = await SistemaService.getAllLogs();
-			// Ordina i log dal più recente al più vecchio
 			logs.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
 		} catch (error) {
 			console.error("Errore durante il recupero dei log di sistema:", error);
@@ -40,7 +33,6 @@
 		}
 	});
 
-	// --- HELPER ---
 	function getCategory(desc: string): string {
 		const test = desc.toLowerCase();
 		if (test.includes('accesso') || test.includes('login') || test.includes('password')) return 'SICUREZZA';
@@ -49,7 +41,6 @@
 		return 'SISTEMA';
 	}
 
-	// --- LOGICA DERIVATA ---
 	const filteredLogs = $derived(
 			logs.filter(l => {
 				const matchSearch = l.descrizioneEvento.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -61,19 +52,16 @@
 			})
 	);
 
-	// Paginazione calcolata
 	const totalPages = $derived(Math.ceil(filteredLogs.length / itemsPerPage) || 1);
 	const paginatedLogs = $derived(
 			filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 	);
 
-	// Statistiche Dashboard
 	const operazioniTotali = $derived(logs.length);
 	const accessiRilevati = $derived(logs.filter(l => getCategory(l.descrizioneEvento) === 'SICUREZZA').length);
 	const documentiProcessati = $derived(logs.filter(l => getCategory(l.descrizioneEvento) === 'DOCUMENTI').length);
 	const erroriSicurezza = $derived(logs.filter(l => !l.esitoPositivo).length);
 
-	// --- EXPORT CSV ---
 	function esportaReport() {
 		if (filteredLogs.length === 0) {
 			alert('Nessun log da esportare con i filtri attuali.');
@@ -85,7 +73,6 @@
 			const dataStr = new Date(l.dataEvento).toLocaleString('it-IT').replace(',', '');
 			const esitoStr = l.esitoPositivo ? 'INFO' : 'ERROR';
 			const catStr = getCategory(l.descrizioneEvento);
-			// Escape delle virgolette doppie per i CSV
 			const azioneStr = `"${l.descrizioneEvento.replace(/"/g, '""')}"`;
 			const noteStr = `"${(l.noteTecniche || '').replace(/"/g, '""')}"`;
 
@@ -165,8 +152,6 @@
 							class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase"
 					/>
 				</div>
-
-				<!-- Filtro Gravità -->
 				<div class="flex bg-gray-100 p-1 rounded-xl">
 					{#each ['TUTTI', 'INFO', 'ERROR'] as filtro}
 						<button
@@ -243,8 +228,6 @@
 				</tbody>
 			</table>
 		</div>
-
-		<!-- Paginazione -->
 		{#if totalPages > 1}
 			<div class="p-4 border-t border-gray-50 flex items-center justify-between bg-gray-50/30">
 				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">

@@ -7,9 +7,8 @@ let stompClient: Client;
 export const chatService = {
 	connect: (userId: number, onMessageReceived: (msg: Messaggio) => void) => {
 		stompClient = new Client({
-			brokerURL: 'ws://localhost:8080/ws', // Verifica l'endpoint nel tuo WebSocketConfig Java
+			brokerURL: 'ws://localhost:8080/ws',
 			onConnect: () => {
-				// Sottoscrizione al canale privato dell'utente
 				stompClient.subscribe(`/user/${userId}/queue/messages`, (message) => {
 					onMessageReceived(JSON.parse(message.body));
 				});
@@ -20,7 +19,6 @@ export const chatService = {
 
 	send: (payload: MessaggioRequest) => {
 		if (stompClient && stompClient.connected) {
-			// L'invio deve puntare al @MessageMapping del backend
 			stompClient.publish({
 				destination: '/app/chat.send',
 				body: JSON.stringify(payload)

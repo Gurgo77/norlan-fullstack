@@ -3,7 +3,6 @@
 </script>
 
 <style>
-  /* Pulsazione per i titoli */
   @keyframes pulse {
     0%, 100% {
       transform: scale(1);
@@ -17,7 +16,6 @@
     animation: pulse 2s infinite;
   }
 
-  /* Effetto di fluttuazione per le icone */
   @keyframes float {
     0%, 100% {
       transform: translateY(0);

@@ -6,31 +6,22 @@
 		AlertCircle, CheckCircle, Clock, Building2, Download, ShieldAlert, FileCheck
 	} from 'lucide-svelte';
 
-	// Import Modelli ed Enums
 	import { Documento } from '$lib/models/Documento';
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
 	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
-
-	// Import Servizi
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
-
-	// --- STATO REATTIVO ---
 	let documenti = $state<Documento[]>([]);
 	let aziende = $state<Azienda[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
-	// --- AZIONI ---
 	onMount(async () => {
 		try {
-			// Fetch parallelo di aziende e documenti dal database
 			const [resAziende, resDocumenti] = await Promise.all([
 				AnagraficaService.getAllAziende(),
 				DocumentoService.getAllDocumenti()
 			]);
-
-			// Mappatura sicura dei dati
 			const aziendeRaw = resAziende as AziendaData[];
 			aziende = aziendeRaw.map(a => new Azienda(a));
 			documenti = resDocumenti;
@@ -54,12 +45,9 @@
 		}
 	}
 
-	// --- LOGICA DI DOWNLOAD ROBUSTA ---
 	async function handleDownload(idDocumento: number, filename: string) {
 		try {
 			const blob = await DocumentoService.downloadDocumento(idDocumento);
-
-			// Controllo di sicurezza: se il file è vuoto, fermiamo tutto
 			if (!blob || blob.size === 0) {
 				throw new Error("Il file restituito dal server è vuoto o corrotto.");
 			}
@@ -68,15 +56,11 @@
 			const a = document.createElement('a');
 			a.href = url;
 
-			// Puliamo il nome del file da eventuali spazi e assicuriamoci che abbia l'estensione pdf
 			const nomePulito = filename.replace(/\s+/g, '_');
 			a.download = nomePulito.toLowerCase().endsWith('.pdf') ? nomePulito : `${nomePulito}.pdf`;
-
-			// Aggiungiamo l'elemento al DOM, clicchiamo e lo rimuoviamo (fondamentale per Firefox/Safari)
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
-
 			window.URL.revokeObjectURL(url);
 		} catch (error) {
 			console.error("Errore download:", error);
@@ -84,7 +68,6 @@
 		}
 	}
 
-	// --- LOGICA DI VISUALIZZAZIONE ---
 	function getStatoScadenza(dataScadenza: string) {
 		const oggi = new Date();
 		const scadenza = new Date(dataScadenza);
@@ -98,16 +81,11 @@
 
 	const filteredDocumenti = $derived(
 			documenti.filter(d => {
-				// 1. Escludi gli attestati dei dipendenti
 				if (d.tipologia === TipoDocumento.ATTESTATO_CORSO) return false;
-
-				// 2. Mantieni solo documenti scaduti o in scadenza (entro 30 giorni)
 				const oggi = new Date().getTime();
 				const scadenza = new Date(d.dataScadenza).getTime();
 				const giorniRimanenti = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
 				if (giorniRimanenti > 30) return false;
-
-				// 3. Applica il filtro della barra di ricerca
 				const matchRicerca = d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
 						d.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -115,15 +93,14 @@
 			}).sort((a, b) => new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime())
 	);
 
-	// SISTEMAZIONE CONTATORI
 	const statistiche = $derived({
 		inScadenza: filteredDocumenti.filter(d => {
 			const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-			return giorni >= 0 && giorni <= 30; // Solo i documenti con scadenza imminente (esclude i già scaduti)
+			return giorni >= 0 && giorni <= 30;
 		}).length,
 		scaduti: filteredDocumenti.filter(d => {
 			const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-			return giorni < 0; // Solo i documenti oltre la data di scadenza
+			return giorni < 0;
 		}).length,
 		inAttesa: filteredDocumenti.filter(d => d.stato === StatoDocumento.IN_ATTESA_FIRMA).length
 	});
@@ -139,7 +116,6 @@
 	</div>
 
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-		<!-- Card Pratiche in Scadenza -->
 		<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md hover:border-[#1B4B6B]/30 transition-all cursor-default">
 			<div>
 				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pratiche in Scadenza</p>
@@ -147,8 +123,6 @@
 			</div>
 			<div class="bg-blue-50 p-4 rounded-xl text-[#1B4B6B]"><FileText size={24} /></div>
 		</div>
-
-		<!-- Card Pratiche Scadute -->
 		<div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between hover:shadow-md transition-all cursor-default">
 			<div>
 				<p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Pratiche Scadute</p>
@@ -157,7 +131,6 @@
 			<div class="bg-red-50 p-4 rounded-xl text-red-600"><ShieldAlert size={24} /></div>
 		</div>
 	</div>
-
 	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 		<div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
 			<div class="relative w-96">
@@ -170,7 +143,6 @@
 				/>
 			</div>
 		</div>
-
 		<div class="overflow-x-auto">
 			<table class="w-full text-left">
 				<thead class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">

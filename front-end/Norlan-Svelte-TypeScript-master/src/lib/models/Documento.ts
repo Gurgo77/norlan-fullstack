@@ -8,8 +8,8 @@ export interface DocumentoData {
 	tipologia: TipoDocumento;
 	stato: StatoDocumento;
 	filePath: string;
-	dataCaricamento: string; // ISO Date string
-	dataScadenza: string; // ISO Date string
+	dataCaricamento: string;
+	dataScadenza: string;
 	scaduto: boolean;
 }
 

@@ -3,18 +3,15 @@
     import { goto } from '$app/navigation';
     import { fade, scale, slide } from 'svelte/transition';
     import {
-        ShieldCheck, Search, Building2, User, Loader2, Calendar,
+        ShieldCheck, Search, Building2, Loader2, Calendar,
         AlertTriangle, CheckCircle2, ChevronDown, ChevronRight,
         Mail, MessageSquare
     } from 'lucide-svelte';
 
-    // Servizi
     import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
 
-    // --- INTERFACCE LOCALI (Type-Safe, no ANY) ---
-    // Svincoliamo DpiSafe da AssegnazioneDPIDTO per evitare i conflitti di overlap di TypeScript
     interface DpiSafe {
         idAssegnazione?: number;
         id?: number;
@@ -27,7 +24,6 @@
         daRevisionare?: boolean;
     }
 
-    // Interfaccia estesa per comodità grafica
     interface DipendenteEsteso extends DipendenteDTO {
         idAzienda?: number | string;
         nomeAzienda?: string;
@@ -39,13 +35,10 @@
         dipendenti: DipendenteEsteso[];
     }
 
-    // --- STATO REATTIVO ---
     let isLoading = $state(true);
     let searchQuery = $state('');
-
     let aziende = $state<Azienda[]>([]);
     let dipendenti = $state<DipendenteEsteso[]>([]);
-
     let aziendeEspanse = $state<Record<string, boolean>>({});
 
     function toggleAzienda(idAzienda: string) {
@@ -62,7 +55,6 @@
             const aziendeList = (resAziende as AziendaData[]).map(a => new Azienda(a));
             aziende = aziendeList;
 
-            // Mappiamo i dipendenti associandoli alla loro azienda
             const dipendentiConAzienda = (resDipendenti as DipendenteDTO[]).map(d => {
                 const item = d as DipendenteDTO & { idAzienda?: number | string };
                 const aziendaAssoc = aziendeList.find(a => String(a.idUtente) === String(item.idAzienda));
@@ -73,7 +65,6 @@
                 } as DipendenteEsteso;
             });
 
-            // Eseguiamo il fetch di tutti i DPI per ogni singolo dipendente IN SICUREZZA
             const dipendentiCompleti = await Promise.all(
                 dipendentiConAzienda.map(async (dip) => {
                     if (!dip.idUtente) return { ...dip, dpis: [] };
@@ -90,7 +81,6 @@
 
             dipendenti = dipendentiCompleti;
 
-            // Di default espandiamo tutte le aziende per far vedere i dipendenti da subito
             aziendeList.forEach(a => {
                 aziendeEspanse[String(a.idUtente)] = true;
             });
@@ -105,10 +95,8 @@
 
     const filteredDipendenti = $derived(
         dipendenti.filter(d => {
-            // Regola di ottimizzazione: Escludiamo chi non ha DPI
             if (!d.dpis || d.dpis.length === 0) return false;
 
-            // Applichiamo il filtro di ricerca
             const query = searchQuery.toLowerCase();
             return d.nome.toLowerCase().includes(query) ||
                 d.cognome.toLowerCase().includes(query) ||
@@ -138,7 +126,6 @@
         return gruppi;
     });
 
-    // Helpers
     function isScaduto(data: string | undefined) {
         if (!data || data === '9999-12-31') return false;
         const oggi = new Date();
@@ -153,7 +140,6 @@
         return new Date(data).toLocaleDateString();
     }
 
-    // --- NUOVE FUNZIONI DI SOLLECITO ---
     function sollecitaViaEmail(dpi: DpiSafe, dipendente: DipendenteEsteso) {
         if (!dipendente || !dipendente.idAzienda) return;
         const azienda = aziende.find(a => String(a.idUtente) === String(dipendente.idAzienda));
@@ -168,7 +154,6 @@
         const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || '';
         const dataScad = dataScadenzaReale ? new Date(dataScadenzaReale).toLocaleDateString() : 'N/D';
 
-        // Logica condizionale stringente
         const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
         const body = encodeURIComponent(
@@ -184,15 +169,11 @@
 
         const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || '';
         const dataScad = dataScadenzaReale ? new Date(dataScadenzaReale).toLocaleDateString() : 'N/D';
-
-        // Logica condizionale stringente
         const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
-
         const testoMessaggio = encodeURIComponent(
             `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${dipendente.nome} ${dipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
-        // eslint-disable-next-line svelte/no-navigation-without-resolve
         await goto(`/dashboard/admin/comunicazioni?chatId=${dipendente.idAzienda}&msg=${testoMessaggio}`);
     }
 </script>
@@ -349,7 +330,6 @@
 </div>
 
 <style>
-    /* Styling scrollbar dedicata per le card con molti DPI */
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }

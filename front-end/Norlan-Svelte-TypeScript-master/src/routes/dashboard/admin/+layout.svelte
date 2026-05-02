@@ -5,26 +5,21 @@
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
-		FileClock, BarChart3, Bell, LogOut, Home, Clock, Search, User,
+		FileClock, BarChart3, Bell, LogOut, Home, User,
 		Users, UserSquare2, HardHat, ChevronDown, ChevronRight, Loader2
 	} from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { SistemaService } from '$lib/services/SistemaService';
-	import { searchState } from '$lib/searchState.svelte';
 	import type { Notifica } from '$lib/models/Notifica';
 
 	let { children } = $props();
 
 	let userEmail = $state('Caricamento...');
 
-	// --- VARIABILI DI STATO PER LA TENDINA NOTIFICHE ---
 	let notificheCount = $state<number>(0);
 	let showNotifiche = $state(false);
 	let listaNotifiche = $state<Notifica[]>([]);
 	let isLoadingNotifiche = $state(false);
-	// ----------------------------------------------------
-
-	// Stato per i sottomenu aperti
 	let openMenus = $state<Record<string, boolean>>({
 		utenti: false
 	});
@@ -33,7 +28,6 @@
 		openMenus[id] = !openMenus[id];
 	}
 
-	// Funzioni Helper per risolvere il crash di Tailwind v4
 	function isActive(href: string) {
 		return $page.url.pathname === href;
 	}
@@ -43,7 +37,6 @@
 		return subItems.some((sub) => $page.url.pathname.includes(sub.href));
 	}
 
-	// --- CONFIGURAZIONE MENU AGGIORNATA ---
 	const menuItems = [
 		{ href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
 		{ id: 'utenti', label: 'Utenti', icon: Users, subItems: [
@@ -60,7 +53,6 @@
 	];
 
 	onMount(async () => {
-		// Espande in automatico solo il sottomenu utenti
 		if ($page.url.pathname.includes('/admin/aziende') || $page.url.pathname.includes('/admin/dipendenti') || $page.url.pathname.includes('/admin/docenti')) {
 			openMenus.utenti = true;
 		}
@@ -94,11 +86,10 @@
 
 		} catch (error) {
 			console.error("Errore nel recupero notifiche", error);
-			notificheCount = 0; // Fallback di sicurezza
+			notificheCount = 0;
 		}
 	});
 
-	// --- FUNZIONI LOGICHE PER TENDINA NOTIFICHE ---
 	async function handleToggleNotifiche(event: Event) {
 		event.stopPropagation();
 		showNotifiche = !showNotifiche;
@@ -131,7 +122,6 @@
 	function closeNotifiche() {
 		if (showNotifiche) showNotifiche = false;
 	}
-	// ----------------------------------------------
 
 	async function handleLogout() {
 		await AuthService.logout();
@@ -279,16 +269,11 @@
 </div>
 
 <style>
-	/* Scrollbar Sidebar (Bianca) */
 	.custom-scrollbar::-webkit-scrollbar { width: 3px; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
-	/* Scrollbar Dati (Grigia NorLan) */
 	.custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
 	.custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
 	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-
-	/* Permettiamo lo scroll della finestra solo per mostrare il Footer root */
 	:global(html, body) {
 		height: auto !important;
 		overflow: auto !important;

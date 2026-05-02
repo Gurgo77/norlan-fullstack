@@ -2,14 +2,13 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import { fade, scale, slide } from 'svelte/transition';
+    import { fade, scale } from 'svelte/transition';
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
         FileText, ShieldCheck, Download, Calendar, MessageSquare
     } from 'lucide-svelte';
 
-    // Servizi e Modelli
     import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { DocumentoService } from '$lib/services/DocumentoService';
@@ -22,12 +21,10 @@
         idAzienda?: string | number;
     }
 
-    // Interfaccia estesa per tollerare la nuova proprietà nomeDpi senza far arrabbiare ESLint/TS
     interface DpiEsteso extends AssegnazioneDPI {
         nomeDpi?: string;
     }
 
-    // --- STATO REATTIVO ---
     let lavoratori = $state<DipendenteEsteso[]>([]);
     let aziende = $state<Azienda[]>([]);
     let isLoading = $state(true);
@@ -48,14 +45,12 @@
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
-    // --- STATI ATTESTATI E DPI (Eliminazione) ---
     let showDeleteDocModal = $state(false);
     let docDaEliminare = $state<Documento | null>(null);
 
     let showDeleteDpiModal = $state(false);
     let dpiDaEliminare = $state<DpiEsteso | null>(null);
 
-    // --- LOGICA DERIVATA ---
     const filteredLavoratori = $derived(
         lavoratori.filter(l =>
             l.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -90,7 +85,6 @@
         formDipendente.password.trim() !== ''
     );
 
-    // --- AZIONI ---
     onMount(async () => {
         try {
             const [resLavoratori, resAziende] = await Promise.all([
@@ -176,7 +170,6 @@
 
     async function vaiInChat(idUtente: string | number | undefined) {
         if (!idUtente) return;
-        // eslint-disable-next-line svelte/no-navigation-without-resolve
         return await goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
     }
 
@@ -266,10 +259,8 @@
 
     function isDPIScaduto(dataScadenza?: string) {
         if (!dataScadenza || dataScadenza === '9999-12-31') return false;
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const oggi = new Date();
         oggi.setHours(0, 0, 0, 0);
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const scad = new Date(dataScadenza);
         scad.setHours(0, 0, 0, 0);
         return scad < oggi;
@@ -285,7 +276,6 @@
         }
 
         const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${selectedDipendente.nome} ${selectedDipendente.cognome}`);
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const dataScad = new Date(dpi.dataScadenzaRevisione || '').toLocaleDateString();
         const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
@@ -300,7 +290,6 @@
     async function sollecitaViaChat(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
 
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const dataScad = new Date(dpi.dataScadenzaRevisione || '').toLocaleDateString();
         const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
 
@@ -332,7 +321,6 @@
 
     function formattaScadenza(data?: string) {
         if (!data || data === '9999-12-31') return 'Senza scadenza';
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         return new Date(data).toLocaleDateString();
     }
 </script>
@@ -368,7 +356,6 @@
                 <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
             </div>
         {:else}
-            <!-- Correzione dell'errore (key) aggiunta qui -->
             {#each Object.entries(lavoratoriRaggruppati()) as [nomeAzienda, dipendentiAzienda] (nomeAzienda)}
                 <div class="mb-12">
                     <div class="flex items-center gap-3 mb-6 pb-2 border-b-2 border-gray-100">
@@ -716,5 +703,4 @@
             </div>
         </div>
     {/if}
-
 </div>

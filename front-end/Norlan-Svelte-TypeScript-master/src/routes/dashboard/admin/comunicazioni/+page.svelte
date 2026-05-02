@@ -2,22 +2,17 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
-		Send, Building2, MessageSquare, Loader2, Clock, Hash,
-		Users, User, ChevronDown, ChevronRight, GraduationCap, Search
+		Send, Building2, MessageSquare, Loader2, Clock, Users, User, ChevronDown, ChevronRight, GraduationCap, Search
 	} from 'lucide-svelte';
 
-	// Servizi
 	import { ChatService } from '$lib/services/ChatService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
-
-	// Modelli
 	import { Messaggio } from '$lib/models/Messaggio';
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
 	import { Docente, type DocenteData } from '$lib/models/Docente';
 	import { Dipendente, type DipendenteData } from '$lib/models/Dipendente';
 
-	// --- INTERFACCE LOCALI PER LA RUBRICA ---
 	interface ContattoRubrica {
 		idUtente: number;
 		nomeVisualizzato: string;
@@ -33,49 +28,36 @@
 		espansa: boolean;
 	}
 
-	// --- STATO REATTIVO ---
 	let chatService: ChatService | null = null;
 	let currentUser: UserSession | null = $state(null);
 	let token: string = $state('');
-
 	let gruppiAziende: GruppoAzienda[] = $state([]);
 	let docentiRubrica: ContattoRubrica[] = $state([]);
-
 	let activeContact: ContattoRubrica | null = $state(null);
 	let messaggi: Messaggio[] = $state([]);
 	let newMessage: string = $state('');
 	let isLoading: boolean = $state(true);
-	let searchQuery: string = $state(''); // AGGIUNTO: Variabile per la ricerca
-
-	// --- LOGICA DERIVATA PER LA RICERCA ---
+	let searchQuery: string = $state('');
 	const filteredDocenti = $derived(
 			docentiRubrica.filter(d =>
 					d.nomeVisualizzato.toLowerCase().includes(searchQuery.toLowerCase()) ||
 					d.sottotitolo.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 	);
-
 	const filteredGruppiAziende = $derived(
 			gruppiAziende.map(gruppo => {
 				const query = searchQuery.toLowerCase();
-
-				// Controlla se la ricerca corrisponde al nome dell'azienda o alla p.iva
 				const matchAzienda = gruppo.azienda.nomeVisualizzato.toLowerCase().includes(query) ||
 						gruppo.azienda.sottotitolo.toLowerCase().includes(query);
-
-				// Filtra i dipendenti all'interno dell'azienda
 				const dipendentiFiltrati = gruppo.dipendenti.filter(dip =>
 						dip.nomeVisualizzato.toLowerCase().includes(query) ||
 						dip.sottotitolo.toLowerCase().includes(query)
 				);
 
-				// Mantiene il gruppo se l'azienda corrisponde O se almeno un dipendente corrisponde
 				if (matchAzienda || dipendentiFiltrati.length > 0) {
 					return {
 						...gruppo,
-						// Se matcha l'azienda, mostra tutti i dipendenti, altrimenti solo quelli filtrati
 						dipendenti: matchAzienda ? gruppo.dipendenti : dipendentiFiltrati,
-						// Espande automaticamente la cartella se stiamo cercando qualcosa
 						espansa: query !== '' ? true : gruppo.espansa
 					};
 				}
@@ -132,7 +114,6 @@
 				};
 			});
 
-			// --- LOGICA DI INTERCETTAZIONE URL ---
 			const urlParams = new URLSearchParams(window.location.search);
 			const chatIdDaUrl = urlParams.get('chatId');
 			const msgDaUrl = urlParams.get('msg');
@@ -186,7 +167,6 @@
 		if (chatService) chatService.disconnect();
 	});
 
-	// AGGIORNATO: Cambiato per modificare l'array originale in Svelte 5
 	function toggleAzienda(idUtenteAzienda: number) {
 		const index = gruppiAziende.findIndex(g => g.azienda.idUtente === idUtenteAzienda);
 		if (index !== -1) {

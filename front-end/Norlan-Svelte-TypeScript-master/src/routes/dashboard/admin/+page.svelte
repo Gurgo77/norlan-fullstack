@@ -3,25 +3,20 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		Building2, FileClock, AlertCircle, LayoutDashboard,
-		Users, GraduationCap, ArrowRight, UserSquare2, ShieldAlert,
-		HardHat, FileText, CheckCircle2
+		Users, GraduationCap, ArrowRight, UserSquare2, HardHat, FileText, CheckCircle2
 	} from 'lucide-svelte';
 	import { searchState } from '$lib/searchState.svelte';
 
-	// Servizi
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-
-	// Modelli e DTO rigorosi
 	import type { Azienda } from '$lib/models/Azienda';
 	import type { DipendenteDTO, AssegnazioneDPIDTO } from '$lib/services/LavoratoreService';
 	import type { DocenteData } from '$lib/models/Docente';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import type { Documento } from '$lib/models/Documento';
 
-	// Interfaccia per la tabella scadenze
 	interface ScadenzaTabella {
 		id: string;
 		tipo: 'DOCUMENTO' | 'DPI';
@@ -35,13 +30,11 @@
 		linkRedirect: string;
 	}
 
-	// Interfaccia per l'unione dei dati DPI con il nome del dipendente
 	interface DpiEsteso extends AssegnazioneDPIDTO {
 		nomeDipendente: string;
 		idAzienda: number;
 	}
 
-	// Stato
 	let isLoading = $state(true);
 	let stats = $state({
 		aziende: 0,
@@ -59,7 +52,6 @@
 
 	onMount(async () => {
 		try {
-			// Fetch parallelo tipizzato
 			const [datiAziende, datiDipendenti, datiDocenti, datiCorsi, tuttiDocumenti] = await Promise.all([
 				AnagraficaService.getAllAziende(),
 				LavoratoreService.getAll(),
@@ -68,14 +60,11 @@
 				DocumentoService.getAllDocumenti()
 			]);
 
-			// Casting rigorosi ai tipi del tuo sistema
 			const aziendeList = datiAziende as Azienda[];
 			const dipendentiList = datiDipendenti as DipendenteDTO[];
 			const docentiList = datiDocenti as DocenteData[];
 			const corsiList = datiCorsi as CorsoFormazione[];
 			const documentiList = tuttiDocumenti as Documento[];
-
-			// Recuperiamo TUTTI i DPI in modo Type-Safe
 			const dpiPromises = dipendentiList.map(async (d: DipendenteDTO) => {
 				try {
 					const dpis = await LavoratoreService.getDpiByLavoratore(d.idUtente);
@@ -83,7 +72,6 @@
 						const dpiEsteso: DpiEsteso = {
 							...dpi,
 							nomeDipendente: `${d.nome} ${d.cognome}`,
-							// Usiamo l'idAzienda mappato nel DTO del backend o fallback a 0
 							idAzienda: d.idAzienda || 0
 						};
 						return dpiEsteso;
@@ -95,7 +83,6 @@
 
 			const allDpis: DpiEsteso[] = (await Promise.all(dpiPromises)).flat();
 
-			// 1. Popolamento Statistiche
 			stats = {
 				aziende: aziendeList.length,
 				dipendenti: dipendentiList.length,
@@ -106,7 +93,6 @@
 
 			const oggiMs = new Date().getTime();
 
-			// 2. Helper per il Semaforo e il Testo Dinamico
 			const calcolaStatusEStato = (giorniMancanti: number): { status: 'red' | 'yellow' | 'green', testo: string } => {
 				if (giorniMancanti < 0) return { status: 'red', testo: 'SCADUTO' };
 				if (giorniMancanti === 0) return { status: 'red', testo: 'SCADE OGGI' };
@@ -115,7 +101,6 @@
 				return { status: 'green', testo: 'A POSTO' };
 			};
 
-			// 3. Elaborazione Scadenze: DOCUMENTI (escludiamo gli attestati)
 			const scadenzeDocs: ScadenzaTabella[] = documentiList
 					.filter(doc => doc.tipologia !== 'ATTESTATO_CORSO')
 					.map(doc => {
@@ -137,9 +122,7 @@
 						};
 					});
 
-			// 4. Elaborazione Scadenze: DPI
 			const scadenzeDpi: ScadenzaTabella[] = allDpis.filter(dpi => {
-				// Utilizziamo dataScadenzaRevisione mappata dal DTO backend
 				return dpi.dataScadenzaRevisione && dpi.dataScadenzaRevisione !== '9999-12-31';
 			}).map(dpi => {
 				const scadMs = new Date(dpi.dataScadenzaRevisione).getTime();
@@ -162,7 +145,6 @@
 				};
 			});
 
-			// 5. Uniamo e Ordiniamo
 			const statusOrder = { 'red': 1, 'yellow': 2, 'green': 3 };
 
 			scadenzeImminenti = [...scadenzeDocs, ...scadenzeDpi].sort((a, b) => {
@@ -172,7 +154,6 @@
 				return a.timestampScadenza - b.timestampScadenza;
 			});
 
-			// Contiamo i warning e critical
 			avvisiCriticiCount = scadenzeImminenti.filter(s => s.status !== 'green').length;
 
 		} catch (error) {
@@ -209,7 +190,6 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-12">
-			<!-- Card Aziende -->
 			<a href="/dashboard/admin/aziende" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 0}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
@@ -223,7 +203,6 @@
 				</div>
 			</a>
 
-			<!-- Card Dipendenti -->
 			<a href="/dashboard/admin/dipendenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 50}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
@@ -237,7 +216,6 @@
 				</div>
 			</a>
 
-			<!-- Card Docenti -->
 			<a href="/dashboard/admin/docenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 100}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
@@ -251,7 +229,6 @@
 				</div>
 			</a>
 
-			<!-- Card Formazione -->
 			<a href="/dashboard/admin/formazione" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 150}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
@@ -265,7 +242,6 @@
 				</div>
 			</a>
 
-			<!-- Card DPI -->
 			<a href="/dashboard/admin/dpi" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 200}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
@@ -280,7 +256,6 @@
 			</a>
 		</div>
 
-		<!-- Sezione Tabella: Scadenziario Misto -->
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 			<div class="xl:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
 				<div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
@@ -310,7 +285,6 @@
 								</td>
 								<td class="px-6 py-4">
 									<div class="flex items-center gap-2">
-										<!-- Icona unificata per tutto al Blu Norlan -->
 										<div class="p-1.5 rounded-lg bg-[#1B4B6B]/10 text-[#1B4B6B]">
 											{#if scadenza.tipo === 'DOCUMENTO'}
 												<FileText size={14} />
@@ -364,8 +338,6 @@
 					</table>
 				</div>
 			</div>
-
-			<!-- Colonna Destra: Quick Info -->
 			<div class="space-y-6">
 				<div class="bg-[#1B4B6B] rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
 					<div class="absolute -right-4 -top-4 opacity-10">

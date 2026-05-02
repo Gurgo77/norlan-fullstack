@@ -5,17 +5,15 @@
 		Plus, X, Trash2, Search,
 		Calendar, MapPin, Loader2, User,
 		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users,
-		BarChart, Star, BookOpen // Icone aggiunte per UI Feedback e Archivio
+		BarChart, Star, BookOpen
 	} from 'lucide-svelte';
 
-	// Modelli
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Docente, type DocenteData } from '$lib/models/Docente';
 	import { StatoCorso } from '$lib/models/Enums';
 	import type { CorsoFormazioneRequest } from '$lib/models/CorsoFormazioneRequest';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 
-	// Definiamo localmente l'interfaccia DTO del Feedback per sicurezza in compilazione
 	interface FeedbackStatsDTO {
 		idCorso: number;
 		mediaDocenza: number;
@@ -24,56 +22,39 @@
 		commenti: string[];
 	}
 
-	// Servizi
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
-	import { FeedbackService } from '$lib/services/FeedbackService'; // <-- Servizio Feedback
+	import { FeedbackService } from '$lib/services/FeedbackService';
 
-	// --- STATO REATTIVO GLOBALE ---
 	let corsi = $state<CorsoFormazione[]>([]);
 	let docenti = $state<Docente[]>([]);
-	let dipendenti = $state<any[]>([]); // Array grezzo dal backend
+	let dipendenti = $state<any[]>([]);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let searchQuery = $state('');
-
-	// --- STATI MODALI ---
 	let showModalNuovo = $state(false);
 	let showModalPresenze = $state(false);
 	let showModalUpload = $state(false);
-	let showModalFeedback = $state(false); // Modal Feedback
-
-	// --- STATI OPERATIVI (MACCHINA A STATI) ---
+	let showModalFeedback = $state(false);
 	let selectedCorso = $state<CorsoFormazione | null>(null);
 	let iscrizioniAttuali = $state<IscrizioneCorso[]>([]);
 	let presenzeSelezionate = $state<number[]>([]);
-	let fileUploads = $state<Record<number, File>>({}); // Mappa idAzienda -> File
+	let fileUploads = $state<Record<number, File>>({});
 	let isActionLoading = $state(false);
-
 	let isLoadingFeedback = $state(false);
 	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
-
-	// Form di creazione
 	let formCorso = $state<Partial<CorsoFormazioneRequest>>({
 		titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined
 	});
-
 	const isFormValid = $derived(
 			!!formCorso.titolo && !!formCorso.dataOrario && !!formCorso.luogoFisico && !!formCorso.idDocente
 	);
-
-	// --- REGOLA 4: PULIZIA DASHBOARD ADMIN ---
-	// Filtro di base: esclude i corsi "CERTIFICATO" perché il lavoro dell'Admin è concluso
 	const corsiAttiviAdmin = $derived(
 			corsi.filter(c => c.stato !== StatoCorso.CERTIFICATO)
 	);
-
-	// Filtro di ricerca applicato solo ai corsi operativi
 	const corsiFiltrati = $derived(
 			corsiAttiviAdmin.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
 	);
-
-	// --- SEZIONI STRUTTURALI DELLA DASHBOARD ---
 	const corsiConclusi = $derived(corsiFiltrati.filter(c =>
 			c.stato === StatoCorso.CONCLUSO ||
 			c.stato === StatoCorso.ATTESA_FIRMA_DOCENTE ||
@@ -81,26 +62,18 @@
 	));
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato));
-
-	// ARCHIVIO: Recupero dei corsi "CERTIFICATO" per poterne analizzare i feedback
 	const corsiArchiviati = $derived(
 			corsi.filter(c => c.stato === StatoCorso.CERTIFICATO && (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
 	);
-
-	// --- DERIVAZIONE AZIENDE PER UPLOAD ATTESTATI ---
 	const aziendeCoinvolte = $derived.by(() => {
 		if (!selectedCorso || iscrizioniAttuali.length === 0 || dipendenti.length === 0) return [];
 
 		const presenti = iscrizioniAttuali.filter(i => i.presenzaConfermata);
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const map = new Map<number, { idAzienda: number, ragioneSociale: string, count: number }>();
 
 		presenti.forEach(isc => {
-			// Trova il dipendente intero
 			const dip = dipendenti.find(d => d.idUtente === isc.idUtente);
-			if (!dip) return; // Se per assurdo non c'è, saltiamo
-
-			// ESTRATTORE AGGRESSIVO DELL'ID AZIENDA:
+			if (!dip) return;
 			let idAzienda = null;
 			let nomeAzienda = "Azienda Sconosciuta";
 
@@ -114,8 +87,6 @@
 				idAzienda = dip.idAzienda;
 				nomeAzienda = dip.ragioneSocialeAzienda || `Azienda ID ${idAzienda}`;
 			}
-
-			// Se abbiamo trovato un VERO ID Azienda, raggruppiamo.
 			if (idAzienda) {
 				if (!map.has(idAzienda)) {
 					map.set(idAzienda, {
@@ -133,7 +104,6 @@
 		return Array.from(map.values());
 	});
 
-	// --- INIZIALIZZAZIONE ---
 	onMount(async () => {
 		try {
 			const [corsiRes, docentiRes, dipendentiRes] = await Promise.all([
@@ -152,7 +122,6 @@
 		}
 	});
 
-	// --- AZIONI CREAZIONE ED ELIMINAZIONE ---
 	async function salvaNuovoCorso() {
 		if (!isFormValid) return;
 		isSaving = true;
@@ -162,14 +131,11 @@
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
 				docente: { idUtente: formCorso.idDocente! },
-				// REGOLA DI INTEGRITÀ: Ogni nuovo corso nasce come PROGRAMMATO
 				stato: StatoCorso.PROGRAMMATO
-			} as any; // Usiamo any se l'interfaccia Request non lo prevede ancora
+			} as any;
 
 			const nuovo = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovo];
-
-			// Reset e chiusura
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
 		} catch (error) {
@@ -184,13 +150,11 @@
 		try {
 			await FormazioneService.deleteCorso(idCorso);
 			corsi = corsi.filter(c => c.idCorso !== idCorso);
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Errore durante l'eliminazione.");
 		}
 	}
 
-	// --- FASE 1 FSM: VALIDAZIONE PRESENZE ---
 	async function apriValidazione(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		isActionLoading = true;
@@ -198,7 +162,6 @@
 		try {
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 			presenzeSelezionate = iscrizioniAttuali.filter(i => i.presenzaConfermata).map(i => i.idUtente);
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile caricare il registro iscritti.");
 			showModalPresenze = false;
@@ -230,20 +193,16 @@
 		}
 	}
 
-	// --- FASE 3 FSM: UPLOAD ATTESTATI ---
 	async function apriUploadAttestati(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		isActionLoading = true;
 		showModalUpload = true;
 		fileUploads = {}; // Reset file
 		try {
-			// Ricarichiamo le iscrizioni per essere sicuri dei dati
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
-
 			if (aziendeCoinvolte.length === 0) {
 				console.warn("Attenzione: Nessuna azienda rilevata per i presenti. Verifica i dati anagrafici dei dipendenti iscritti.");
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile caricare i dati.");
 			showModalUpload = false;
@@ -277,13 +236,9 @@
 				file: fileUploads[a.idAzienda]
 			}));
 
-			// Effettua la chiamata API
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
 			alert("Attestati distribuiti correttamente! Le aziende riceveranno una notifica.");
-
-			// FSM Client-Side: Aggiorniamo lo stato a CERTIFICATO per innescare la sparizione reattiva (Regola 4)
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
-
 			showModalUpload = false;
 		} catch (error) {
 			console.error("Errore fatale durante l'upload degli attestati:", error);
@@ -293,7 +248,6 @@
 		}
 	}
 
-	// --- NUOVA AZIONE: VISUALIZZA FEEDBACK ---
 	async function apriStatisticheFeedback(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		showModalFeedback = true;
@@ -383,8 +337,6 @@
 										<UploadCloud size={14} /> Genera & Invia Attestati
 									</button>
 								{/if}
-
-								<!-- Bottone per visionare i Feedback aggiunto globalmente in fondo ai corsi conclusi -->
 								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-purple-50 text-purple-700 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors shadow-sm">
 									<BarChart size={14} /> Metriche Feedback
 								</button>
@@ -442,14 +394,11 @@
 				</div>
 			{/if}
 		</div>
-
-		<!-- ARCHIVIO STORICO (FEEDBACK SEMPRE CONSULTABILI) -->
 		<div class="mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-3 opacity-60 hover:opacity-100 transition-opacity">
 				<div class="p-2 bg-purple-100 text-purple-700 rounded-lg"><BookOpen size={20}/></div>
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
 			</div>
-
 			{#if corsiArchiviati.length === 0}
 				<p class="text-[10px] font-bold text-gray-300 uppercase italic">Nessun corso archiviato corrisponde alla ricerca.</p>
 			{:else}
@@ -601,8 +550,6 @@
 		</div>
 	</div>
 {/if}
-
-<!-- MODALE FEEDBACK STATS -->
 {#if showModalFeedback && selectedCorso}
 	<div class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
 		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" transition:scale>
