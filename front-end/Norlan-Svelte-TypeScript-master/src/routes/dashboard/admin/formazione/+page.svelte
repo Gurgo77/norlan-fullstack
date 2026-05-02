@@ -4,7 +4,8 @@
 	import {
 		Plus, X, Trash2, Search,
 		Calendar, MapPin, Loader2, User,
-		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users
+		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users,
+		BarChart, Star, BookOpen // Icone aggiunte per UI Feedback e Archivio
 	} from 'lucide-svelte';
 
 	// Modelli
@@ -14,9 +15,19 @@
 	import type { CorsoFormazioneRequest } from '$lib/models/CorsoFormazioneRequest';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 
+	// Definiamo localmente l'interfaccia DTO del Feedback per sicurezza in compilazione
+	interface FeedbackStatsDTO {
+		idCorso: number;
+		mediaDocenza: number;
+		mediaContenuti: number;
+		totaleFeedback: number;
+		commenti: string[];
+	}
+
 	// Servizi
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import { FeedbackService } from '$lib/services/FeedbackService'; // <-- Servizio Feedback
 
 	// --- STATO REATTIVO GLOBALE ---
 	let corsi = $state<CorsoFormazione[]>([]);
@@ -30,6 +41,7 @@
 	let showModalNuovo = $state(false);
 	let showModalPresenze = $state(false);
 	let showModalUpload = $state(false);
+	let showModalFeedback = $state(false); // Modal Feedback
 
 	// --- STATI OPERATIVI (MACCHINA A STATI) ---
 	let selectedCorso = $state<CorsoFormazione | null>(null);
@@ -37,6 +49,9 @@
 	let presenzeSelezionate = $state<number[]>([]);
 	let fileUploads = $state<Record<number, File>>({}); // Mappa idAzienda -> File
 	let isActionLoading = $state(false);
+
+	let isLoadingFeedback = $state(false);
+	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
 
 	// Form di creazione
 	let formCorso = $state<Partial<CorsoFormazioneRequest>>({
@@ -66,6 +81,11 @@
 	));
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato));
+
+	// ARCHIVIO: Recupero dei corsi "CERTIFICATO" per poterne analizzare i feedback
+	const corsiArchiviati = $derived(
+			corsi.filter(c => c.stato === StatoCorso.CERTIFICATO && (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
+	);
 
 	// --- DERIVAZIONE AZIENDE PER UPLOAD ATTESTATI ---
 	const aziendeCoinvolte = $derived.by(() => {
@@ -273,6 +293,23 @@
 		}
 	}
 
+	// --- NUOVA AZIONE: VISUALIZZA FEEDBACK ---
+	async function apriStatisticheFeedback(corso: CorsoFormazione) {
+		selectedCorso = corso;
+		showModalFeedback = true;
+		isLoadingFeedback = true;
+		statsFeedback = null;
+		try {
+			statsFeedback = await FeedbackService.getStatisticheCorso(corso.idCorso);
+		} catch (error) {
+			console.error("Errore recupero feedback:", error);
+			alert("Impossibile caricare i feedback.");
+			showModalFeedback = false;
+		} finally {
+			isLoadingFeedback = false;
+		}
+	}
+
 	function formattaData(isoString: string) {
 		if (!isoString) return '';
 		const d = new Date(isoString);
@@ -346,6 +383,11 @@
 										<UploadCloud size={14} /> Genera & Invia Attestati
 									</button>
 								{/if}
+
+								<!-- Bottone per visionare i Feedback aggiunto globalmente in fondo ai corsi conclusi -->
+								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-purple-50 text-purple-700 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors shadow-sm">
+									<BarChart size={14} /> Metriche Feedback
+								</button>
 							</div>
 						</div>
 					{/each}
@@ -361,13 +403,15 @@
 			{#if corsiInSvolgimento.length === 0}
 				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">Nessun corso attualmente in aula.</div>
 			{:else}
-				<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
 					{#each corsiInSvolgimento as corso (corso.idCorso)}
-						<div class="bg-white rounded-2xl shadow-sm border border-blue-100 p-6 relative overflow-hidden">
+						<div class="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 flex flex-col relative overflow-hidden">
 							<div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
-							<h3 class="font-extrabold text-[#1B4B6B] uppercase mb-2 ml-2">{corso.titolo}</h3>
-							<div class="flex items-center gap-2 text-xs font-bold text-gray-500 ml-2">
-								<MapPin size={14} /> {corso.luogoFisico}
+							<div class="flex-1">
+								<h3 class="font-extrabold text-[#1B4B6B] uppercase mb-4 ml-2">{corso.titolo}</h3>
+								<div class="space-y-2 ml-2">
+									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><MapPin size={14} /> {corso.luogoFisico}</div>
+								</div>
 							</div>
 						</div>
 					{/each}
@@ -393,6 +437,32 @@
 							<h3 class="font-extrabold text-[#1B4B6B] text-sm uppercase mb-3 line-clamp-2">{corso.titolo}</h3>
 							<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5 mb-1"><Calendar size={12}/> {formattaData(corso.dataOrario)}</p>
 							<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><User size={12}/> {corso.emailDocente || 'N/D'}</p>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- ARCHIVIO STORICO (FEEDBACK SEMPRE CONSULTABILI) -->
+		<div class="mb-14">
+			<div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-3 opacity-60 hover:opacity-100 transition-opacity">
+				<div class="p-2 bg-purple-100 text-purple-700 rounded-lg"><BookOpen size={20}/></div>
+				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
+			</div>
+
+			{#if corsiArchiviati.length === 0}
+				<p class="text-[10px] font-bold text-gray-300 uppercase italic">Nessun corso archiviato corrisponde alla ricerca.</p>
+			{:else}
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+					{#each corsiArchiviati as corso (corso.idCorso)}
+						<div class="bg-gray-50/50 rounded-2xl border border-gray-200 p-5 flex flex-col justify-between">
+							<span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border border-gray-300 text-gray-500 bg-white w-fit mb-3">CERTIFICATO</span>
+							<h3 class="font-bold text-[#1B4B6B] text-xs uppercase line-clamp-1 mb-4">{corso.titolo}</h3>
+							<div class="mt-auto pt-4 flex flex-col gap-2 border-t border-gray-200">
+								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2 bg-white text-purple-700 border border-purple-200 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-purple-50 transition-colors shadow-sm">
+									<BarChart size={12} /> Vedi Feedback
+								</button>
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -532,8 +602,92 @@
 	</div>
 {/if}
 
+<!-- MODALE FEEDBACK STATS -->
+{#if showModalFeedback && selectedCorso}
+	<div class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
+		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" transition:scale>
+			<div class="bg-purple-600 p-8 text-white flex justify-between items-center">
+				<div>
+					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-3">
+						<BarChart size={24}/> Analisi Qualità Corso
+					</h2>
+					<p class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso.titolo}</p>
+				</div>
+				<button onclick={() => showModalFeedback = false} class="hover:text-purple-200 transition-colors"><X size={28} /></button>
+			</div>
+
+			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
+				{#if isLoadingFeedback}
+					<div class="py-20 text-center flex flex-col items-center gap-4">
+						<Loader2 class="animate-spin text-purple-600" size={48} />
+						<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Elaborazione metriche in corso...</span>
+					</div>
+				{:else if statsFeedback}
+					{#if statsFeedback.totaleFeedback === 0}
+						<div class="py-20 text-center border-2 border-dashed border-gray-200 rounded-3xl bg-white">
+							<Star size={48} class="mx-auto text-gray-200 mb-4" />
+							<p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Nessun dipendente ha ancora rilasciato feedback.</p>
+						</div>
+					{:else}
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
+								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Media Docenza</p>
+								<div class="flex items-baseline justify-center gap-1">
+									<span class="text-6xl font-black text-purple-600">{statsFeedback.mediaDocenza.toFixed(1)}</span>
+									<span class="text-xl font-bold text-gray-300">/5</span>
+								</div>
+								<div class="flex justify-center gap-1 mt-4">
+									{#each [1,2,3,4,5] as s}
+										<Star size={16} fill={statsFeedback.mediaDocenza >= s ? "#EAB308" : "none"} class={statsFeedback.mediaDocenza >= s ? "text-yellow-400" : "text-gray-200"} />
+									{/each}
+								</div>
+							</div>
+							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
+								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Media Contenuti</p>
+								<div class="flex items-baseline justify-center gap-1">
+									<span class="text-6xl font-black text-purple-600">{statsFeedback.mediaContenuti.toFixed(1)}</span>
+									<span class="text-xl font-bold text-gray-300">/5</span>
+								</div>
+								<div class="flex justify-center gap-1 mt-4">
+									{#each [1,2,3,4,5] as s}
+										<Star size={16} fill={statsFeedback.mediaContenuti >= s ? "#EAB308" : "none"} class={statsFeedback.mediaContenuti >= s ? "text-yellow-400" : "text-gray-200"} />
+									{/each}
+								</div>
+							</div>
+						</div>
+
+						<div class="flex items-center justify-between mb-6">
+							<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti dei Partecipanti</h3>
+							<span class="bg-purple-100 text-purple-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
+                                {statsFeedback.totaleFeedback} Risposte
+                            </span>
+						</div>
+
+						<div class="space-y-4">
+							{#each statsFeedback.commenti as commento}
+								<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
+									<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0"><User size={16}/></div>
+									<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
+								</div>
+							{/each}
+							{#if statsFeedback.commenti.length === 0}
+								<p class="text-[10px] font-bold text-gray-300 uppercase text-center py-6">Nessun commento testuale rilasciato.</p>
+							{/if}
+						</div>
+					{/if}
+				{/if}
+			</div>
+
+			<div class="p-8 bg-white border-t border-gray-100">
+				<button onclick={() => showModalFeedback = false} class="w-full py-4 bg-gray-900 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-colors shadow-lg">
+					Chiudi Analisi
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.custom-scrollbar::-webkit-scrollbar { width: 5px; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-	.animate-spin-slow { animation: spin 3s linear infinite; }
 </style>
