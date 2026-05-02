@@ -485,6 +485,12 @@
 					<div>
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password Temporanea *</label>
 						<input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" />
+						<div class="mt-2 flex items-start gap-2">
+							<div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+							<p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+								Nota: Il dipendente dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+							</p>
+						</div>
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
@@ -556,7 +562,16 @@
 						</div>
 						<div class="space-y-4">
 							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label><input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+							<div>
+								<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label><input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" />
+								<div class="mt-2 flex items-start gap-2">
+									<div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+									<p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+										Nota: L'azienda dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+									</p>
+								</div>
+							</div>
+
 							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Referente Aziendale</label><input bind:value={formAzienda.referenteAziendale} placeholder="Nome e Cognome" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 							<div class="grid grid-cols-2 gap-3">
 								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Telefono</label><input bind:value={formAzienda.telefono} placeholder="Fisso" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>

@@ -308,7 +308,7 @@
 {#if showModalFeedback && selectedCorso}
 	<div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
 		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" in:scale>
-			<div class="bg-purple-600 p-8 text-white flex justify-between items-center">
+			<div class="bg-purple-600 p-8 text-white flex justify-between items-ce∑nter">
 				<div>
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-3"><BarChart3 size={24}/> Qualità Didattica</h2>
 					<p class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso.titolo}</p>

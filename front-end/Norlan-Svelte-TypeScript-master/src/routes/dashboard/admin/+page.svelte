@@ -233,7 +233,7 @@
 				</div>
 				<div>
 					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.dipendenti}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Personale Censito</p>
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Personale Aziende</p>
 				</div>
 			</a>
 
@@ -275,7 +275,7 @@
 				</div>
 				<div>
 					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.dpiTotali}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">DPI Assegnati</p>
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Gestione DPI</p>
 				</div>
 			</a>
 		</div>

@@ -6,7 +6,7 @@
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Calendar, MessageSquare, Plus
+        FileText, ShieldCheck, Download, Calendar, MessageSquare
     } from 'lucide-svelte';
 
     // Servizi e Modelli
@@ -25,13 +25,6 @@
     // Interfaccia estesa per tollerare la nuova proprietà nomeDpi senza far arrabbiare ESLint/TS
     interface DpiEsteso extends AssegnazioneDPI {
         nomeDpi?: string;
-    }
-
-    interface FormDPI {
-        tipo: string;
-        nomeDpi: string;
-        dataConsegna: string;
-        dataScadenzaRevisione: string;
     }
 
     // --- STATO REATTIVO ---
@@ -55,21 +48,12 @@
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
-    // --- STATI ATTESTATI E DPI (Aggiunta ed eliminazione) ---
+    // --- STATI ATTESTATI E DPI (Eliminazione) ---
     let showDeleteDocModal = $state(false);
     let docDaEliminare = $state<Documento | null>(null);
 
     let showDeleteDpiModal = $state(false);
     let dpiDaEliminare = $state<DpiEsteso | null>(null);
-
-    let showAddDpiModal = $state(false);
-    let isSavingDpi = $state(false);
-    let formDpi = $state<FormDPI>({
-        tipo: '',
-        nomeDpi: '',
-        dataConsegna: '',
-        dataScadenzaRevisione: ''
-    });
 
     // --- LOGICA DERIVATA ---
     const filteredLavoratori = $derived(
@@ -327,34 +311,6 @@
         await goto(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`);
     }
 
-    async function salvaDpi() {
-        if (!selectedDipendente) return;
-        isSavingDpi = true;
-        try {
-            const payload = {
-                tipo: formDpi.tipo,
-                nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : undefined,
-                dataConsegna: formDpi.dataConsegna ? formDpi.dataConsegna : undefined,
-                dataScadenzaRevisione: formDpi.dataScadenzaRevisione
-            };
-
-            const nuovoDpi = await LavoratoreService.assegnaDpi(
-                selectedDipendente.idUtente,
-                payload as any
-            );
-
-            dpiCorrenti = [...dpiCorrenti, nuovoDpi as unknown as DpiEsteso];
-
-            showAddDpiModal = false;
-            formDpi = { tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
-        } catch (error) {
-            console.error("Errore salvataggio DPI:", error);
-            alert("Errore durante l'assegnazione del DPI.");
-        } finally {
-            isSavingDpi = false;
-        }
-    }
-
     function preparaEliminaDPI(dpi: DpiEsteso) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
 
     async function confermaEliminaDPI() {
@@ -569,9 +525,6 @@
                                 <div class="p-2.5 bg-green-100 text-green-600 rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
                                 <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
                             </div>
-                            <button onclick={() => showAddDpiModal = true} class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-green-700 transition-all shadow-md">
-                                <Plus size={16} /> Assegna DPI
-                            </button>
                         </div>
 
                         {#if dpiCorrenti.length > 0}
@@ -710,61 +663,6 @@
                             class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54] transition-colors"
                     >
                         {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra
-                    </button>
-                </div>
-            </div>
-        </div>
-    {/if}
-
-    <!-- MODALE INSERIMENTO DPI -->
-    {#if showAddDpiModal}
-        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-                <div class="bg-green-600 p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><ShieldCheck size={20}/> Assegna DPI</h2>
-                    <button onclick={() => (showAddDpiModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
-                </div>
-
-                <div class="p-8 space-y-4">
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Tipologia DPI *</label>
-                        <select bind:value={formDpi.tipo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none font-bold">
-                            <option value="">Seleziona tipologia...</option>
-                            <option value="ELMETTO">Elmetto</option>
-                            <option value="GUANTI">Guanti</option>
-                            <option value="SCARPE_ANTINFORTUNISTICHE">Scarpe Antinfortunistiche</option>
-                            <option value="OCCHIALI">Occhiali</option>
-                            <option value="ALTRO">Altro</option>
-                        </select>
-                    </div>
-
-                    {#if formDpi.tipo === 'ALTRO'}
-                        <div class="space-y-1" transition:slide>
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
-                            <input bind:value={formDpi.nomeDpi} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
-                        </div>
-                    {/if}
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Data Consegna</label>
-                            <input bind:value={formDpi.dataConsegna} type="date" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Scadenza Revisione *</label>
-                            <input bind:value={formDpi.dataScadenzaRevisione} type="date" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
-                    <button onclick={() => (showAddDpiModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-                    <button
-                            onclick={salvaDpi}
-                            disabled={!formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataScadenzaRevisione || isSavingDpi}
-                            class="bg-green-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-green-700 transition-colors"
-                    >
-                        {#if isSavingDpi}<Loader2 size={14} class="animate-spin"/>{:else}<ShieldCheck size={14}/>{/if} Assegna
                     </button>
                 </div>
             </div>
