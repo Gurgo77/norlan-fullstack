@@ -11,13 +11,10 @@
     import { AuthService } from '$lib/services/AuthService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
 
-    // STATO (Svelte 5)
     let isLoading = $state(true);
     let isSaving = $state(false);
     let azienda = $state<AziendaData | null>(null);
     let showSuccessMessage = $state(false);
-
-    // STATI CAMBIO PASSWORD
     let isPasswordFormVisible = $state(false);
     let vecchiaPassword = $state('');
     let nuovaPassword = $state('');
@@ -166,13 +163,10 @@
                                 <input type="text" bind:value={azienda.cellulare} class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full" />
                             </div>
                         </div>
-
-                        <!-- MODIFICA QUI: Referente Aziendale BLOCCATO -->
                         <div class="space-y-2">
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Referente Aziendale</label>
                             <div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
                                 <UserCheck size={18} class="text-gray-400" />
-                                <!-- Input in sola lettura (value e readonly), l'azienda non può cambiarlo -->
                                 <input type="text" value={azienda.referenteAziendale || 'Non specificato'} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
                             </div>
                         </div>
@@ -209,14 +203,12 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 {#if passwordError}
                                     <p class="text-red-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordError}</p>
                                 {/if}
                                 {#if passwordSuccessMessage}
                                     <p class="text-emerald-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordSuccessMessage}</p>
                                 {/if}
-
                                 <button
                                         onclick={handlePasswordChange}
                                         disabled={isChangingPassword}

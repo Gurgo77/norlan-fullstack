@@ -9,25 +9,21 @@
 		FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare, Upload
 	} from 'lucide-svelte';
 
-	// Servizi e Modelli
 	import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
 	import { AuthService } from '$lib/services/AuthService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { Documento } from '$lib/models/Documento';
 	import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
-	import { ModuloServizio, TipoDocumento, TipoDPI } from '$lib/models/Enums';
+	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 
-	// Interfaccia estesa per la vista
 	interface DipendenteEsteso extends DipendenteDTO {
 		nomeAzienda?: string;
 	}
 
-	// Interfaccia estesa per tollerare la nuova proprietà nomeDpi senza conflitti
 	interface DpiEsteso extends AssegnazioneDPI {
 		nomeDpi?: string;
 	}
 
-	// Struttura reattiva del form DPI
 	interface FormDPI {
 		tipo: string;
 		nomeDpi: string;
@@ -35,45 +31,33 @@
 		dataScadenzaRevisione: string;
 	}
 
-	// --- STATO REATTIVO ---
 	let lavoratori = $state<DipendenteEsteso[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let idAziendaCorrente = $state<number | string>('');
 	let nomeAziendaCorrente = $state<string>('La tua Azienda');
-
 	let selectedDipendente = $state<DipendenteEsteso | null>(null);
 	let documentiCorrenti = $state<Documento[]>([]);
 	let dpiCorrenti = $state<DpiEsteso[]>([]);
 	let isLoadingDettaglio = $state(false);
-
 	let showAddModal = $state(false);
 	let showDeleteModal = $state(false);
 	let isSaving = $state(false);
-
 	let dipendenteDaEliminare = $state<DipendenteEsteso | null>(null);
 	let formDipendente = $state({
 		nome: '', cognome: '', codiceFiscale: '', email: ''
 	});
-
-	// --- STATI DOCUMENTI ---
 	let showUploadModal = $state(false);
 	let isUploading = $state(false);
 	let uploadFile = $state<File | null>(null);
 	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.ATTESTATO_FORMAZIONE, dataScadenza: '' });
-
 	let showDeleteDocModal = $state(false);
 	let docDaEliminare = $state<Documento | null>(null);
-
-	// --- STATI DPI ---
 	let showDpiModal = $state(false);
 	let isSavingDpi = $state(false);
 	let formDpi = $state<FormDPI>({ tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' });
-
 	let showDeleteDpiModal = $state(false);
 	let dpiDaEliminare = $state<DpiEsteso | null>(null);
-
-	// --- LOGICA DERIVATA ---
 	const filteredLavoratori = $derived(
 			lavoratori.filter(l =>
 					l.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,8 +70,6 @@
 			formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' &&
 			formDipendente.codiceFiscale.length === 16
 	);
-
-	// --- AZIONI ---
 
 	onMount(async () => {
 		try {
@@ -145,7 +127,6 @@
 
 	async function vaiInChat(idUtente: string | number | undefined) {
 		if (!idUtente) return;
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		return await goto(`/dashboard/azienda/comunicazioni?chatId=${idUtente}`);
 	}
 
@@ -192,7 +173,6 @@
 		}
 	}
 
-	// --- LOGICA DOCUMENTI ---
 	async function scaricaDoc(doc: Documento) {
 		try {
 			const b = await DocumentoService.downloadDocumento(doc.idDocumento);
@@ -248,7 +228,6 @@
 		}
 	}
 
-	// --- LOGICA DPI ---
 	async function salvaDPI() {
 		if (!selectedDipendente) return;
 		isSavingDpi = true;
@@ -371,7 +350,6 @@
 	{:else}
 		<div in:fade>
 			<button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
-
 			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
 				<div class="bg-purple-600 p-10 text-white flex justify-between items-end relative">
 					<div class="flex items-center gap-6">
@@ -385,7 +363,6 @@
 							<h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedDipendente.nome} {selectedDipendente.cognome}</h1>
 						</div>
 					</div>
-
 					<div class="flex items-center gap-3">
 						<button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-purple-600 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
 							<Mail size={16} /> Manda Mail
@@ -398,7 +375,6 @@
 						</button>
 					</div>
 				</div>
-
 				<div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/30">
 					<div>
 						<p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><IdCard size={12}/> Codice Fiscale</p>
@@ -410,12 +386,10 @@
 					</div>
 				</div>
 			</div>
-
 			{#if isLoadingDettaglio}
 				<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-purple-600" /></div>
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
@@ -426,7 +400,6 @@
 								<Plus size={14} /> Aggiungi
 							</button>
 						</div>
-
 						{#if documentiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each documentiCorrenti as doc (doc.idDocumento)}
@@ -629,8 +602,6 @@
 			</div>
 		</div>
 	{/if}
-
-	<!-- MODALE INSERIMENTO DPI (Azienda) -->
 	{#if showDpiModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
@@ -650,14 +621,12 @@
 							<option value="ALTRO">Altro</option>
 						</select>
 					</div>
-
 					{#if formDpi.tipo === 'ALTRO'}
 						<div class="space-y-1" transition:slide>
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
 							<input bind:value={formDpi.nomeDpi} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
 						</div>
 					{/if}
-
 					<div class="grid grid-cols-2 gap-4 mt-4">
 						<div>
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Consegna *</label>
@@ -698,5 +667,4 @@
 			</div>
 		</div>
 	{/if}
-
 </div>

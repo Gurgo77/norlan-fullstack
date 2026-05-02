@@ -13,28 +13,22 @@
 		Loader2
 	} from 'lucide-svelte';
 
-	// Import Servizi e Modelli
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AuthService } from '$lib/services/AuthService';
 	import { Documento } from '$lib/models/Documento';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums'; // Aggiunto import TipoDocumento
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroCategoria = $state<ModuloServizio | 'TUTTI'>('TUTTI');
 	let documenti = $state<Documento[]>([]);
 
-	// --- AZIONI ---
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
 
 		try {
-			// Recupero dati reali dal database
 			const tuttiDocs = await DocumentoService.getDocumentiByAzienda(session.idUtente);
-
-			// FILTRO: Escludi gli attestati di corso dall'archivio documentale generale
 			documenti = tuttiDocs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
 		} catch (error) {
 			console.error('Errore nel caricamento documenti:', error);
@@ -57,7 +51,7 @@
 			console.error('Errore download:', error);
 		}
 	}
-	// --- LOGICA REATTIVA ---
+
 	const filteredDocs = $derived(
 			documenti.filter((doc) => {
 				const matchSearch = doc.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
@@ -65,7 +59,6 @@
 				return matchSearch && matchCat;
 			})
 	);
-
 	const stats = $derived({
 		totali: documenti.length,
 		scaduti: documenti.filter((d) => d.scaduto).length,
@@ -177,7 +170,6 @@
 				{@const status = getStatoDocumento(doc)}
 				<div class="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl" in:scale>
 					<div class="h-1.5 w-full {status === 'VALIDO' ? 'bg-green-500' : status === 'IN_SCADENZA' ? 'bg-yellow-500' : 'bg-red-500'}"></div>
-
 					<div class="flex-1 p-8">
 						<div class="mb-6 flex items-start justify-between">
 							<div class="rounded-2xl bg-gray-50 p-3 text-[#1B4B6B] transition-all group-hover:bg-[#1B4B6B] group-hover:text-white">
@@ -187,11 +179,9 @@
                          {status.replace('_', ' ')}
                       </span>
 						</div>
-
 						<h3 class="mb-4 min-h-[3.5rem] text-lg font-black uppercase leading-tight text-[#1B4B6B] line-clamp-2">
 							{doc.tipologia.replace(/_/g, ' ')}
 						</h3>
-
 						<div class="space-y-3">
 							<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter text-gray-400">
 								<Calendar size={14} class="text-[#1B4B6B]" />
@@ -203,7 +193,6 @@
 							</div>
 						</div>
 					</div>
-
 					<div class="flex gap-2 border-t border-gray-50 bg-gray-50/50 p-4">
 						<button
 								onclick={() => handleDownload(doc.idDocumento, doc.tipologia)}
@@ -216,7 +205,6 @@
 			{/each}
 		</div>
 	{/if}
-
 	<div class="mt-12 flex items-center gap-4 rounded-3xl border border-[#1B4B6B]/10 bg-[#1B4B6B]/5 p-6">
 		<div class="rounded-2xl bg-[#1B4B6B] p-3 text-white shadow-lg">
 			<FileDown size={20} />

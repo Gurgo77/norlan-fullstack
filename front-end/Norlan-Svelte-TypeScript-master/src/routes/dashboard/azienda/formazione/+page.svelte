@@ -7,7 +7,6 @@
 		BookPlus, X
 	} from 'lucide-svelte';
 
-	// Import Servizi e Modelli
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
@@ -15,10 +14,9 @@
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 
-	// --- INTERFACCE TIPIZZATE ---
 	interface CorsoStato {
 		idCorso?: number;
-		idDocumento?: number; // Fondamentale per il tracciamento FSM
+		idDocumento?: number;
 		nome: string;
 		data: string;
 		stato: 'OK' | 'IN_ATTESA' | 'CRITICO';
@@ -31,24 +29,18 @@
 		corsi: CorsoStato[];
 	}
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let isActionLoading = $state(false);
 	let searchQuery = $state('');
-
 	let dipendenti = $state<DipendenteFormazione[]>([]);
 	let attestatiDaFirmare = $state<Documento[]>([]);
-
 	let corsiDisponibili = $state<CorsoFormazione[]>([]);
 	let fileFirmati = $state<Record<number, File>>({});
-
-	// --- STATI MODALE ISCRIZIONE ---
 	let showModalIscrizione = $state(false);
 	let idDipendenteSelezionato = $state<number | ''>('');
 	let idCorsoSelezionato = $state<number | ''>('');
 	let isEnrolling = $state(false);
 
-	// --- CARICAMENTO DATI ---
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -66,13 +58,9 @@
 					d.tipologia === 'ATTESTATO_CORSO' && d.stato === 'IN_ATTESA_FIRMA'
 			);
 
-			// Mappatura degli ID dei documenti che bloccano la chiusura del corso
 			const idDocumentiDaFirmare = attestatiDaFirmare.map(d => d.idDocumento);
-
 			const promises = lavoratoriRaw.map(async (l) => {
 				const iscrizioniTutte = await FormazioneService.getIscrizioniUtente(l.idUtente);
-
-				// --- REGOLA 5: Algoritmo di Evizione ---
 				const iscrizioniDaCompletare = iscrizioniTutte.filter(i => {
 					if (!i.idDocumento) return true; // L'Admin non ha ancora elaborato l'attestato
 					return idDocumentiDaFirmare.includes(i.idDocumento); // L'azienda lo deve ancora firmare
@@ -100,7 +88,6 @@
 		}
 	});
 
-	// --- LOGICA REATTIVA ---
 	const filteredDipendenti = $derived(
 			dipendenti.filter((d) => d.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
@@ -109,7 +96,6 @@
 			dipendenti.filter((d) => d.corsi.some((c) => c.stato !== 'OK')).length
 	);
 
-	// --- AZIONI MODALE ISCRIZIONE ---
 	function apriModaleIscrizione() {
 		idDipendenteSelezionato = '';
 		idCorsoSelezionato = '';
@@ -122,7 +108,6 @@
 
 		try {
 			await FormazioneService.iscriviUtente(idCorsoSelezionato as number, idDipendenteSelezionato as number);
-
 			const corsoScelto = corsiDisponibili.find(c => c.idCorso === idCorsoSelezionato);
 			const dipendenteScelto = dipendenti.find(d => d.id === idDipendenteSelezionato);
 
@@ -146,7 +131,6 @@
 		}
 	}
 
-	// --- AZIONI SUI DOCUMENTI (FSM) ---
 	async function scaricaOriginale(idDocumento: number) {
 		try {
 			const blob = await DocumentoService.downloadDocumento(idDocumento);
@@ -182,12 +166,8 @@
 		try {
 			await DocumentoService.approvaDocumento(idDocumento);
 
-			// Rimuove il box dall'area superiore
 			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
 			delete fileFirmati[idDocumento];
-
-			// --- SPARIZIONE REATTIVA IMMEDIATA (REGOLA 5) ---
-			// Percorre tutti i dipendenti e cancella i corsi legati all'attestato appena approvato
 			dipendenti = dipendenti.map(dip => ({
 				...dip,
 				corsi: dip.corsi.filter(c => c.idDocumento !== idDocumento)
@@ -238,7 +218,6 @@
 			</p>
 		</div>
 	{:else}
-
 		{#if attestatiDaFirmare.length > 0}
 			<div class="mb-14" in:fade>
 				<div class="flex items-center gap-3 mb-6 border-b border-amber-200 pb-3">
@@ -246,26 +225,21 @@
 					<h2 class="text-xl font-extrabold text-amber-700 uppercase tracking-tight">Attestati da Controfirmare e Consegnare</h2>
 					<span class="ml-auto text-[10px] font-black text-white bg-amber-600 px-3 py-1 rounded-full uppercase shadow-lg shadow-amber-900/20">Azione Richiesta</span>
 				</div>
-
 				<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 					{#each attestatiDaFirmare as attestato (attestato.idDocumento ?? Math.random())}
 						{@const idDoc = attestato.idDocumento ?? 0}
-
 						<div class="bg-white rounded-[2rem] shadow-md border border-amber-200 p-6 relative overflow-hidden flex flex-col md:flex-row gap-6 items-center">
 							<div class="absolute top-0 left-0 w-2 h-full bg-amber-500"></div>
-
 							<div class="flex-1 space-y-3 pl-2">
 								<h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">Pacchetto Attestati Corso</h3>
 								<p class="text-[10px] font-bold text-gray-500 uppercase leading-relaxed">
 									L'Admin ha validato e generato gli attestati. Scarica il PDF cumulativo, apponi la firma aziendale e ricaricalo per sbloccarlo nelle dashboard dei tuoi dipendenti.
 								</p>
 							</div>
-
 							<div class="w-full md:w-64 space-y-3 shrink-0 bg-gray-50 p-4 rounded-2xl border border-gray-100">
 								<button onclick={() => scaricaOriginale(idDoc)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors">
 									<Download size={16} /> 1. Scarica Originale
 								</button>
-
 								<div class="relative">
 									<input
 											type="file"
@@ -279,7 +253,6 @@
 										{fileFirmati[idDoc] ? '2. File Selezionato' : '2. Allega Firmato'}
 									</label>
 								</div>
-
 								<button
 										onclick={() => consegnaAiDipendenti(idDoc)}
 										disabled={!fileFirmati[idDoc] || isActionLoading}
@@ -292,7 +265,6 @@
 				</div>
 			</div>
 		{/if}
-
 		<div class="mb-10 flex gap-4 mt-8">
 			<div class="group relative flex-1">
 				<Search
@@ -310,11 +282,9 @@
 				<Filter size={20} />
 			</button>
 		</div>
-
 		<div class="space-y-6">
 			{#each filteredDipendenti as dip (dip.id)}
 				<div class="group flex cursor-default flex-col xl:flex-row items-center gap-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 hover:border-[#1B4B6B]/20 hover:shadow-xl" in:scale>
-
 					<div class="flex w-full xl:w-auto items-center gap-6 shrink-0">
 						<div class="flex size-16 flex-none items-center justify-center rounded-2xl bg-[#1B4B6B] text-white shadow-lg shadow-[#1B4B6B]/20">
 							<User size={28} />
@@ -324,7 +294,6 @@
 							<p class="text-[10px] font-bold uppercase tracking-tight text-gray-400">{dip.ruolo}</p>
 						</div>
 					</div>
-
 					<div class="flex flex-1 flex-wrap gap-3 w-full xl:w-auto">
 						{#each dip.corsi as corso, index (corso.nome + index)}
 							<div class="flex items-center gap-3 rounded-xl border px-4 py-2 {corso.stato === 'OK' ? 'border-green-100 bg-green-50 text-green-600' : 'border-yellow-100 bg-yellow-50 text-yellow-600'}">
@@ -339,7 +308,6 @@
 							<p class="text-[10px] font-bold uppercase italic text-gray-300 mt-2">Nessun corso operativo in sospeso</p>
 						{/if}
 					</div>
-
 					<div class="flex items-center gap-3 w-full xl:w-auto justify-end mt-4 xl:mt-0 pt-4 xl:pt-0 border-t border-gray-100 xl:border-0">
 						<button class="text-gray-300 transition-colors hover:text-[#1B4B6B]">
 							<Bookmark size={20} />
@@ -366,7 +334,6 @@
 {#if showModalIscrizione}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
 		<div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden" in:scale>
-
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center shrink-0">
 				<div>
 					<h2 class="text-lg font-extrabold uppercase leading-none">Iscrizione Formativa</h2>
@@ -374,7 +341,6 @@
 				</div>
 				<button onclick={() => showModalIscrizione = false} class="hover:text-red-400 transition-colors"><X size={24} /></button>
 			</div>
-
 			<div class="p-8 flex-1 bg-gray-50/50 space-y-6">
 				<div class="space-y-2">
 					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Seleziona Dipendente *</label>
@@ -391,7 +357,6 @@
 						{/if}
 					</select>
 				</div>
-
 				<div class="space-y-2">
 					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Seleziona Corso Programmato *</label>
 					<select
@@ -410,7 +375,6 @@
 					</select>
 				</div>
 			</div>
-
 			<div class="p-6 border-t border-gray-100 flex gap-4 bg-white">
 				<button onclick={() => showModalIscrizione = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 transition-all uppercase text-[10px]">
 					Annulla
