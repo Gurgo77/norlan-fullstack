@@ -13,6 +13,7 @@
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import type { AziendaData } from '$lib/models/Azienda';
 	import type { Notifica } from '$lib/models/Notifica';
+
 	let { children } = $props();
 	let aziendaNome = $state('Caricamento...');
 	let aziendaEmail = $state('...');
@@ -206,9 +207,31 @@
 			</div>
 		</header>
 
-		<div class="p-10 flex-grow overflow-y-auto custom-scrollbar-data h-[calc(100vh-5rem)]">
-			{@render children()}
-			<div class="h-10"></div>
+		<div class="p-10 flex-grow overflow-y-auto custom-scrollbar-data h-[calc(100vh-5rem)] flex flex-col">
+			<div class="flex-1">
+				{@render children()}
+			</div>
+
+			<!-- FOOTER DASHBOARD CENTRATO -->
+			<footer class="mt-12 pt-8 pb-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 shrink-0 relative z-10">
+
+				<!-- Sinistra: NorLan -->
+				<div class="text-[10px] font-black text-[#1B4B6B] uppercase tracking-[0.2em] opacity-80">
+					© {new Date().getFullYear()} NorLan
+				</div>
+
+				<!-- Separatore visivo (visibile solo da PC) -->
+				<div class="hidden sm:block w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
+
+				<!-- Destra: Sviluppatori -->
+				<div class="flex flex-wrap items-center justify-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+					<span>Piattaforma Gestionale sviluppata da</span>
+					<a href="https://www.linkedin.com/in/antonio-gurgoglione/" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Antonio Gurgoglione</a>
+					<span class="text-gray-300">&</span>
+					<a href="https://it.linkedin.com/in/nicol%C3%B2-baldari-415411270" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Nicolò Baldari</a>
+				</div>
+
+			</footer>
 		</div>
 	</main>
 </div>

@@ -3,7 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		MessageSquare, Search, Loader2, Building2,
-		Send, MessageCircle, X, GraduationCap, BookOpen, ShieldCheck, User
+		Send, X, GraduationCap, ShieldCheck, User, Clock, Users
 	} from 'lucide-svelte';
 
 	// IMPORT SERVIZI E MODELLI
@@ -175,110 +175,124 @@
 	function scrollChat() { setTimeout(() => { if (chatScrollContainer) chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight; }, 50); }
 </script>
 
-<div in:fade class="mx-auto max-w-7xl space-y-8 pb-10">
+<div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
-	<header>
-		<h1 class="text-4xl font-black uppercase tracking-tighter text-[#1B4B6B]">I Miei Messaggi</h1>
-		<p class="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">Canali di comunicazione ufficiali</p>
-	</header>
+	<!-- COLONNA SINISTRA: RUBRICA -->
+	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
+		<div class="p-8 border-b border-gray-100 bg-white">
+			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
+				<Users size={22} class="text-[#1B4B6B]" /> RUBRICA CONTATTI
+			</h2>
+			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1 mb-4">Azienda, Docenti e Staff</p>
 
-	<div class="grid h-[650px] grid-cols-1 gap-8 xl:grid-cols-12">
-
-		<div class="flex flex-col gap-4 overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-6 shadow-sm xl:col-span-4">
-			<div class="relative shrink-0">
-				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-				<input bind:value={searchQuery} type="text" placeholder="CERCA CONTATTO..." class="w-full rounded-2xl bg-gray-50 py-4 pl-12 pr-6 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B]/20" />
+			<div class="relative">
+				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+				<input bind:value={searchQuery} type="text" placeholder="CERCA CONTATTO..." class="w-full rounded-2xl bg-gray-50 py-3 pl-12 pr-4 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
 			</div>
+		</div>
 
-			<div class="custom-scrollbar-data flex-1 space-y-2 overflow-y-auto pr-2">
-				{#if isLoading}
-					<div class="flex justify-center py-10"><Loader2 class="animate-spin text-[#1B4B6B]" /></div>
-				{:else}
-					{#each contattiFiltrati as contatto (contatto.idUtente)}
-						<button
-								onclick={() => selezionaContatto(contatto)}
-								class="group flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition-all
-                      {contattoSelezionato?.idUtente === contatto.idUtente ? 'border-[#1B4B6B] bg-[#1B4B6B] text-white shadow-lg' : 'border-transparent bg-white hover:bg-gray-50'}"
-						>
-							<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem]
-                         {contattoSelezionato?.idUtente === contatto.idUtente ? 'bg-white/20' : (contatto.ruolo === 'ADMIN' ? 'bg-red-50 text-red-600' : contatto.ruolo === 'AZIENDA' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600')}">
+		<div class="flex-1 overflow-y-auto custom-scrollbar">
+			{#if isLoading}
+				<div class="flex flex-col items-center justify-center p-20 gap-4">
+					<Loader2 class="animate-spin text-[#1B4B6B]" size={32} />
+					<p class="text-[9px] font-black text-gray-300 uppercase tracking-widest">Sincronizzazione contatti...</p>
+				</div>
+			{:else}
+				{#each contattiFiltrati as contatto (contatto.idUtente)}
+					<button
+							onclick={() => selezionaContatto(contatto)}
+							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {contattoSelezionato?.idUtente === contatto.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
+					>
+						<div class="flex items-center gap-4">
+							<div class="p-3 rounded-2xl transition-all {contattoSelezionato?.idUtente === contatto.idUtente ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : (contatto.ruolo === 'ADMIN' ? 'bg-red-50 text-red-600' : contatto.ruolo === 'AZIENDA' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600')}">
 								{#if contatto.ruolo === 'ADMIN'} <ShieldCheck size={20} />
 								{:else if contatto.ruolo === 'AZIENDA'} <Building2 size={20} />
 								{:else} <GraduationCap size={20} /> {/if}
 							</div>
 
-							<div class="min-w-0 flex-1">
-								<div class="mb-1 flex items-center justify-between">
-									<h4 class="truncate text-xs font-black uppercase {contattoSelezionato?.idUtente === contatto.idUtente ? 'text-white' : 'text-[#1B4B6B]'}">
-										{contatto.nome}
-									</h4>
+							<div class="overflow-hidden flex-1">
+								<h3 class="{contatto.ruolo === 'ADMIN' ? 'font-black text-blue-900' : 'font-bold text-[#1B4B6B]'} text-xs uppercase truncate tracking-tight">
+									{contatto.nome}
+								</h3>
+								<div class="flex items-center gap-1 mt-0.5">
+									<p class="text-[9px] text-gray-400 font-bold uppercase truncate tracking-tighter">{contatto.sottotitolo}</p>
 								</div>
-								<span class="block truncate text-[9px] font-black uppercase tracking-widest {contattoSelezionato?.idUtente === contatto.idUtente ? 'text-white/60' : 'text-gray-400'}">
-                             {contatto.sottotitolo}
-                         </span>
-							</div>
-						</button>
-					{/each}
-				{/if}
-			</div>
-		</div>
-
-		<div class="h-full xl:col-span-8">
-			{#if contattoSelezionato}
-				<div in:scale={{duration: 200, start: 0.98}} class="flex h-full flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-sm">
-					<div class="flex shrink-0 items-center justify-between border-b border-gray-50 bg-gray-50/30 p-6">
-						<div class="flex items-center gap-4">
-							<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1B4B6B] text-white">
-								{#if contattoSelezionato.ruolo === 'ADMIN'} <ShieldCheck size={20} />
-								{:else if contattoSelezionato.ruolo === 'AZIENDA'} <Building2 size={20} />
-								{:else} <GraduationCap size={20} /> {/if}
-							</div>
-							<div>
-								<h3 class="text-lg font-black uppercase text-[#1B4B6B]">{contattoSelezionato.nome}</h3>
-								<p class="text-[9px] font-black uppercase tracking-widest text-gray-400">{contattoSelezionato.ruolo} • Crittografia attiva</p>
 							</div>
 						</div>
-						<button onclick={() => contattoSelezionato = null} class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
-							<X size={16} />
-						</button>
-					</div>
-
-					<div bind:this={chatScrollContainer} class="custom-scrollbar-data flex-1 space-y-4 overflow-y-auto bg-white p-8">
-						{#each messaggiChat as msg (msg.idMessaggio)}
-							<div class="flex {msg.idMittente === utente?.idUtente ? 'justify-end' : 'justify-start'}">
-								<div class="max-w-[70%]">
-									<div class="rounded-2xl p-4 text-sm font-medium {msg.idMittente === utente?.idUtente ? 'bg-[#1B4B6B] text-white rounded-tr-none' : 'bg-gray-50 text-[#1B4B6B] rounded-tl-none border border-gray-100'}">
-										{msg.testo}
-									</div>
-									<span class="mt-1 block text-[8px] font-black uppercase tracking-widest text-gray-300 {msg.idMittente === utente?.idUtente ? 'text-right' : 'text-left'}">
-                               {new Date(msg.timestampInvio).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}
-                            </span>
-								</div>
-							</div>
-						{/each}
-					</div>
-
-					<div class="p-6 border-t border-gray-50">
-						<form class="flex gap-2 rounded-2xl bg-gray-50 p-2" onsubmit={(e) => {e.preventDefault(); inviaMessaggio();}}>
-							<input bind:value={nuovoMessaggioTesto} type="text" placeholder="Scrivi un messaggio..." class="flex-1 bg-transparent px-4 py-2 text-sm font-medium outline-none" />
-							<button type="submit" disabled={!nuovoMessaggioTesto.trim()} class="rounded-xl bg-[#1B4B6B] p-3.5 text-white disabled:opacity-50">
-								<Send size={18} />
-							</button>
-						</form>
-					</div>
-				</div>
-			{:else}
-				<div class="flex h-full flex-col items-center justify-center rounded-[2.5rem] border border-dashed border-gray-200 bg-white p-10">
-					<MessageSquare size={60} class="mb-4 text-gray-200" />
-					<h3 class="text-xl font-black uppercase text-[#1B4B6B]">Nessuna chat attiva</h3>
-					<p class="text-[10px] font-bold uppercase text-gray-400">Seleziona un contatto per iniziare</p>
-				</div>
+					</button>
+				{/each}
+				{#if contattiFiltrati.length === 0}
+					<p class="text-center text-[10px] font-bold text-gray-400 uppercase py-10">Nessun contatto disponibile.</p>
+				{/if}
 			{/if}
 		</div>
+	</div>
+
+	<!-- COLONNA DESTRA: CHAT -->
+	<div class="flex-1 flex flex-col bg-white">
+		{#if contattoSelezionato}
+			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
+				<div class="flex items-center gap-5 min-w-0">
+					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20 shrink-0">
+						{#if contattoSelezionato.ruolo === 'ADMIN'} <ShieldCheck size={24} />
+						{:else if contattoSelezionato.ruolo === 'AZIENDA'} <Building2 size={24} />
+						{:else} <GraduationCap size={24} /> {/if}
+					</div>
+					<div class="min-w-0">
+						<h2 class="font-black text-[#1B4B6B] text-2xl uppercase tracking-tighter truncate">{contattoSelezionato.nome}</h2>
+						<div class="flex items-center gap-4 mt-1">
+							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shrink-0"></span>
+							<span class="text-[9px] font-black text-green-600 uppercase tracking-widest truncate">
+                         {contattoSelezionato.ruolo === 'ADMIN' ? 'Staff NorLan Disponibile' : contattoSelezionato.ruolo === 'AZIENDA' ? 'Canale Aziendale' : 'Docente Assegnato'}
+                      </span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div bind:this={chatScrollContainer} class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
+				{#each messaggiChat as msg (msg.idMessaggio)}
+					<div class="flex {msg.idMittente === utente?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
+						<div class="max-w-[65%] shadow-sm {msg.idMittente === utente?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-blue-900/10' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4'}">
+							<p class="text-sm font-bold leading-relaxed whitespace-pre-wrap break-words">{msg.testo}</p>
+							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === utente?.idUtente ? 'justify-end' : 'justify-start'}">
+								<Clock size={10} />
+								<span class="text-[9px] font-black uppercase tracking-widest">
+                            {new Date(msg.timestampInvio).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
+                         </span>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<div class="p-8 border-t border-gray-100 bg-white shrink-0">
+				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); inviaMessaggio(); }}>
+					<input bind:value={nuovoMessaggioTesto} type="text" placeholder="Scrivi un messaggio ufficiale..." class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold tracking-tight placeholder:text-gray-400" />
+					<button type="submit" disabled={!nuovoMessaggioTesto.trim()} class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group">
+						<Send size={20} class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+					</button>
+				</form>
+			</div>
+		{:else}
+			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-20 text-center">
+				<div class="p-10 bg-gray-50 rounded-[50px] mb-8" in:scale>
+					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
+				</div>
+				<h3 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tighter">Centro Comunicazioni</h3>
+				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">
+					Seleziona l'azienda, il tuo docente o lo staff per assistenza.
+				</p>
+			</div>
+		{/if}
 	</div>
 </div>
 
 <style>
-	.custom-scrollbar-data::-webkit-scrollbar { width: 4px; }
-	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+
+	/* Layout fix per non far scorrere la pagina intera */
+	:global(body) { overflow: hidden; }
 </style>

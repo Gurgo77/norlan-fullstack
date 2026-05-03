@@ -21,6 +21,7 @@
 		titolo: string;
 		data: string;
 		colore: string;
+		timestamp: number;
 	}
 
 	interface Dpi {
@@ -29,6 +30,7 @@
 		matricola: string;
 		stato: 'OK' | 'WARNING' | 'DANGER';
 		revisione: string;
+		timestamp: number;
 	}
 
 	interface Materiale {
@@ -36,6 +38,7 @@
 		titolo: string;
 		tipo: 'ATTESTATO' | 'DOCUMENTO';
 		sbloccato: boolean;
+		data: string; // Aggiunto per visualizzare la data dell'attestato
 	}
 
 	// --- STATO REATTIVO (Svelte 5) ---
@@ -72,7 +75,7 @@
 		if (!currentUser || !token) return;
 
 		try {
-			// Fetch parallelo dei dati reali per massimizzare le performance[cite: 10]
+			// Fetch parallelo dei dati reali per massimizzare le performance
 			const [dipendenteData, dpiData, iscrizioniData, cronologiaChat] = await Promise.all([
 				LavoratoreService.getById(currentUser.idUtente),
 				LavoratoreService.getDpiByLavoratore(currentUser.idUtente),
@@ -85,7 +88,7 @@
 
 			const oggi = new Date().getTime();
 
-			// 1. Logica DPI: calcolo scadenze e stato globale[cite: 9, 10]
+			// 1. Logica DPI: calcolo scadenze e stato globale
 			let hasDpiWarning = false;
 			let hasDpiDanger = false;
 
@@ -103,15 +106,20 @@
 					nome: (d.tipo || d.nomeDpi || 'Dispositivo').replace(/_/g, ' '),
 					matricola: d.note || `ID-${d.idAssegnazione || d.id}`,
 					stato: s,
-					revisione: dataScad ? new Date(dataScad).toLocaleDateString('it-IT') : 'N.D.'
+					revisione: dataScad ? new Date(dataScad).toLocaleDateString('it-IT') : 'N.D.',
+					timestamp: scadenza
 				};
 			});
+
+			// Ordina DPI: quelli scaduti o in scadenza prima (timestamp minore)
+			dotazioniDPI.sort((a, b) => a.timestamp - b.timestamp);
+
 			statoDPI = hasDpiDanger ? 'DANGER' : (hasDpiWarning ? 'WARNING' : 'OK');
 
-			// 2. Logica Formazione: Corsi futuri e Attestati[cite: 10]
+			// 2. Logica Formazione: Corsi futuri e Attestati
 			let hasCorsiImminenti = false;
 			iscrizioniData.forEach(i => {
-				new Date(i.dataOrarioCorso).getTime();
+				const dataOrario = new Date(i.dataOrarioCorso).getTime();
 
 				if (i.statoCorso === 'PROGRAMMATO' || i.statoCorso === 'IN_SVOLGIMENTO') {
 					hasCorsiImminenti = true;
@@ -120,22 +128,28 @@
 						tipo: 'CORSO',
 						titolo: i.titoloCorso,
 						data: new Date(i.dataOrarioCorso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-						colore: 'text-blue-500'
+						colore: 'text-blue-500',
+						timestamp: dataOrario
 					});
 				}
 
 				if (i.presenzaConfermata && i.idDocumento) {
 					materiali.push({
 						id: i.idCorso,
-						titolo: `ATTESTATO - ${i.titoloCorso}`,
+						titolo: i.titoloCorso,
 						tipo: 'ATTESTATO',
-						sbloccato: true
+						sbloccato: true,
+						data: new Date(i.dataOrarioCorso).toLocaleDateString('it-IT')
 					});
 				}
 			});
+
+			// Ordina impegni: quelli più vicini a oggi (timestamp minore) prima
+			impegni.sort((a, b) => a.timestamp - b.timestamp);
+
 			statoFormazione = hasCorsiImminenti ? 'WARNING' : 'OK';
 
-			// 3. WebSocket Chat[cite: 10]
+			// 3. WebSocket Chat
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
@@ -153,8 +167,7 @@
 			isLoading = false;
 			setTimeout(scrollChat, 100);
 		}
-	}
-);
+	});
 
 	onDestroy(() => { if (chatService) chatService.disconnect(); });
 
@@ -239,16 +252,16 @@
 			<div class="xl:col-span-2 space-y-8">
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
-						<Calendar size={20} class="text-blue-500" /> Prossime Scadenze
+						<Calendar size={20} class="text-blue-500" /> Prossime Scadenze Corsi
 					</h3>
-					<div class="space-y-3">
+					<div class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-2">
 						{#each impegni as imp}
 							<div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100">
 								<div class="flex items-center gap-4">
-									<Clock size={16} class="text-blue-500" />
+									<Clock size={16} class="text-blue-500 shrink-0" />
 									<span class="text-xs font-bold text-[#1B4B6B] uppercase">{imp.titolo}</span>
 								</div>
-								<span class="text-[10px] font-black text-gray-400">{imp.data}</span>
+								<span class="text-[10px] font-black text-gray-400 whitespace-nowrap shrink-0 ml-4">{imp.data}</span>
 							</div>
 						{/each}
 						{#if impegni.length === 0}
@@ -258,23 +271,62 @@
 				</div>
 
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
-						<ShieldCheck size={20} class="text-emerald-500" /> Dispositivi di Protezione Individuale
-					</h3>
-					<div class="space-y-4">
-						{#each dotazioniDPI.slice(0, 3) as dpi}
+					<div class="flex items-center justify-between mb-6">
+						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
+							<ShieldCheck size={20} class="text-emerald-500" /> Dispositivi di Protezione (DPI)
+						</h3>
+						<a href="/dashboard/dipendente/dpi" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a>
+					</div>
+					<div class="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-4">
+						<!-- Mostriamo l'intera lista ordinata senza lo slice(0,3) -->
+						{#each dotazioniDPI as dpi}
 							<div class="flex items-center justify-between group">
 								<div>
 									<p class="text-xs font-black text-[#1B4B6B] uppercase">{dpi.nome}</p>
 									<p class="text-[9px] font-bold text-gray-400">REV: {dpi.revisione}</p>
 								</div>
-								<div class="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
-									<div class="h-full {dpi.stato === 'OK' ? 'bg-emerald-500' : 'bg-red-500'}" style="width: 100%"></div>
+								<div class="h-2 w-24 bg-gray-100 rounded-full overflow-hidden shrink-0 ml-4">
+									<div class="h-full {dpi.stato === 'OK' ? 'bg-emerald-500' : (dpi.stato === 'WARNING' ? 'bg-amber-400' : 'bg-red-500')}" style="width: 100%"></div>
 								</div>
 							</div>
 						{/each}
+						{#if dotazioniDPI.length === 0}
+							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessun DPI assegnato</div>
+						{/if}
 					</div>
 				</div>
+
+				<!-- Nuova Card Attestati -->
+				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
+					<div class="flex items-center justify-between mb-6">
+						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
+							<FileBadge size={20} class="text-purple-500" /> Attestati Conseguiti
+						</h3>
+						<a href="/dashboard/dipendente/attestati" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi archivio</a>
+					</div>
+					<div class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-2">
+						{#each materiali as mat}
+							<div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 group transition-all hover:bg-white hover:shadow-md">
+								<div class="flex items-center gap-4">
+									<div class="p-2 bg-purple-100 text-purple-600 rounded-xl shrink-0">
+										<FileBadge size={16} />
+									</div>
+									<div>
+										<span class="text-xs font-bold text-[#1B4B6B] uppercase block">{mat.titolo}</span>
+										<span class="text-[9px] font-black text-gray-400 uppercase mt-0.5 block">Data: {mat.data}</span>
+									</div>
+								</div>
+								<a href="/dashboard/dipendente/attestati" class="text-gray-400 hover:text-[#1B4B6B] transition-colors p-2 bg-white rounded-lg border border-gray-200 hover:border-[#1B4B6B] shrink-0 ml-4">
+									<Download size={16} />
+								</a>
+							</div>
+						{/each}
+						{#if materiali.length === 0}
+							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessun attestato conseguito</div>
+						{/if}
+					</div>
+				</div>
+
 			</div>
 
 			<!-- Colonna Destra -->
@@ -292,7 +344,7 @@
 	{/if}
 </div>
 
-<!-- Widget Chat flottante[cite: 10] -->
+<!-- Widget Chat flottante -->
 <div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
 		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-96 rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">
@@ -324,4 +376,6 @@
 	:global(body) { background-color: #F9FAFB; }
 	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+	.custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
+	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 </style>

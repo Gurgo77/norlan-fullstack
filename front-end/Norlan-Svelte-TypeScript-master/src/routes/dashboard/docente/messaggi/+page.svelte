@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
+	import { page } from '$app/stores'; // <-- Import SvelteKit Store aggiunto
 	import { Send, MessageSquare, Loader2, Clock, ShieldCheck, Users, GraduationCap } from 'lucide-svelte';
 
 	// IMPORT SERVIZI
@@ -100,6 +101,18 @@
 				);
 
 				chatService.connect(token, currentUser.idUtente);
+
+				// --- LOGICA RILEVAMENTO DA URL ---
+				const chatIdDaUrl = $page.url.searchParams.get('chatId');
+				if (chatIdDaUrl) {
+					const targetId = parseInt(chatIdDaUrl, 10);
+					const targetContact = contatti.find(c => c.id === targetId);
+
+					if (targetContact) {
+						// Apre in automatico la chat trovata
+						await selectContact(targetContact);
+					}
+				}
 
 			} catch (error) {
 				console.error("Errore nel recupero della rubrica docente:", error);

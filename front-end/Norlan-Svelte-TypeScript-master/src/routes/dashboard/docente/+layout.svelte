@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation'; // <-- Import per il redirect di sicurezza
+	import { goto } from '$app/navigation';
 	import { slide } from 'svelte/transition';
 	import {
-		LayoutDashboard, BookOpen, Users, User,
-		LogOut, Bell, Search, MessageSquare, Home, Clock, Loader2
+		LayoutDashboard, BookOpen, Users,
+		LogOut, Bell, MessageSquare, Home, Loader2
 	} from 'lucide-svelte';
 
 	// Import Servizi e Modelli
@@ -13,7 +13,6 @@
 	import { SistemaService } from '$lib/services/SistemaService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import type { Notifica } from '$lib/models/Notifica';
-	import { searchState } from '$lib/searchState.svelte';
 
 	// Interfaccia locale per definire la struttura ritornata dal backend
 	interface DocenteRaw {
@@ -27,7 +26,6 @@
 	// Stato Reattivo
 	let docenteEmail = $state('Caricamento...');
 	let docenteNomeCompleto = $state('Docente');
-	let iniziale = $state('D');
 
 	// --- VARIABILI DI STATO PER LA TENDINA NOTIFICHE ---
 	let notificheCount = $state<number>(0);
@@ -41,11 +39,10 @@
 		{ href: '/dashboard/docente/corsi', label: 'Corsi Assegnati', icon: BookOpen },
 		{ href: '/dashboard/docente/studenti', label: 'Studenti', icon: Users },
 		{ href: '/dashboard/docente/messaggi', label: 'Messaggi', icon: MessageSquare },
-		{ href: '/dashboard/docente/account', label: 'Il mio Account', icon: User }
+		{ href: '/dashboard/docente/account', label: 'Il mio Account', icon: Users }
 	];
 
 	onMount(async () => {
-		// Recupero dati sessione tramite il service
 		const session = AuthService.getSession();
 
 		// --- ROLE GUARD INIZIO ---
@@ -79,7 +76,6 @@
 			const docenteData = profile as DocenteRaw;
 			if (docenteData.nome && docenteData.cognome) {
 				docenteNomeCompleto = `${docenteData.titolo ? docenteData.titolo + ' ' : ''}${docenteData.nome} ${docenteData.cognome}`;
-				iniziale = docenteData.nome.charAt(0);
 			}
 		} catch (error) {
 			console.error("Errore nel recupero dei dati del docente:", error);
@@ -137,6 +133,7 @@
 <svelte:window onclick={closeNotifiche} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
+	<!-- SIDEBAR -->
 	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
 		<aside class="sticky top-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50">
 			<div class="p-8 shrink-0">
@@ -174,15 +171,12 @@
 		</aside>
 	</div>
 
+	<!-- MAIN AREA -->
 	<main class="flex-1 flex flex-col min-w-0">
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 shrink-0 sticky top-0 z-40">
-			<div class="relative w-1/3 group">
-
-			</div>
+			<div class="relative w-1/3 group"></div>
 
 			<div class="flex items-center gap-6">
-
-
 				<div class="relative" onclick={(e) => e.stopPropagation()}>
 					<button
 							onclick={handleToggleNotifiche}
@@ -232,18 +226,38 @@
 				<div class="flex items-center gap-4">
 					<div class="text-right hidden sm:block">
 						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">{docenteNomeCompleto}</p>
-						<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Area Didattica</p>
-					</div>
-					<div class="w-10 h-10 bg-[#1B4B6B] rounded-lg flex items-center justify-center text-white shadow-md font-black">
-						{iniziale}
+						<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">DOCENTE</p>
 					</div>
 				</div>
 			</div>
 		</header>
 
-		<div class="p-10 flex-grow overflow-y-auto custom-scrollbar-data h-[calc(100vh-5rem)]">
-			{@render children()}
-			<div class="h-10"></div>
+		<!-- AREA CONTENUTO SCORREVOLE + FOOTER -->
+		<div class="p-10 flex flex-col flex-grow overflow-y-auto custom-scrollbar-data h-[calc(100vh-5rem)]">
+			<div class="flex-1">
+				{@render children()}
+			</div>
+
+			<!-- FOOTER DASHBOARD CENTRATO -->
+			<footer class="mt-12 pt-8 pb-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 shrink-0 relative z-10">
+
+				<!-- Sinistra: NorLan -->
+				<div class="text-[10px] font-black text-[#1B4B6B] uppercase tracking-[0.2em] opacity-80">
+					© {new Date().getFullYear()} NorLan
+				</div>
+
+				<!-- Separatore visivo (visibile solo da PC) -->
+				<div class="hidden sm:block w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
+
+				<!-- Destra: Sviluppatori -->
+				<div class="flex flex-wrap items-center justify-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+					<span>Piattaforma Gestionale sviluppata da</span>
+					<a href="https://www.linkedin.com/in/antonio-gurgoglione/" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Antonio Gurgoglione</a>
+					<span class="text-gray-300">&</span>
+					<a href="https://it.linkedin.com/in/nicol%C3%B2-baldari-415411270" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Nicolò Baldari</a>
+				</div>
+
+			</footer>
 		</div>
 	</main>
 </div>
