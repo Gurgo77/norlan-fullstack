@@ -1,4 +1,3 @@
-// src/lib/models/AssegnazioneDPIRequest.ts
 import type { TipoDPI } from './Enums';
 
 export interface AssegnazioneDPIRequest {

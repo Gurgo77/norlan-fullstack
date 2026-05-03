@@ -1,8 +1,6 @@
-// Assicurati che ci sia 'export' prima di interface e class
 import type { Documento } from './Documento';
 import type {StatoCorso} from "$lib/models/Enums";
 
-// Definiamo rigorosamente l'interfaccia in ingresso al costruttore
 export interface IscrizioneData {
 	idUtente: number;
 	idCorso: number;
@@ -10,19 +8,15 @@ export interface IscrizioneData {
 	titoloCorso: string;
 	dataOrarioCorso: string;
 	presenzaConfermata: boolean;
-	// Campi opzionali per la FSM
 	idDocumento?: number;
 	documentoAttestato?: Documento;
 	statoCorso?: StatoCorso;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface IscrizioneCorso {
 	idUtente: number;
 	idCorso: number;
 	presenzaConfermata: boolean;
-
-	// Relazioni strutturali per l'attestato
 	idDocumento?: number;
 	documentoAttestato?: Documento;
 }

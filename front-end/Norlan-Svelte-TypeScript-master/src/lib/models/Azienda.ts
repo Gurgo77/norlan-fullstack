@@ -10,7 +10,7 @@ export interface AziendaData {
 	telefono?: string;
 	cellulare?: string;
 	referenteAziendale?: string;
-	hasDipendenti?: boolean; // <-- Modificato in opzionale
+	hasDipendenti?: boolean;
 	ruolo: Ruolo;
 	etichettaDisplay: string;
 	passwordHash?: string;
@@ -41,7 +41,7 @@ export class Azienda {
 		this.telefono = data.telefono;
 		this.cellulare = data.cellulare;
 		this.referenteAziendale = data.referenteAziendale;
-		this.hasDipendenti = data.hasDipendenti ?? false; // <-- Aggiunto il Nullish Coalescing
+		this.hasDipendenti = data.hasDipendenti ?? false;
 		this.ruolo = data.ruolo;
 		this.etichettaDisplay = data.etichettaDisplay;
 		this.passwordHash = data.passwordHash;

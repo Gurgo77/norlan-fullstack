@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA", "DIPENDENTE", "DOCENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/anagrafica/aziende", "/api/anagrafica/aziende/**").hasAnyRole("ADMIN", "AZIENDA")
 
                         .requestMatchers(HttpMethod.GET, "/api/anagrafica/docenti", "/api/anagrafica/docenti/**").hasAnyRole("ADMIN", "DOCENTE", "DIPENDENTE", "LAVORATORE")

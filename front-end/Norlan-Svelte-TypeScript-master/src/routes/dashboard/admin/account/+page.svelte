@@ -10,11 +10,8 @@
     import { AuthService } from '$lib/services/AuthService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
 
-    // STATO PRINCIPALE (Svelte 5)
     let isLoading = $state(true);
     let admin = $state<AdminData | null>(null);
-
-    // STATI PER IL CAMBIO PASSWORD
     let isPasswordFormVisible = $state(false);
     let vecchiaPassword = $state('');
     let nuovaPassword = $state('');
@@ -55,7 +52,6 @@
             await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
             passwordSuccessMessage = 'Password aggiornata con successo!';
 
-            // Reset campi
             vecchiaPassword = '';
             nuovaPassword = '';
             confermaPassword = '';
@@ -114,10 +110,8 @@
                     <div class="grid grid-cols-1 gap-8">
                         <div class="space-y-2">
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email di Amministrazione</label>
-                            <!-- Aggiunto opacity-70 per indicare che non è modificabile -->
                             <div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
                                 <Mail size={18} class="text-gray-400" />
-                                <!-- Cambiato in input readonly per coerenza -->
                                 <input type="email" value={admin.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
                             </div>
                         </div>

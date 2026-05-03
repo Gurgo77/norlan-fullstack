@@ -5,33 +5,24 @@
     import {
         GraduationCap, Plus, Trash2, Search, Mail, MessageSquare,
         ChevronRight, ChevronLeft, Loader2, X, AlertTriangle, BookOpen,
-        Calendar, Users, CheckCircle2
+        Calendar
     } from 'lucide-svelte';
 
-    // Modelli e Servizi
     import type { DocenteData } from '$lib/models/Docente';
     import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
     import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
     import { FormazioneService } from '$lib/services/FormazioneService';
 
-    // --- STATO REATTIVO (Svelte 5) ---
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
-
     let isLoading = $state(true);
     let isLoadingDettaglio = $state(false);
     let searchQuery = $state('');
-
     let selectedDocente = $state<DocenteData | null>(null);
-
-    // Modali
     let showAddModal = $state(false);
     let isSaving = $state(false);
-
     let showDeleteModal = $state(false);
     let docenteDaEliminare = $state<DocenteData | null>(null);
-
-    // Form di registrazione
     let formDocente = $state({
         nome: '',
         cognome: '',
@@ -39,8 +30,6 @@
         email: '',
         password: ''
     });
-
-    // --- LOGICA DERIVATA ---
     const filteredDocenti = $derived(
         docenti.filter(d =>
             d.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -57,7 +46,6 @@
         formDocente.password.trim() !== ''
     );
 
-    // --- AZIONI ---
     onMount(async () => {
         try {
             const res = await AnagraficaService.getAllDocenti();
@@ -90,7 +78,6 @@
 
     function vaiInChat(idUtente: string | number | undefined) {
         if (!idUtente) return;
-        // eslint-disable-next-line svelte/no-navigation-without-resolve
         goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
     }
 

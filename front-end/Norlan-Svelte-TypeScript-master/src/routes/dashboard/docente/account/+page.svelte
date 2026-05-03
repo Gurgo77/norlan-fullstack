@@ -1,15 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import {
 		Mail, BookOpen, IdCard, Lock,
-		Save, ShieldCheck, Loader2,
+		Save, Loader2,
 		Award, GraduationCap
 	} from 'lucide-svelte';
 
 	import type { DocenteData } from '$lib/models/Docente';
 	import { AuthService } from '$lib/services/AuthService';
-	// IMPORT CORRETTO: Usiamo AnagraficaService per i Docenti
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 
 	let isLoading = $state(true);
@@ -27,7 +26,6 @@
 		const session = AuthService.getSession();
 		if (session) {
 			try {
-				// CHIAMATA CORRETTA: Puntiamo ad /api/anagrafica/docenti/{id}
 				docente = (await AnagraficaService.getDocenteById(session.idUtente)) as DocenteData;
 			} catch (error) {
 				console.error("Errore recupero profilo docente:", error);
@@ -89,7 +87,6 @@
 
 			<div class="space-y-8">
 				<div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
-					<!-- Rimosso relative/group e il bottone Camera -->
 					<div class="w-32 h-32 bg-gray-100 rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
 						<GraduationCap size={50} class="text-gray-300" />
 					</div>
@@ -102,7 +99,7 @@
 						<Award size={20} class="opacity-60" />
 						<span class="text-[10px] font-black uppercase tracking-widest opacity-60">Specializzazione Tecnica</span>
 					</div>
-					<p class="text-lg font-bold leading-tight">{docente.specializzazioneTecnica || 'Area Sicurezza sul Lavoro'}</p>
+					<p class="text-lg font-bold leading-tight">{docente.specializzazioneTecnica || 'Non specificata'}</p>
 				</div>
 			</div>
 
@@ -118,16 +115,15 @@
 							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Istituzionale</label>
 							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
 								<Mail size={18} class="text-gray-400" />
-								<!-- Resa in sola lettura e tolto il bind -->
 								<input type="email" value={docente.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
 							</div>
 						</div>
 
 						<div class="space-y-2">
-							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Area di Insegnamento</label>
+							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Specializzazione Tecnica</label>
 							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-60">
 								<BookOpen size={18} class="text-gray-400" />
-								<span class="text-sm font-bold text-[#1B4B6B] uppercase">D.Lgs 81/08</span>
+								<span class="text-sm font-bold text-[#1B4B6B] uppercase truncate">{docente.specializzazioneTecnica || 'Non specificata'}</span>
 							</div>
 						</div>
 					</div>

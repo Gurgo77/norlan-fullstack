@@ -1,4 +1,3 @@
-// src/lib/models/CorsoFormazioneRequest.ts
 export interface CorsoFormazioneRequest {
 	titolo: string;
 	dataOrario: string; // ISO date

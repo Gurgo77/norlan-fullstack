@@ -7,21 +7,18 @@
 		BellRing, FileText, ArrowRight
 	} from 'lucide-svelte';
 
-	// Import Servizi e Modelli
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { LavoratoreService, type DipendenteDTO, type AssegnazioneDPIDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
-
 	import type { AziendaData } from '$lib/models/Azienda';
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Messaggio } from '$lib/models/Messaggio';
 	import { TipoDocumento } from '$lib/models/Enums';
 
-	// --- INTERFACCE LOCALI (DPI Aggregato) ---
 	interface DpiRegistro extends AssegnazioneDPIDTO {
 		nomeCompletoDipendente: string;
 		statoDerivato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
@@ -29,20 +26,15 @@
 		dataScadenzaRevisione?: string;
 	}
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utenteAzienda = $state<AziendaData | null>(null);
-
-	// Gestione Widget Chat
 	let isChatOpen = $state(false);
 	let chatMessage = $state('');
 	let chatService = $state<ChatService | null>(null);
 	let messaggiChat = $state<Messaggio[]>([]);
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
 	const STAFF_ID = 1;
-
-	// Dati Aggregati Dashboard
 	let documentiScadenza = $state<Documento[]>([]);
 	let dipendenti = $state<DipendenteDTO[]>([]);
 	let prossimiCorsi = $state<CorsoFormazione[]>([]);
@@ -52,7 +44,6 @@
 		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
 	}).format(new Date());
 
-	// --- LOGICA DERIVATA (Compliance Status) ---
 	const alertScadenzeDocs = $derived(
 			documentiScadenza.filter(d => {
 				const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
@@ -79,7 +70,6 @@
 
 	const status = $derived(infoStato());
 
-	// --- HELPER FUNZIONI ---
 	function calcolaStatoDpi(dataScadenzaStr: string | undefined): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
 		if (!dataScadenzaStr) return 'OK';
 		const oggi = new Date().getTime();
@@ -103,7 +93,6 @@
 		}, 50);
 	}
 
-	// --- CARICAMENTO DATI ---
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		const token = AuthService.getToken();
@@ -111,11 +100,9 @@
 		if (!currentUser || !token) return;
 
 		try {
-			// 1. Profilo Azienda
 			const profilo = await AnagraficaService.getAziendaById(currentUser.idUtente) as AziendaData;
 			utenteAzienda = profilo;
 
-			// 2. Fetch Parallelo Dati Operativi
 			const [docs, lavoratori, corsi, cronologiaChat] = await Promise.all([
 				DocumentoService.getDocumentiByAzienda(currentUser.idUtente),
 				LavoratoreService.getByAzienda(currentUser.idUtente),
@@ -123,14 +110,11 @@
 				ChatService.getCronologia(currentUser.idUtente, STAFF_ID)
 			]);
 
-			// Documenti (escludo attestati corsi per la dashboard principale)
 			documentiScadenza = docs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
-
 			dipendenti = lavoratori;
 			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO').slice(0, 3);
 			messaggiChat = cronologiaChat;
 
-			// 3. Analisi DPI Aggregata per tutti i dipendenti
 			const dpiPromises = dipendenti.map(async (d) => {
 				try {
 					const dpiLav = await LavoratoreService.getDpiByLavoratore(d.idUtente);
@@ -145,13 +129,9 @@
 			});
 
 			const dpiResults = await Promise.all(dpiPromises);
-
-			// Filtriamo per mostrare nella dashboard solo quelli rilevanti (in scadenza o scaduti)
 			const allDpi = dpiResults.flat();
 			dpiInScadenza = allDpi.filter(dpi => dpi.statoDerivato !== 'OK');
 
-
-			// 4. WebSocket Chat
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
@@ -175,7 +155,6 @@
 		if (chatService) chatService.disconnect();
 	});
 
-	// --- AZIONI CHAT ---
 	function inviaMessaggioChat() {
 		if (!chatMessage.trim() || !currentUser || !chatService) return;
 
@@ -204,7 +183,6 @@
 </script>
 
 <div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-20">
-	<!-- Header -->
 	<div class="flex items-end justify-between">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -226,7 +204,6 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione Dati NorLan...</span>
 		</div>
 	{:else}
-		<!-- Status Compliance Bar -->
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 			<div class="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-8 group cursor-default">
 				<div class="relative shrink-0">
@@ -240,8 +217,6 @@
 					<p class="text-xs font-bold text-gray-400 uppercase mt-2">{status.text}</p>
 				</div>
 			</div>
-
-			<!-- Shortcuts -->
 			<div class="grid grid-rows-2 gap-4">
 				<a href="/dashboard/azienda/dipendenti" class="bg-[#1B4B6B] rounded-3xl p-6 text-white shadow-lg shadow-blue-900/10 flex items-center justify-between hover:bg-[#153a54] transition-colors group">
 					<div class="flex items-center gap-4">
@@ -265,14 +240,8 @@
 				</a>
 			</div>
 		</div>
-
-		<!-- Main Content Grid -->
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-
-			<!-- Colonna Sinistra (Alert e DPI) -->
 			<div class="xl:col-span-2 space-y-8">
-
-				<!-- Alert Documenti -->
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
@@ -280,7 +249,6 @@
 						</h3>
 						<span class="bg-gray-100 text-gray-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">{alertScadenzeDocs.length} Alert</span>
 					</div>
-
 					<div class="space-y-3">
 						{#each alertScadenzeDocs as alert (alert.idDocumento)}
 							<div class="flex items-center justify-between p-4 rounded-2xl border {alert.scaduto ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}">
@@ -311,8 +279,6 @@
 						{/if}
 					</div>
 				</div>
-
-				<!-- Monitoraggio DPI Critici -->
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
@@ -320,7 +286,6 @@
 						</h3>
 						<a href="/dashboard/azienda/dpi" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline flex items-center gap-1">Vedi Registro <ArrowRight size={12}/></a>
 					</div>
-
 					<div class="overflow-x-auto">
 						<table class="w-full text-left">
 							<thead>
@@ -356,8 +321,6 @@
 				</div>
 
 			</div>
-
-			<!-- Colonna Destra (Corsi & Account) -->
 			<div class="space-y-8">
 				<div class="bg-gray-50 rounded-[2.5rem] border border-gray-100 p-8">
 					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
@@ -405,8 +368,6 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Widget Chat flottante -->
 <div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
 		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-[28rem] rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">
@@ -442,7 +403,6 @@
 	{/if}
 	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="w-16 h-16 bg-[#1B4B6B] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform relative group">
 		<MessageSquare size={24} class="group-hover:animate-pulse" />
-		<!-- Indicatore messaggi non letti (opzionale, mock) -->
 		<span class="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
 	</button>
 </div>

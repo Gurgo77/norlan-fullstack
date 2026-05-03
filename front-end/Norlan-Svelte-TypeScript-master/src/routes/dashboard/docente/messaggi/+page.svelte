@@ -1,30 +1,25 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		Send, Building2, MessageSquare, Loader2,
-		Clock, ShieldCheck, Users, GraduationCap
-	} from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, Clock, ShieldCheck, Users, GraduationCap } from 'lucide-svelte';
 
 	// IMPORT SERVIZI
 	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-	import { AnagraficaService } from '$lib/services/AnagraficaService';
 
 	// IMPORT MODELLI
 	import { Messaggio } from '$lib/models/Messaggio';
-	import type { AziendaData } from '$lib/models/Azienda';
 	import type { DipendenteData } from '$lib/models/Dipendente';
-	import { StatoCorso } from '$lib/models/Enums'; // Aggiunto import dello stato
+	import { StatoCorso } from '$lib/models/Enums';
 
 	// --- INTERFACCE PER LA RUBRICA ---
 	interface Contatto {
 		id: number;
 		nome: string;
 		sottotitolo: string;
-		ruolo: 'ADMIN' | 'AZIENDA' | 'STUDENTE';
+		ruolo: 'ADMIN' | 'STUDENTE';
 	}
 
 	// --- STATO REATTIVO (Svelte 5) ---
@@ -47,41 +42,34 @@
 
 		if (currentUser) {
 			try {
-				// 1. Recupero i corsi assegnati al Docente loggato
-				const tuttiCorsi = await FormazioneService.getAllCorsi();
-				// MODIFICA: Prendo solo i corsi del docente che NON sono certificati/conclusi definitivamente
+				// 1. Recupero Dati Massivo (Solo Corsi e Dipendenti)
+				const [tuttiCorsi, tuttiDipendentiRaw] = await Promise.all([
+					FormazioneService.getAllCorsi(),
+					LavoratoreService.getAll()
+				]);
+
+				const tuttiDipendenti = tuttiDipendentiRaw as unknown as DipendenteData[];
+
+				// 2. Filtro solo i corsi attivi del docente
 				const mieiCorsiAttivi = tuttiCorsi.filter(c =>
 						c.idDocente === currentUser!.idUtente &&
 						c.stato !== StatoCorso.CERTIFICATO
 				);
 
-				// 2. Estraggo tutti gli studenti unici e le loro aziende dai corsi
 				const studentiMap = new Map<number, DipendenteData>();
 
+				// 3. Incrocio locale dei dati
 				for (const corso of mieiCorsiAttivi) {
 					const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
+
 					for (const iscr of iscritti) {
 						if (!studentiMap.has(iscr.idUtente)) {
-							try {
-								const studente = (await LavoratoreService.getById(iscr.idUtente)) as unknown as DipendenteData;
+							// Cerco lo studente nell'array globale
+							const studente = tuttiDipendenti.find(d => d.idUtente === iscr.idUtente || (d as any).id === iscr.idUtente);
+
+							if (studente) {
 								studentiMap.set(iscr.idUtente, studente);
-							} catch (e) {
-								console.warn("Studente non trovato:", e);
 							}
-						}
-					}
-				}
-
-				// 3. Estraggo le aziende uniche associate agli studenti
-				const aziendeMap = new Map<number, AziendaData>();
-
-				for (const studente of studentiMap.values()) {
-					if (studente.idAzienda && !aziendeMap.has(studente.idAzienda)) {
-						try {
-							const azienda = await AnagraficaService.getAziendaById(studente.idAzienda) as AziendaData;
-							aziendeMap.set(studente.idAzienda, azienda);
-						} catch (e) {
-							console.warn("Azienda non trovata:", e);
 						}
 					}
 				}
@@ -94,37 +82,30 @@
 					ruolo: 'STUDENTE'
 				}));
 
-				const listaAziende: Contatto[] = Array.from(aziendeMap.values()).map(a => ({
-					id: a.idUtente,
-					nome: a.ragioneSociale,
-					sottotitolo: 'Partner Formativo',
-					ruolo: 'AZIENDA'
-				}));
-
 				// 5. Assegnazione Rubrica Finale
 				contatti = [
 					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Direzione", ruolo: 'ADMIN' },
-					...listaAziende,
 					...listaStudenti
 				];
 
+				// 6. Configurazione e Connessione WebSocket
+				chatService = new ChatService(
+						(msg: Messaggio) => {
+							if (activeContact && (msg.idMittente === activeContact.id || msg.idMittente === currentUser?.idUtente)) {
+								messaggi = [...messaggi, msg];
+								scrollChat();
+							}
+						},
+						(err: string) => console.error("Errore WebSocket:", err)
+				);
+
+				chatService.connect(token, currentUser.idUtente);
+
 			} catch (error) {
-				console.error("Errore nel recupero della rubrica docente", error);
+				console.error("Errore nel recupero della rubrica docente:", error);
 			} finally {
 				isLoading = false;
 			}
-
-			// 6. Connessione al WebSocket
-			chatService = new ChatService(
-					(msg: Messaggio) => {
-						if (activeContact && (msg.idMittente === activeContact.id || msg.idMittente === currentUser?.idUtente)) {
-							messaggi = [...messaggi, msg];
-							scrollChat();
-						}
-					},
-					(err: string) => console.error("Errore WebSocket:", err)
-			);
-			chatService.connect(token, currentUser.idUtente);
 		}
 	});
 
@@ -152,6 +133,7 @@
 
 		chatService.sendMessage(payload);
 
+		// Simulazione locale ottimistica
 		const msgMock = new Messaggio({
 			idMessaggio: Date.now(),
 			idMittente: currentUser.idUtente,
@@ -177,14 +159,14 @@
 </script>
 
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
-
+	<!-- BARRA LATERALE CONTATTI -->
 	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
 		<div class="p-8 border-b border-gray-100 bg-white">
 			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
 				<Users size={22} class="text-[#1B4B6B]" />
 				RUBRICA CONTATTI
 			</h2>
-			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff, Aziende e Studenti</p>
+			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff e Studenti</p>
 		</div>
 
 		<div class="flex-1 overflow-y-auto custom-scrollbar">
@@ -200,16 +182,13 @@
 							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.id === contatto.id ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
 					>
 						<div class="flex items-center gap-4">
-							<div class="p-3 rounded-2xl transition-all {activeContact?.id === contatto.id ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : (contatto.ruolo === 'ADMIN' ? 'bg-blue-100 text-blue-600' : contatto.ruolo === 'AZIENDA' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400') }">
+							<div class="p-3 rounded-2xl transition-all {activeContact?.id === contatto.id ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : (contatto.ruolo === 'ADMIN' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400') }">
 								{#if contatto.ruolo === 'ADMIN'}
 									<ShieldCheck size={20} />
-								{:else if contatto.ruolo === 'AZIENDA'}
-									<Building2 size={20} />
 								{:else}
 									<GraduationCap size={20} />
 								{/if}
 							</div>
-
 							<div class="overflow-hidden flex-1">
 								<h3 class="{contatto.ruolo === 'ADMIN' ? 'font-black text-blue-900' : 'font-bold text-[#1B4B6B]'} text-xs uppercase truncate tracking-tight">
 									{contatto.nome}
@@ -221,6 +200,7 @@
 						</div>
 					</button>
 				{/each}
+
 				{#if contatti.length === 0}
 					<p class="text-center text-[10px] font-bold text-gray-400 uppercase py-10">Nessun contatto disponibile.</p>
 				{/if}
@@ -228,15 +208,15 @@
 		</div>
 	</div>
 
+	<!-- AREA CHAT PRINCIPALE -->
 	<div class="flex-1 flex flex-col bg-white">
 		{#if activeContact}
+			<!-- Header Chat -->
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
 				<div class="flex items-center gap-5 min-w-0">
 					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20 shrink-0">
 						{#if activeContact.ruolo === 'ADMIN'}
 							<ShieldCheck size={24} />
-						{:else if activeContact.ruolo === 'AZIENDA'}
-							<Building2 size={24} />
 						{:else}
 							<GraduationCap size={24} />
 						{/if}
@@ -246,13 +226,14 @@
 						<div class="flex items-center gap-4 mt-1">
 							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shrink-0"></span>
 							<span class="text-[9px] font-black text-green-600 uppercase tracking-widest truncate">
-                          {activeContact.ruolo === 'ADMIN' ? 'Staff NorLan Disponibile' : activeContact.ruolo === 'AZIENDA' ? 'Canale Aziendale' : 'Studente Iscritto'}
-                      </span>
+                                {activeContact.ruolo === 'ADMIN' ? 'Staff NorLan Disponibile' : 'Studente Iscritto'}
+                            </span>
 						</div>
 					</div>
 				</div>
 			</div>
 
+			<!-- Corpo Messaggi -->
 			<div bind:this={chatScrollContainer} class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
 					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
@@ -261,14 +242,15 @@
 							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
 								<Clock size={10} />
 								<span class="text-[9px] font-black uppercase tracking-widest">
-                            {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                         </span>
+                                    {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
 							</div>
 						</div>
 					</div>
 				{/each}
 			</div>
 
+			<!-- Form di Invio -->
 			<div class="p-8 border-t border-gray-100 bg-white shrink-0">
 				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input
@@ -287,13 +269,14 @@
 				</form>
 			</div>
 		{:else}
+			<!-- Schermata Vuota (Nessun contatto selezionato) -->
 			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-20 text-center">
 				<div class="p-10 bg-gray-50 rounded-[50px] mb-8" in:scale>
 					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
 				</div>
 				<h3 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tighter">Centro Comunicazioni</h3>
 				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">
-					Seleziona lo Staff NorLan per assistenza, un'azienda o un tuo studente per comunicazioni didattiche.
+					Seleziona lo Staff NorLan per assistenza o un tuo studente per comunicazioni didattiche.
 				</p>
 			</div>
 		{/if}
@@ -305,6 +288,6 @@
 	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 
-	/* Layout fix per non far scorrere la pagina intera */
+	/* Previene lo scorrimento del corpo principale mentre si chatta */
 	:global(body) { overflow: hidden; }
 </style>
