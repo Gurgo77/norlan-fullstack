@@ -5,7 +5,7 @@
 		Plus, X, Trash2, Search,
 		Calendar, MapPin, Loader2, User,
 		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users,
-		BarChart, Star, BookOpen // Icone aggiunte per UI Feedback e Archivio
+		BarChart, Star, BookOpen
 	} from 'lucide-svelte';
 
 	// Modelli
@@ -15,7 +15,6 @@
 	import type { CorsoFormazioneRequest } from '$lib/models/CorsoFormazioneRequest';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 
-	// Definiamo localmente l'interfaccia DTO del Feedback per sicurezza in compilazione
 	interface FeedbackStatsDTO {
 		idCorso: number;
 		mediaDocenza: number;
@@ -27,12 +26,12 @@
 	// Servizi
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
-	import { FeedbackService } from '$lib/services/FeedbackService'; // <-- Servizio Feedback
+	import { FeedbackService } from '$lib/services/FeedbackService';
 
 	// --- STATO REATTIVO GLOBALE ---
 	let corsi = $state<CorsoFormazione[]>([]);
 	let docenti = $state<Docente[]>([]);
-	let dipendenti = $state<any[]>([]); // Array grezzo dal backend
+	let dipendenti = $state<any[]>([]);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let searchQuery = $state('');
@@ -41,19 +40,19 @@
 	let showModalNuovo = $state(false);
 	let showModalPresenze = $state(false);
 	let showModalUpload = $state(false);
-	let showModalFeedback = $state(false); // Modal Feedback
+	let showModalFeedback = $state(false);
 
 	// --- STATI OPERATIVI (MACCHINA A STATI) ---
 	let selectedCorso = $state<CorsoFormazione | null>(null);
 	let iscrizioniAttuali = $state<IscrizioneCorso[]>([]);
 	let presenzeSelezionate = $state<number[]>([]);
-	let fileUploads = $state<Record<number, File>>({}); // Mappa idAzienda -> File
+	let fileUploads = $state<Record<number, File>>({});
 	let isActionLoading = $state(false);
 
 	let isLoadingFeedback = $state(false);
 	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
 
-	// Form di creazione
+	// Form di creazione (Con Data e Luogo)
 	let formCorso = $state<Partial<CorsoFormazioneRequest>>({
 		titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined
 	});
@@ -63,17 +62,14 @@
 	);
 
 	// --- REGOLA 4: PULIZIA DASHBOARD ADMIN ---
-	// Filtro di base: esclude i corsi "CERTIFICATO" perché il lavoro dell'Admin è concluso
 	const corsiAttiviAdmin = $derived(
 			corsi.filter(c => c.stato !== StatoCorso.CERTIFICATO)
 	);
 
-	// Filtro di ricerca applicato solo ai corsi operativi
 	const corsiFiltrati = $derived(
 			corsiAttiviAdmin.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	// --- SEZIONI STRUTTURALI DELLA DASHBOARD ---
 	const corsiConclusi = $derived(corsiFiltrati.filter(c =>
 			c.stato === StatoCorso.CONCLUSO ||
 			c.stato === StatoCorso.ATTESA_FIRMA_DOCENTE ||
@@ -82,12 +78,10 @@
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato));
 
-	// ARCHIVIO: Recupero dei corsi "CERTIFICATO" per poterne analizzare i feedback
 	const corsiArchiviati = $derived(
 			corsi.filter(c => c.stato === StatoCorso.CERTIFICATO && (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
-	// --- DERIVAZIONE AZIENDE PER UPLOAD ATTESTATI ---
 	const aziendeCoinvolte = $derived.by(() => {
 		if (!selectedCorso || iscrizioniAttuali.length === 0 || dipendenti.length === 0) return [];
 
@@ -96,11 +90,9 @@
 		const map = new Map<number, { idAzienda: number, ragioneSociale: string, count: number }>();
 
 		presenti.forEach(isc => {
-			// Trova il dipendente intero
 			const dip = dipendenti.find(d => d.idUtente === isc.idUtente);
-			if (!dip) return; // Se per assurdo non c'è, saltiamo
+			if (!dip) return;
 
-			// ESTRATTORE AGGRESSIVO DELL'ID AZIENDA:
 			let idAzienda = null;
 			let nomeAzienda = "Azienda Sconosciuta";
 
@@ -115,7 +107,6 @@
 				nomeAzienda = dip.ragioneSocialeAzienda || `Azienda ID ${idAzienda}`;
 			}
 
-			// Se abbiamo trovato un VERO ID Azienda, raggruppiamo.
 			if (idAzienda) {
 				if (!map.has(idAzienda)) {
 					map.set(idAzienda, {
@@ -125,15 +116,12 @@
 					});
 				}
 				map.get(idAzienda)!.count++;
-			} else {
-				console.warn(`Dipendente ${isc.emailUtente} non ha un'azienda associata nel database!`);
 			}
 		});
 
 		return Array.from(map.values());
 	});
 
-	// --- INIZIALIZZAZIONE ---
 	onMount(async () => {
 		try {
 			const [corsiRes, docentiRes, dipendentiRes] = await Promise.all([
@@ -152,7 +140,6 @@
 		}
 	});
 
-	// --- AZIONI CREAZIONE ED ELIMINAZIONE ---
 	async function salvaNuovoCorso() {
 		if (!isFormValid) return;
 		isSaving = true;
@@ -162,14 +149,12 @@
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
 				docente: { idUtente: formCorso.idDocente! },
-				// REGOLA DI INTEGRITÀ: Ogni nuovo corso nasce come PROGRAMMATO
 				stato: StatoCorso.PROGRAMMATO
-			} as any; // Usiamo any se l'interfaccia Request non lo prevede ancora
+			} as any;
 
 			const nuovo = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovo];
 
-			// Reset e chiusura
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
 		} catch (error) {
@@ -184,13 +169,11 @@
 		try {
 			await FormazioneService.deleteCorso(idCorso);
 			corsi = corsi.filter(c => c.idCorso !== idCorso);
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Errore durante l'eliminazione.");
 		}
 	}
 
-	// --- FASE 1 FSM: VALIDAZIONE PRESENZE ---
 	async function apriValidazione(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		isActionLoading = true;
@@ -198,7 +181,6 @@
 		try {
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 			presenzeSelezionate = iscrizioniAttuali.filter(i => i.presenzaConfermata).map(i => i.idUtente);
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile caricare il registro iscritti.");
 			showModalPresenze = false;
@@ -230,20 +212,13 @@
 		}
 	}
 
-	// --- FASE 3 FSM: UPLOAD ATTESTATI ---
 	async function apriUploadAttestati(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		isActionLoading = true;
 		showModalUpload = true;
-		fileUploads = {}; // Reset file
+		fileUploads = {};
 		try {
-			// Ricarichiamo le iscrizioni per essere sicuri dei dati
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
-
-			if (aziendeCoinvolte.length === 0) {
-				console.warn("Attenzione: Nessuna azienda rilevata per i presenti. Verifica i dati anagrafici dei dipendenti iscritti.");
-			}
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (error) {
 			alert("Impossibile caricare i dati.");
 			showModalUpload = false;
@@ -277,11 +252,9 @@
 				file: fileUploads[a.idAzienda]
 			}));
 
-			// Effettua la chiamata API
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
 			alert("Attestati distribuiti correttamente! Le aziende riceveranno una notifica.");
 
-			// FSM Client-Side: Aggiorniamo lo stato a CERTIFICATO per innescare la sparizione reattiva (Regola 4)
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
 
 			showModalUpload = false;
@@ -293,7 +266,6 @@
 		}
 	}
 
-	// --- NUOVA AZIONE: VISUALIZZA FEEDBACK ---
 	async function apriStatisticheFeedback(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		showModalFeedback = true;
@@ -313,7 +285,7 @@
 	function formattaData(isoString: string) {
 		if (!isoString) return '';
 		const d = new Date(isoString);
-		return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+		return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
 	}
 </script>
 
@@ -384,8 +356,7 @@
 									</button>
 								{/if}
 
-								<!-- Bottone per visionare i Feedback aggiunto globalmente in fondo ai corsi conclusi -->
-								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-purple-50 text-purple-700 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors shadow-sm">
+								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-colors shadow-sm">
 									<BarChart size={14} /> Metriche Feedback
 								</button>
 							</div>
@@ -446,7 +417,7 @@
 		<!-- ARCHIVIO STORICO (FEEDBACK SEMPRE CONSULTABILI) -->
 		<div class="mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-3 opacity-60 hover:opacity-100 transition-opacity">
-				<div class="p-2 bg-purple-100 text-purple-700 rounded-lg"><BookOpen size={20}/></div>
+				<div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg"><BookOpen size={20}/></div>
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
 			</div>
 
@@ -459,7 +430,7 @@
 							<span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border border-gray-300 text-gray-500 bg-white w-fit mb-3">CERTIFICATO</span>
 							<h3 class="font-bold text-[#1B4B6B] text-xs uppercase line-clamp-1 mb-4">{corso.titolo}</h3>
 							<div class="mt-auto pt-4 flex flex-col gap-2 border-t border-gray-200">
-								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2 bg-white text-purple-700 border border-purple-200 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-purple-50 transition-colors shadow-sm">
+								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2 bg-white text-[#1B4B6B] border border-[#1B4B6B]/20 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/5 transition-colors shadow-sm">
 									<BarChart size={12} /> Vedi Feedback
 								</button>
 							</div>
@@ -473,28 +444,28 @@
 
 {#if showModalNuovo}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
+		<div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Programma Nuovo Corso</h2>
-				<button onclick={() => showModalNuovo = false} class="hover:text-red-400"><X size={24} /></button>
+				<button onclick={() => showModalNuovo = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div class="col-span-2 space-y-2">
+				<div class="flex flex-col gap-6">
+					<div class="space-y-2">
 						<label class="text-[10px] font-bold text-gray-400 uppercase">Titolo del Corso *</label>
-						<input bind:value={formCorso.titolo} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs" />
+						<input bind:value={formCorso.titolo} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs outline-none focus:border-[#1B4B6B]" />
 					</div>
 					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase">Inizio Sessione *</label>
-						<input bind:value={formCorso.dataOrario} type="datetime-local" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-xs" />
+						<label class="text-[10px] font-bold text-gray-400 uppercase">Data di Inizio *</label>
+						<input bind:value={formCorso.dataOrario} type="date" max="9999-12-31" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-xs outline-none focus:border-[#1B4B6B]" />
 					</div>
 					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase">Sede Aula *</label>
-						<input bind:value={formCorso.luogoFisico} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs" />
+						<label class="text-[10px] font-bold text-gray-400 uppercase">Luogo Di Svolgimento *</label>
+						<input bind:value={formCorso.luogoFisico} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs outline-none focus:border-[#1B4B6B]" />
 					</div>
-					<div class="col-span-2 space-y-2 pt-2">
+					<div class="space-y-2">
 						<label class="text-[10px] font-bold text-gray-400 uppercase">Assegnazione Docente *</label>
-						<select bind:value={formCorso.idDocente} class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs cursor-pointer">
+						<select bind:value={formCorso.idDocente} class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs cursor-pointer outline-none focus:border-[#1B4B6B]">
 							<option value={undefined} disabled>-- Seleziona un docente --</option>
 							{#each docenti as docente (docente.idUtente)}
 								<option value={docente.idUtente}>{docente.nome} {docente.cognome}</option>
@@ -504,8 +475,8 @@
 				</div>
 			</div>
 			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4">
-				<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px]">Annulla</button>
-				<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50">
+				<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">Annulla</button>
+				<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50 transition-colors">
 					{isSaving ? 'Creazione...' : 'Salva Corso'}
 				</button>
 			</div>
@@ -518,7 +489,7 @@
 		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Validazione Presenze: {selectedCorso?.titolo}</h2>
-				<button onclick={() => showModalPresenze = false} class="hover:text-red-400"><X size={24} /></button>
+				<button onclick={() => showModalPresenze = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isActionLoading}
@@ -554,7 +525,7 @@
 		<div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-emerald-600 p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Distribuzione Attestati Aziendali</h2>
-				<button onclick={() => showModalUpload = false} class="hover:text-emerald-200"><X size={24} /></button>
+				<button onclick={() => showModalUpload = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isActionLoading && aziendeCoinvolte.length === 0}
@@ -606,20 +577,20 @@
 {#if showModalFeedback && selectedCorso}
 	<div class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
 		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" transition:scale>
-			<div class="bg-purple-600 p-8 text-white flex justify-between items-center">
+			<div class="bg-[#1B4B6B] p-8 text-white flex justify-between items-center">
 				<div>
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-3">
 						<BarChart size={24}/> Analisi Qualità Corso
 					</h2>
 					<p class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso.titolo}</p>
 				</div>
-				<button onclick={() => showModalFeedback = false} class="hover:text-purple-200 transition-colors"><X size={28} /></button>
+				<button onclick={() => showModalFeedback = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={28} /></button>
 			</div>
 
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isLoadingFeedback}
 					<div class="py-20 text-center flex flex-col items-center gap-4">
-						<Loader2 class="animate-spin text-purple-600" size={48} />
+						<Loader2 class="animate-spin text-[#1B4B6B]" size={48} />
 						<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Elaborazione metriche in corso...</span>
 					</div>
 				{:else if statsFeedback}
@@ -633,7 +604,7 @@
 							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
 								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Media Docenza</p>
 								<div class="flex items-baseline justify-center gap-1">
-									<span class="text-6xl font-black text-purple-600">{statsFeedback.mediaDocenza.toFixed(1)}</span>
+									<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
 									<span class="text-xl font-bold text-gray-300">/5</span>
 								</div>
 								<div class="flex justify-center gap-1 mt-4">
@@ -645,7 +616,7 @@
 							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
 								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Media Contenuti</p>
 								<div class="flex items-baseline justify-center gap-1">
-									<span class="text-6xl font-black text-purple-600">{statsFeedback.mediaContenuti.toFixed(1)}</span>
+									<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaContenuti.toFixed(1)}</span>
 									<span class="text-xl font-bold text-gray-300">/5</span>
 								</div>
 								<div class="flex justify-center gap-1 mt-4">
@@ -658,7 +629,7 @@
 
 						<div class="flex items-center justify-between mb-6">
 							<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti dei Partecipanti</h3>
-							<span class="bg-purple-100 text-purple-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
+							<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
                                 {statsFeedback.totaleFeedback} Risposte
                             </span>
 						</div>

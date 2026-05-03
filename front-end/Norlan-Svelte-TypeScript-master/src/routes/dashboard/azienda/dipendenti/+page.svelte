@@ -6,7 +6,8 @@
 	import {
 		Users, UserPlus, Trash2, Search, Mail, Building2,
 		IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-		FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare, Upload
+		FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare,
+		AlertCircle, CheckCircle, Clock, RefreshCw
 	} from 'lucide-svelte';
 
 	// Servizi e Modelli
@@ -15,20 +16,18 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { Documento } from '$lib/models/Documento';
 	import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
-	import { ModuloServizio, TipoDocumento, TipoDPI } from '$lib/models/Enums';
 
 	// Interfaccia estesa per la vista
 	interface DipendenteEsteso extends DipendenteDTO {
 		nomeAzienda?: string;
 	}
 
-	// Interfaccia estesa per tollerare la nuova proprietà nomeDpi senza conflitti
 	interface DpiEsteso extends AssegnazioneDPI {
 		nomeDpi?: string;
 	}
 
-	// Struttura reattiva del form DPI
 	interface FormDPI {
+		idAssegnazione: number | null;
 		tipo: string;
 		nomeDpi: string;
 		dataConsegna: string;
@@ -53,22 +52,17 @@
 
 	let dipendenteDaEliminare = $state<DipendenteEsteso | null>(null);
 	let formDipendente = $state({
-		nome: '', cognome: '', codiceFiscale: '', email: ''
+		nome: '',
+		cognome: '',
+		codiceFiscale: '',
+		email: '',
+		passwordHash: ''
 	});
-
-	// --- STATI DOCUMENTI ---
-	let showUploadModal = $state(false);
-	let isUploading = $state(false);
-	let uploadFile = $state<File | null>(null);
-	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.ATTESTATO_FORMAZIONE, dataScadenza: '' });
-
-	let showDeleteDocModal = $state(false);
-	let docDaEliminare = $state<Documento | null>(null);
 
 	// --- STATI DPI ---
 	let showDpiModal = $state(false);
 	let isSavingDpi = $state(false);
-	let formDpi = $state<FormDPI>({ tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' });
+	let formDpi = $state<FormDPI>({ idAssegnazione: null, tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' });
 
 	let showDeleteDpiModal = $state(false);
 	let dpiDaEliminare = $state<DpiEsteso | null>(null);
@@ -83,12 +77,49 @@
 	);
 
 	const isFormValid = $derived(
-			formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' &&
-			formDipendente.codiceFiscale.length === 16
+			formDipendente.nome.trim() !== '' &&
+			formDipendente.cognome.trim() !== '' &&
+			formDipendente.codiceFiscale.length === 16 &&
+			formDipendente.passwordHash.trim() !== ''
+	);
+
+	// --- LOGICA SEMAFORO (Stile Admin Scadenziario) ---
+	function getStatoScadenza(dataScadenza: string | undefined) {
+		if (!dataScadenza) return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
+
+		const oggi = new Date();
+		const scadenza = new Date(dataScadenza);
+		const diffTempo = scadenza.getTime() - oggi.getTime();
+		const giorniRimanenti = Math.ceil(diffTempo / (1000 * 3600 * 24));
+
+		if (giorniRimanenti < 0) return { colore: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Scaduto', IconaDef: AlertCircle, peso: 1 };
+		if (giorniRimanenti <= 30) return { colore: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', label: `In scadenza (${giorniRimanenti}gg)`, IconaDef: Clock, peso: 2 };
+
+		return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
+	}
+
+	// Ordinamento derivato per le liste nei dettagli del dipendente
+	const sortedDocumentiCorrenti = $derived(
+			[...documentiCorrenti].sort((a, b) => {
+				const statoA = getStatoScadenza(a.dataScadenza);
+				const statoB = getStatoScadenza(b.dataScadenza);
+				if (statoA.peso !== statoB.peso) return statoA.peso - statoB.peso;
+				return new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime();
+			})
+	);
+
+	const sortedDpiCorrenti = $derived(
+			[...dpiCorrenti].sort((a, b) => {
+				const statoA = getStatoScadenza(a.dataScadenzaRevisione);
+				const statoB = getStatoScadenza(b.dataScadenzaRevisione);
+				if (statoA.peso !== statoB.peso) return statoA.peso - statoB.peso;
+				const dataA = a.dataScadenzaRevisione ? new Date(a.dataScadenzaRevisione).getTime() : Infinity;
+				const dataB = b.dataScadenzaRevisione ? new Date(b.dataScadenzaRevisione).getTime() : Infinity;
+				return dataA - dataB;
+			})
 	);
 
 	// --- AZIONI ---
-
 	onMount(async () => {
 		try {
 			const session = AuthService.getSession();
@@ -153,17 +184,18 @@
 		if (!isFormValid || !idAziendaCorrente) return;
 		isSaving = true;
 		try {
-			const payload: DipendenteRequest = {
+			const payload = {
 				nome: formDipendente.nome,
 				cognome: formDipendente.cognome,
 				codiceFiscale: formDipendente.codiceFiscale,
-				email: formDipendente.email
+				email: formDipendente.email,
+				passwordHash: formDipendente.passwordHash
 			};
 			const nuovo = await LavoratoreService.create(idAziendaCorrente, payload);
 			const esteso: DipendenteEsteso = { ...nuovo, nomeAzienda: nomeAziendaCorrente };
 			lavoratori = [esteso, ...lavoratori];
 			showAddModal = false;
-			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '' };
+			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', passwordHash: '' };
 		} catch {
 			alert("Errore durante la registrazione.");
 		} finally {
@@ -192,82 +224,66 @@
 		}
 	}
 
-	// --- LOGICA DOCUMENTI ---
+	// --- LOGICA ATTESTATI (SOLO DOWNLOAD) ---
 	async function scaricaDoc(doc: Documento) {
 		try {
 			const b = await DocumentoService.downloadDocumento(doc.idDocumento);
 			const u = URL.createObjectURL(b);
 			const a = document.createElement('a');
 			a.href = u;
-			a.download = doc.filePath.split('/').pop() || 'doc.pdf';
+			a.download = doc.filePath.split('/').pop() || 'attestato.pdf';
 			a.click();
 			URL.revokeObjectURL(u);
 		} catch {
-			alert("Errore download.");
-		}
-	}
-
-	function preparaAggiornamento(doc: Documento) {
-		formDocumento.modulo = doc.modulo;
-		formDocumento.tipologia = doc.tipologia;
-		showUploadModal = true;
-	}
-
-	async function gestisciUpload() {
-		if (!uploadFile || !selectedDipendente || !formDocumento.dataScadenza) return;
-		isUploading = true;
-		try {
-			const fd = new FormData();
-			fd.append('file', uploadFile);
-			fd.append('modulo', formDocumento.modulo);
-			fd.append('tipologia', formDocumento.tipologia);
-			fd.append('dataScadenzaStr', formDocumento.dataScadenza);
-
-			await DocumentoService.uploadDocumento(selectedDipendente.idUtente, fd);
-			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedDipendente.idUtente);
-			showUploadModal = false;
-			uploadFile = null;
-		} catch {
-			alert("Errore upload.");
-		} finally {
-			isUploading = false;
-		}
-	}
-
-	function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }
-
-	async function confermaEliminaDoc() {
-		if (!docDaEliminare) return;
-		try {
-			await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
-			documentiCorrenti = documentiCorrenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
-			showDeleteDocModal = false;
-			docDaEliminare = null;
-		} catch {
-			alert("Errore eliminazione documento.");
+			alert("Errore download attestato.");
 		}
 	}
 
 	// --- LOGICA DPI ---
+	function openNewDpiModal() {
+		formDpi = { idAssegnazione: null, tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
+		showDpiModal = true;
+	}
+
+	function openUpdateDpiModal(dpi: DpiEsteso) {
+		formDpi = {
+			idAssegnazione: dpi.idAssegnazione || (dpi as any).id || null,
+			tipo: dpi.tipo || '',
+			nomeDpi: dpi.nomeDpi || '',
+			dataConsegna: '',
+			dataScadenzaRevisione: ''
+		};
+		showDpiModal = true;
+	}
+
 	async function salvaDPI() {
 		if (!selectedDipendente) return;
 		isSavingDpi = true;
 		try {
 			const payload = {
+				idAssegnazione: formDpi.idAssegnazione,
 				tipo: formDpi.tipo,
 				nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : undefined,
 				dataConsegna: formDpi.dataConsegna ? formDpi.dataConsegna : undefined,
 				dataScadenzaRevisione: formDpi.dataScadenzaRevisione
 			};
 
-			const nuovoDpi = await LavoratoreService.assegnaDpi(
+			const savedDpi = await LavoratoreService.assegnaDpi(
 					selectedDipendente.idUtente,
 					payload as any
 			);
 
-			dpiCorrenti = [...dpiCorrenti, nuovoDpi as unknown as DpiEsteso];
+			if (formDpi.idAssegnazione) {
+				dpiCorrenti = dpiCorrenti.map(d =>
+						(d.idAssegnazione === formDpi.idAssegnazione || (d as any).id === formDpi.idAssegnazione)
+								? (savedDpi as unknown as DpiEsteso)
+								: d
+				);
+			} else {
+				dpiCorrenti = [...dpiCorrenti, savedDpi as unknown as DpiEsteso];
+			}
+
 			showDpiModal = false;
-			formDpi = { tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
 		} catch {
 			alert("Errore salvataggio DPI.");
 		} finally {
@@ -303,7 +319,7 @@
 			</div>
 			<button
 					onclick={() => (showAddModal = true)}
-					class="bg-white text-purple-600 border-2 border-purple-600 px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-purple-600 hover:text-white transition-all flex items-center gap-3"
+					class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
 			>
 				<UserPlus size={18} /> Aggiungi Dipendente
 			</button>
@@ -332,7 +348,7 @@
 							</button>
 
 							<div class="flex items-center gap-4 mb-6">
-								<div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-purple-600 group-hover:text-white transition-all">
+								<div class="w-14 h-14 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">
 									{l.nome[0]}{l.cognome[0]}
 								</div>
 								<div>
@@ -355,7 +371,7 @@
 						</div>
 
 						<button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-							<div class="flex items-center gap-2"><FileText size={16} class="text-purple-600"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
+							<div class="flex items-center gap-2"><FileText size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
 							<ChevronRight size={20} class="text-[#1B4B6B]" />
 						</button>
 					</div>
@@ -373,24 +389,24 @@
 			<button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
 
 			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
-				<div class="bg-purple-600 p-10 text-white flex justify-between items-end relative">
+				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
 					<div class="flex items-center gap-6">
-						<div class="w-24 h-24 bg-white text-purple-600 rounded-3xl flex items-center justify-center font-black text-4xl shadow-lg">
+						<div class="w-24 h-24 bg-white text-[#1B4B6B] rounded-3xl flex items-center justify-center font-black text-4xl shadow-lg">
 							{selectedDipendente.nome[0]}{selectedDipendente.cognome[0]}
 						</div>
 						<div>
 							<div class="flex items-center gap-3 mb-3">
-								<span class="bg-purple-500/50 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Building2 size={12}/> {selectedDipendente.nomeAzienda}</span>
+								<span class="bg-white/20 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Building2 size={12}/> {selectedDipendente.nomeAzienda}</span>
 							</div>
 							<h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedDipendente.nome} {selectedDipendente.cognome}</h1>
 						</div>
 					</div>
 
 					<div class="flex items-center gap-3">
-						<button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-purple-600 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
+						<button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
 							<Mail size={16} /> Manda Mail
 						</button>
-						<button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-[#1B4B6B] text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-[#1B4B6B]/90 hover:scale-105">
+						<button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-white/20 text-white border border-white/20 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
 							<MessageSquare size={16} /> Contatta
 						</button>
 						<button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600/90 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-white/10 shadow-xl hover:bg-red-700 hover:scale-105">
@@ -412,28 +428,27 @@
 			</div>
 
 			{#if isLoadingDettaglio}
-				<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-purple-600" /></div>
+				<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
-								<div class="p-2.5 bg-blue-100 text-blue-600 rounded-xl shadow-inner"><FileText size={20} /></div>
-								<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documenti ({documentiCorrenti.length})</h2>
+								<div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><FileText size={20} /></div>
+								<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2>
 							</div>
-							<button onclick={() => (showUploadModal = true)} class="bg-[#1B4B6B] text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
-								<Plus size={14} /> Aggiungi
-							</button>
 						</div>
 
-						{#if documentiCorrenti.length > 0}
+						{#if sortedDocumentiCorrenti.length > 0}
 							<div class="space-y-4">
-								{#each documentiCorrenti as doc (doc.idDocumento)}
+								{#each sortedDocumentiCorrenti as doc (doc.idDocumento)}
+									{@const stato = getStatoScadenza(doc.dataScadenza)}
+									{@const IconaStato = stato.IconaDef}
 									<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
 										<div class="flex justify-between items-start mb-3">
 											<div class="flex items-center gap-3">
-												<div class="p-2 bg-gray-50 rounded-xl text-[#1B4B6B]"><FileText size={16} /></div>
+												<div class="p-2 {stato.bg} {stato.colore} rounded-xl"><FileText size={16} /></div>
 												<div>
 													<h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{doc.tipologia.replace(/_/g, ' ')}</h4>
 													<p class="text-[9px] text-gray-400 font-bold uppercase mt-0.5">{doc.modulo}</p>
@@ -441,7 +456,6 @@
 											</div>
 											<div class="flex gap-1">
 												<button onclick={() => scaricaDoc(doc)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-gray-50 rounded-lg hover:bg-gray-100"><Download size={14} /></button>
-												<button onclick={() => preparaEliminaDoc(doc)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
 											</div>
 										</div>
 										<div class="flex items-center justify-between pt-3 border-t border-gray-50">
@@ -449,18 +463,19 @@
 												<Calendar size={10} />
 												<span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
 											</div>
-											{#if doc.scaduto}
-												<button onclick={() => preparaAggiornamento(doc)} class="text-[8px] font-black px-3 py-1 bg-[#1B4B6B] text-white rounded-md uppercase shadow-sm hover:bg-[#1B4B6B]/80 hover:scale-105 transition-all">Aggiorna</button>
-											{:else}
-												<span class="text-[8px] font-black px-2 py-1 bg-green-50 text-green-600 border border-green-100 rounded-md uppercase">Valido</span>
-											{/if}
+
+											<!-- Logica Semaforo -->
+											<div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.border} {stato.bg} {stato.colore}">
+												<IconaStato size={12} />
+												<span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
+											</div>
 										</div>
 									</div>
 								{/each}
 							</div>
 						{:else}
 							<div class="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-gray-200 text-gray-300 uppercase font-bold text-[10px] italic">
-								Nessun documento associato al lavoratore
+								Nessun attestato associato al lavoratore
 							</div>
 						{/if}
 					</div>
@@ -468,38 +483,45 @@
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
-								<div class="p-2.5 bg-green-100 text-green-600 rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
+								<div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
 								<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
 							</div>
-							<button onclick={() => (showDpiModal = true)} class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-green-700 transition-all shadow-md">
+							<button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
 								<Plus size={14} /> Assegna DPI
 							</button>
 						</div>
 
-						{#if dpiCorrenti.length > 0}
+						{#if sortedDpiCorrenti.length > 0}
 							<div class="space-y-4">
-								{#each dpiCorrenti as dpi (dpi.idAssegnazione || Math.random())}
+								{#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || Math.random())}
 									{@const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ')}
+									{@const stato = getStatoScadenza(dpi.dataScadenzaRevisione)}
+									{@const IconaStato = stato.IconaDef}
 									<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
 										<div class="flex justify-between items-start mb-3">
 											<div class="flex items-center gap-3">
-												<div class="p-2 bg-green-50 rounded-xl text-green-600"><ShieldCheck size={16} /></div>
+												<div class="p-2 {stato.bg} {stato.colore} rounded-xl"><ShieldCheck size={16} /></div>
 												<div>
 													<h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{nomeDpiReale}</h4>
 												</div>
 											</div>
-											<button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
-										</div>
-										<div class="flex items-center gap-1.5 pt-3 border-t border-gray-50 text-gray-400">
-											<Calendar size={10} />
-											<span class="text-[9px] font-bold uppercase">Consegnato: {dpi.dataConsegna ? new Date(dpi.dataConsegna).toLocaleDateString() : 'N.D.'}</span>
-										</div>
-										{#if dpi.dataScadenzaRevisione}
-											<div class="flex items-center gap-1.5 pt-1 text-gray-400">
-												<AlertTriangle size={10} />
-												<span class="text-[9px] font-bold uppercase">Scadenza: {new Date(dpi.dataScadenzaRevisione).toLocaleDateString()}</span>
+											<div class="flex gap-1">
+												<button onclick={() => openUpdateDpiModal(dpi)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-gray-50 rounded-lg hover:bg-blue-50"><RefreshCw size={14} /></button>
+												<button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
 											</div>
-										{/if}
+										</div>
+										<div class="flex items-center justify-between pt-3 border-t border-gray-50">
+											<div class="flex items-center gap-1.5 text-gray-400">
+												<Calendar size={10} />
+												<span class="text-[9px] font-bold uppercase">Scad: {dpi.dataScadenzaRevisione ? new Date(dpi.dataScadenzaRevisione).toLocaleDateString() : 'N.D.'}</span>
+											</div>
+
+											<!-- Logica Semaforo -->
+											<div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.border} {stato.bg} {stato.colore}">
+												<IconaStato size={12} />
+												<span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
+											</div>
+										</div>
 									</div>
 								{/each}
 							</div>
@@ -519,7 +541,7 @@
 	{#if showAddModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
-				<div class="bg-purple-600 p-6 text-white flex justify-between items-center">
+				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Nuovo Lavoratore</h2>
 					<button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
 				</div>
@@ -531,22 +553,25 @@
 						</div>
 
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
-						<input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+						<input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
-						<input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+						<input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 					</div>
 					<div class="space-y-4">
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso</label>
-						<input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-600 outline-none" />
+						<input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
-						<input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA80A01H501W" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-purple-600 outline-none" />
+						<input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA80A01H501W" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+
+						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Password di Accesso *</label>
+						<input bind:value={formDipendente.passwordHash} type="text" placeholder="Password temporanea" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
 					<button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-					<button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
+					<button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors">
 						{#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra Dipendente
 					</button>
 				</div>
@@ -570,78 +595,20 @@
 		</div>
 	{/if}
 
-	{#if showUploadModal}
-		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><FileText size={20}/> Carica Documento Lavoratore</h2>
-					<button onclick={() => (showUploadModal = false)}><X size={24}/></button>
-				</div>
-				<div class="p-8 space-y-6">
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label>
-							<select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
-								{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}
-							</select>
-						</div>
-						<div>
-							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label>
-							<select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase">
-								{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}
-							</select>
-						</div>
-					</div>
-					<div>
-						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
-						<input type="date" bind:value={formDocumento.dataScadenza} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold" />
-					</div>
-					<div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group">
-						<input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} />
-						<label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3">
-							<div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div>
-							<span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span>
-						</label>
-					</div>
-				</div>
-				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
-					<button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button>
-					<button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2">
-						{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}
-					</button>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if showDeleteDocModal}
-		<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
-			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
-				<div class="p-8 text-center">
-					<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il documento?</h2>
-					<p class="text-sm text-gray-400 mb-8">Stai per rimuovere definitivamente: <br><span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span></p>
-					<div class="flex flex-col gap-3">
-						<button onclick={confermaEliminaDoc} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Eliminazione</button>
-						<button onclick={() => (showDeleteDocModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
-
 	<!-- MODALE INSERIMENTO DPI (Azienda) -->
 	{#if showDpiModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-				<div class="bg-green-600 p-6 text-white flex justify-between items-center">
-					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><ShieldCheck size={20}/> Registra Consegna DPI</h2>
-					<button onclick={() => (showDpiModal = false)}><X size={24}/></button>
+				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
+					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
+						<ShieldCheck size={20}/> {formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}
+					</h2>
+					<button onclick={() => (showDpiModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
 				</div>
 				<div class="p-8 space-y-6">
 					<div>
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia DPI *</label>
-						<select bind:value={formDpi.tipo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-green-600 outline-none">
+						<select bind:value={formDpi.tipo} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
 							<option value="">Seleziona DPI...</option>
 							<option value="ELMETTO">Elmetto</option>
 							<option value="GUANTI">Guanti</option>
@@ -654,18 +621,18 @@
 					{#if formDpi.tipo === 'ALTRO'}
 						<div class="space-y-1" transition:slide>
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
-							<input bind:value={formDpi.nomeDpi} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
+							<input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
 						</div>
 					{/if}
 
 					<div class="grid grid-cols-2 gap-4 mt-4">
 						<div>
-							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Consegna *</label>
-							<input type="date" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-green-600 outline-none" />
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
+							<input type="date" max="9999-12-31" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 						</div>
 						<div>
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Scadenza Revisione *</label>
-							<input type="date" bind:value={formDpi.dataScadenzaRevisione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-green-600 outline-none" />
+							<input type="date" max="9999-12-31" bind:value={formDpi.dataScadenzaRevisione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 						</div>
 					</div>
 				</div>
@@ -674,7 +641,7 @@
 					<button
 							onclick={salvaDPI}
 							disabled={isSavingDpi || !formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataConsegna || !formDpi.dataScadenzaRevisione}
-							class="bg-green-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-green-700 transition-colors"
+							class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors"
 					>
 						{#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
 					</button>

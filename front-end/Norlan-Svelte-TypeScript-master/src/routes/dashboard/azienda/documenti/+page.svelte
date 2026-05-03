@@ -225,7 +225,8 @@
 			<p class="text-xs font-black uppercase tracking-tight text-[#1B4B6B]">Richiesta Documenti Speciali</p>
 			<p class="text-[10px] font-medium uppercase tracking-tighter text-gray-500">
 				Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la
-				<a href="/dashboard/azienda/comunicazioni" class="font-black text-[#1B4B6B] underline">Chat NorLan</a>.
+				<!-- Aggiunto ?chatId=1 all'href -->
+				<a href="/dashboard/azienda/comunicazioni?chatId=1" class="font-black text-[#1B4B6B] underline">Chat NorLan</a>.
 			</p>
 		</div>
 	</div>

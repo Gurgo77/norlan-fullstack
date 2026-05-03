@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		Search, Filter, User, ShieldCheck, AlertTriangle, ArrowRight,
+		Search, User, ShieldCheck, AlertTriangle, ArrowRight,
 		Bookmark, Loader2, GraduationCap, Download, UploadCloud, CheckCircle2, FileCheck2,
 		BookPlus, X
 	} from 'lucide-svelte';
@@ -102,7 +102,10 @@
 
 	// --- LOGICA REATTIVA ---
 	const filteredDipendenti = $derived(
-			dipendenti.filter((d) => d.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase()))
+			dipendenti.filter((d) =>
+					d.corsi.length > 0 &&
+					d.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase())
+			)
 	);
 
 	const countDaAggiornare = $derived(
@@ -306,9 +309,6 @@
 						class="w-full rounded-2xl border border-gray-100 bg-white py-4 pl-12 pr-4 text-xs font-bold uppercase outline-none transition-all focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm"
 				/>
 			</div>
-			<button class="rounded-2xl border border-gray-100 bg-white p-4 text-gray-400 shadow-sm transition-all hover:text-[#1B4B6B]">
-				<Filter size={20} />
-			</button>
 		</div>
 
 		<div class="space-y-6">
@@ -335,9 +335,6 @@
 								{#if corso.stato === 'OK'} <ShieldCheck size={14} /> {:else} <AlertTriangle size={14} /> {/if}
 							</div>
 						{/each}
-						{#if dip.corsi.length === 0}
-							<p class="text-[10px] font-bold uppercase italic text-gray-300 mt-2">Nessun corso operativo in sospeso</p>
-						{/if}
 					</div>
 
 					<div class="flex items-center gap-3 w-full xl:w-auto justify-end mt-4 xl:mt-0 pt-4 xl:pt-0 border-t border-gray-100 xl:border-0">
@@ -355,8 +352,8 @@
 		{#if filteredDipendenti.length === 0}
 			<div class="rounded-[40px] border-2 border-dashed border-gray-100 bg-white p-20 text-center mt-6">
 				<GraduationCap size={48} class="mx-auto mb-4 text-gray-200" />
-				<h3 class="text-xl font-black uppercase text-[#1B4B6B]">Nessun dipendente trovato</h3>
-				<p class="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Verifica i criteri di ricerca nel database.</p>
+				<h3 class="text-xl font-black uppercase text-[#1B4B6B]">Nessun dipendente in formazione</h3>
+				<p class="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Attualmente non ci sono dipendenti iscritti ai corsi.</p>
 			</div>
 		{/if}
 
@@ -372,7 +369,7 @@
 					<h2 class="text-lg font-extrabold uppercase leading-none">Iscrizione Formativa</h2>
 					<p class="text-[10px] text-blue-200 uppercase mt-1">Iscrivi un dipendente a un corso NorLan</p>
 				</div>
-				<button onclick={() => showModalIscrizione = false} class="hover:text-red-400 transition-colors"><X size={24} /></button>
+				<button onclick={() => showModalIscrizione = false} class="hover:rotate-90 transition-transform"><X size={24} /></button>
 			</div>
 
 			<div class="p-8 flex-1 bg-gray-50/50 space-y-6">

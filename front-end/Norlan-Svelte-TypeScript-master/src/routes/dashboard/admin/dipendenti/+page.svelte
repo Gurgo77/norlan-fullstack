@@ -6,7 +6,8 @@
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Calendar, MessageSquare, Plus
+        FileText, ShieldCheck, Download, Calendar, MessageSquare, Plus,
+        AlertCircle, CheckCircle, Clock
     } from 'lucide-svelte';
 
     // Servizi e Modelli
@@ -22,16 +23,8 @@
         idAzienda?: string | number;
     }
 
-    // Interfaccia estesa per tollerare la nuova proprietà nomeDpi senza far arrabbiare ESLint/TS
     interface DpiEsteso extends AssegnazioneDPI {
         nomeDpi?: string;
-    }
-
-    interface FormDPI {
-        tipo: string;
-        nomeDpi: string;
-        dataConsegna: string;
-        dataScadenzaRevisione: string;
     }
 
     // --- STATO REATTIVO ---
@@ -55,21 +48,12 @@
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
-    // --- STATI ATTESTATI E DPI (Aggiunta ed eliminazione) ---
+    // --- STATI ATTESTATI E DPI (Eliminazione) ---
     let showDeleteDocModal = $state(false);
     let docDaEliminare = $state<Documento | null>(null);
 
     let showDeleteDpiModal = $state(false);
     let dpiDaEliminare = $state<DpiEsteso | null>(null);
-
-    let showAddDpiModal = $state(false);
-    let isSavingDpi = $state(false);
-    let formDpi = $state<FormDPI>({
-        tipo: '',
-        nomeDpi: '',
-        dataConsegna: '',
-        dataScadenzaRevisione: ''
-    });
 
     // --- LOGICA DERIVATA ---
     const filteredLavoratori = $derived(
@@ -81,7 +65,8 @@
         )
     );
 
-    const lavoratoriRaggruppati = $derived(() => {
+    // Svelte 5: Usiamo $derived.by per eseguire un blocco di logica che ritorna un oggetto
+    const lavoratoriRaggruppati = $derived.by(() => {
         const gruppi: Record<string, DipendenteEsteso[]> = {};
 
         const ordinati = [...filteredLavoratori].sort((a, b) => {
@@ -104,6 +89,41 @@
         formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' &&
         formDipendente.codiceFiscale.length === 16 && formDipendente.idAzienda !== '' &&
         formDipendente.password.trim() !== ''
+    );
+
+    // --- LOGICA SEMAFORO (Card Colorate e Ordinamento) ---
+    function getStatoScadenza(dataScadenza: string | undefined) {
+        if (!dataScadenza) return { colore: 'text-green-600', bgBadge: 'bg-green-50', borderBadge: 'border-green-200', bgTop: 'bg-green-500', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
+
+        const oggi = new Date();
+        const scadenza = new Date(dataScadenza);
+        const diffTempo = scadenza.getTime() - oggi.getTime();
+        const giorniRimanenti = Math.ceil(diffTempo / (1000 * 3600 * 24));
+
+        if (giorniRimanenti < 0) return { colore: 'text-red-600', bgBadge: 'bg-red-50', borderBadge: 'border-red-200', bgTop: 'bg-red-500', label: 'Scaduto', IconaDef: AlertCircle, peso: 1 };
+        if (giorniRimanenti <= 30) return { colore: 'text-yellow-600', bgBadge: 'bg-yellow-50', borderBadge: 'border-yellow-200', bgTop: 'bg-yellow-500', label: `In scadenza (${giorniRimanenti}gg)`, IconaDef: Clock, peso: 2 };
+
+        return { colore: 'text-green-600', bgBadge: 'bg-green-50', borderBadge: 'border-green-200', bgTop: 'bg-green-500', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
+    }
+
+    const sortedDocumentiCorrenti = $derived(
+        [...documentiCorrenti].sort((a, b) => {
+            const statoA = getStatoScadenza(a.dataScadenza);
+            const statoB = getStatoScadenza(b.dataScadenza);
+            if (statoA.peso !== statoB.peso) return statoA.peso - statoB.peso;
+            return new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime();
+        })
+    );
+
+    const sortedDpiCorrenti = $derived(
+        [...dpiCorrenti].sort((a, b) => {
+            const statoA = getStatoScadenza(a.dataScadenzaRevisione);
+            const statoB = getStatoScadenza(b.dataScadenzaRevisione);
+            if (statoA.peso !== statoB.peso) return statoA.peso - statoB.peso;
+            const dataA = a.dataScadenzaRevisione ? new Date(a.dataScadenzaRevisione).getTime() : Infinity;
+            const dataB = b.dataScadenzaRevisione ? new Date(b.dataScadenzaRevisione).getTime() : Infinity;
+            return dataA - dataB;
+        })
     );
 
     // --- AZIONI ---
@@ -149,32 +169,8 @@
                 DocumentoService.getDocumentiByAzienda(lavoratore.idUtente),
                 LavoratoreService.getDpiByLavoratore(lavoratore.idUtente)
             ]);
-
-            documentiCorrenti = resDocs.sort((a, b) => {
-                const oggi = new Date().getTime();
-                const scadA = new Date(a.dataScadenza).getTime();
-                const scadB = new Date(b.dataScadenza).getTime();
-                const aScaduto = scadA < oggi;
-                const bScaduto = scadB < oggi;
-
-                if (aScaduto && !bScaduto) return -1;
-                if (!aScaduto && bScaduto) return 1;
-                return scadA - scadB;
-            });
-
-            const dpis = resDpis as unknown as DpiEsteso[];
-            dpiCorrenti = dpis.sort((a, b) => {
-                const aScaduto = isDPIScaduto(a.dataScadenzaRevisione);
-                const bScaduto = isDPIScaduto(b.dataScadenzaRevisione);
-
-                if (aScaduto && !bScaduto) return -1;
-                if (!aScaduto && bScaduto) return 1;
-
-                const scadA = new Date(a.dataScadenzaRevisione || '9999-12-31').getTime();
-                const scadB = new Date(b.dataScadenzaRevisione || '9999-12-31').getTime();
-                return scadA - scadB;
-            });
-
+            documentiCorrenti = resDocs;
+            dpiCorrenti = resDpis as unknown as DpiEsteso[];
         } catch (error) {
             console.error("Errore caricamento dettaglio dipendente:", error);
         } finally {
@@ -280,17 +276,6 @@
         }
     }
 
-    function isDPIScaduto(dataScadenza?: string) {
-        if (!dataScadenza || dataScadenza === '9999-12-31') return false;
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
-        const oggi = new Date();
-        oggi.setHours(0, 0, 0, 0);
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
-        const scad = new Date(dataScadenza);
-        scad.setHours(0, 0, 0, 0);
-        return scad < oggi;
-    }
-
     function sollecitaViaEmail(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
         const azienda = aziende.find(a => String(a.idUtente) === String(selectedDipendente?.idAzienda));
@@ -301,9 +286,8 @@
         }
 
         const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${selectedDipendente.nome} ${selectedDipendente.cognome}`);
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const dataScad = new Date(dpi.dataScadenzaRevisione || '').toLocaleDateString();
-        const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
+        const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ');
 
         const body = encodeURIComponent(
             `Gentile ${azienda.ragioneSociale},\n\n` +
@@ -316,43 +300,14 @@
     async function sollecitaViaChat(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
 
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const dataScad = new Date(dpi.dataScadenzaRevisione || '').toLocaleDateString();
-        const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
+        const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ');
 
         const testoMessaggio = encodeURIComponent(
             `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
         await goto(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`);
-    }
-
-    async function salvaDpi() {
-        if (!selectedDipendente) return;
-        isSavingDpi = true;
-        try {
-            const payload = {
-                tipo: formDpi.tipo,
-                nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : undefined,
-                dataConsegna: formDpi.dataConsegna ? formDpi.dataConsegna : undefined,
-                dataScadenzaRevisione: formDpi.dataScadenzaRevisione
-            };
-
-            const nuovoDpi = await LavoratoreService.assegnaDpi(
-                selectedDipendente.idUtente,
-                payload as any
-            );
-
-            dpiCorrenti = [...dpiCorrenti, nuovoDpi as unknown as DpiEsteso];
-
-            showAddDpiModal = false;
-            formDpi = { tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
-        } catch (error) {
-            console.error("Errore salvataggio DPI:", error);
-            alert("Errore durante l'assegnazione del DPI.");
-        } finally {
-            isSavingDpi = false;
-        }
     }
 
     function preparaEliminaDPI(dpi: DpiEsteso) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
@@ -376,7 +331,6 @@
 
     function formattaScadenza(data?: string) {
         if (!data || data === '9999-12-31') return 'Senza scadenza';
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         return new Date(data).toLocaleDateString();
     }
 </script>
@@ -412,8 +366,8 @@
                 <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
             </div>
         {:else}
-            <!-- Correzione dell'errore (key) aggiunta qui -->
-            {#each Object.entries(lavoratoriRaggruppati()) as [nomeAzienda, dipendentiAzienda] (nomeAzienda)}
+            <!-- Svelte 5: lavoratoriRaggruppati ora è valutato direttamente come oggetto -->
+            {#each Object.entries(lavoratoriRaggruppati) as [nomeAzienda, dipendentiAzienda] (nomeAzienda)}
                 <div class="mb-12">
                     <div class="flex items-center gap-3 mb-6 pb-2 border-b-2 border-gray-100">
                         <div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg">
@@ -429,7 +383,8 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {#each dipendentiAzienda as l (l.idUtente)}
-                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden hover:border-[#1B4B6B]/30" in:scale>
+                            <!-- Modificate le classi hover per allinearle a quelle di Azienda -->
+                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#1B4B6B]/20 hover:-translate-y-1 transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
 
                                 <div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
                                     <button
@@ -491,7 +446,7 @@
                         <button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
                             <MessageSquare size={16} /> Contatta
                         </button>
-                        <button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl hover:bg-red-700 hover:scale-105">
+                        <button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600/90 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-white/10 shadow-xl hover:bg-red-700 hover:scale-105">
                             <Trash2 size={16} /> Rimuovi
                         </button>
                     </div>
@@ -522,18 +477,19 @@
                             </div>
                         </div>
 
-                        {#if documentiCorrenti.length > 0}
+                        {#if sortedDocumentiCorrenti.length > 0}
                             <div class="space-y-4">
-                                {#each documentiCorrenti as doc (doc.idDocumento)}
-                                    {@const docScaduto = new Date(doc.dataScadenza).getTime() < new Date().getTime()}
-                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {docScaduto ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
+                                {#each sortedDocumentiCorrenti as doc (doc.idDocumento)}
+                                    {@const stato = getStatoScadenza(doc.dataScadenza)}
+                                    {@const IconaStato = stato.IconaDef}
+                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {stato.peso === 1 ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
                                         <div class="flex justify-between items-start mb-3">
                                             <div class="flex items-center gap-3">
-                                                <div class="p-2 rounded-xl {docScaduto ? 'bg-red-100 text-red-600' : 'bg-gray-50 text-[#1B4B6B]'}">
+                                                <div class="p-2 rounded-xl {stato.bgBadge} {stato.colore}">
                                                     <FileText size={16} />
                                                 </div>
                                                 <div>
-                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {docScaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">{doc.tipologia.replace(/_/g, ' ')}</h4>
+                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {stato.peso === 1 ? 'text-red-700' : 'text-[#1B4B6B]'}">{doc.tipologia.replace(/_/g, ' ')}</h4>
                                                     <p class="text-[9px] text-gray-400 font-bold uppercase mt-0.5">{doc.modulo}</p>
                                                 </div>
                                             </div>
@@ -542,16 +498,16 @@
                                                 <button onclick={() => preparaEliminaDoc(doc)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-white rounded-lg hover:bg-red-50 shadow-sm"><Trash2 size={14} /></button>
                                             </div>
                                         </div>
-                                        <div class="flex items-center justify-between pt-3 border-t border-gray-50">
+                                        <div class="flex items-center justify-between pt-3 border-t {stato.peso === 1 ? 'border-red-100' : 'border-gray-50'}">
                                             <div class="flex items-center gap-1.5 text-gray-400">
                                                 <Calendar size={10} />
                                                 <span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
                                             </div>
-                                            {#if docScaduto}
-                                                <span class="text-[8px] font-black px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded-md uppercase">Scaduto</span>
-                                            {:else}
-                                                <span class="text-[8px] font-black px-2 py-1 bg-green-50 text-green-600 border border-green-100 rounded-md uppercase">Valido</span>
-                                            {/if}
+                                            <!-- Logica Semaforo -->
+                                            <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.borderBadge} {stato.bgBadge} {stato.colore}">
+                                                <IconaStato size={12} />
+                                                <span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 {/each}
@@ -566,52 +522,54 @@
                     <div class="space-y-6">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <div class="p-2.5 bg-green-100 text-green-600 rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
+                                <div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
                                 <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
                             </div>
-                            <button onclick={() => showAddDpiModal = true} class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-green-700 transition-all shadow-md">
-                                <Plus size={16} /> Assegna DPI
-                            </button>
                         </div>
 
-                        {#if dpiCorrenti.length > 0}
+                        {#if sortedDpiCorrenti.length > 0}
                             <div class="space-y-4">
-                                {#each dpiCorrenti as dpi (dpi.idAssegnazione)}
-                                    {@const scaduto = isDPIScaduto(dpi.dataScadenzaRevisione)}
+                                {#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || Math.random())}
                                     {@const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ')}
+                                    {@const stato = getStatoScadenza(dpi.dataScadenzaRevisione)}
+                                    {@const IconaStato = stato.IconaDef}
 
-                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {scaduto ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
+                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {stato.peso === 1 ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
                                         <div class="flex justify-between items-start mb-3">
                                             <div class="flex items-center gap-3">
-                                                <div class="p-2 rounded-xl {scaduto ? 'bg-red-100 text-red-600' : 'bg-green-50 text-green-600'}">
+                                                <div class="p-2 rounded-xl {stato.bgBadge} {stato.colore}">
                                                     <ShieldCheck size={16} />
                                                 </div>
                                                 <div>
-                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {scaduto ? 'text-red-700' : 'text-[#1B4B6B]'}">
+                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {stato.peso === 1 ? 'text-red-700' : 'text-[#1B4B6B]'}">
                                                         {nomeDpiReale}
                                                     </h4>
                                                 </div>
                                             </div>
-                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all rounded-lg {scaduto ? 'hover:bg-red-100 bg-white' : 'hover:bg-red-50 bg-gray-50'}">
+                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all rounded-lg {stato.peso === 1 ? 'hover:bg-red-100 bg-white' : 'hover:bg-red-50 bg-gray-50'}">
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
 
-                                        <div class="flex flex-col gap-2 pt-3 border-t {scaduto ? 'border-red-100' : 'border-gray-50'}">
-                                            <div class="flex items-center gap-1.5 {scaduto ? 'text-red-400' : 'text-gray-400'}">
+                                        <div class="flex flex-col gap-2 pt-3 border-t {stato.peso === 1 ? 'border-red-100' : 'border-gray-50'}">
+                                            <div class="flex items-center gap-1.5 {stato.peso === 1 ? 'text-red-400' : 'text-gray-400'}">
                                                 <Calendar size={10} />
                                                 <span class="text-[9px] font-bold uppercase">Consegnato: {formattaScadenza(dpi.dataConsegna)}</span>
                                             </div>
                                             <div class="flex items-center justify-between">
-                                                <div class="flex items-center gap-1.5 {scaduto ? 'text-red-600 font-black' : 'text-gray-400'}">
+                                                <div class="flex items-center gap-1.5 {stato.peso === 1 ? 'text-red-600 font-black' : 'text-gray-400'}">
                                                     <AlertTriangle size={10} />
                                                     <span class="text-[9px] font-bold uppercase">
-                                                        {scaduto ? 'Scaduto il:' : 'Scadenza:'} {formattaScadenza(dpi.dataScadenzaRevisione)}
+                                                        {stato.peso === 1 ? 'Scaduto il:' : 'Scadenza:'} {formattaScadenza(dpi.dataScadenzaRevisione)}
                                                     </span>
+                                                </div>
+                                                <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.borderBadge} {stato.bgBadge} {stato.colore}">
+                                                    <IconaStato size={12} />
+                                                    <span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
                                                 </div>
                                             </div>
 
-                                            {#if scaduto}
+                                            {#if stato.peso === 1}
                                                 <div class="mt-2 pt-2 border-t border-red-100 border-dashed">
                                                     <p class="text-[8px] font-black uppercase text-red-400 mb-1.5 text-center tracking-tighter">
                                                         Invia sollecito a {selectedDipendente.nomeAzienda}:
@@ -651,10 +609,10 @@
 
     {#if showAddModal}
         <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
                 <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
                     <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Lavoratore</h2>
-                    <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
+                    <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform duration-300"><X size={24}/></button>
                 </div>
 
                 <div class="p-8 space-y-4">
@@ -716,66 +674,11 @@
         </div>
     {/if}
 
-    <!-- MODALE INSERIMENTO DPI -->
-    {#if showAddDpiModal}
-        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-                <div class="bg-green-600 p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><ShieldCheck size={20}/> Assegna DPI</h2>
-                    <button onclick={() => (showAddDpiModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
-                </div>
-
-                <div class="p-8 space-y-4">
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Tipologia DPI *</label>
-                        <select bind:value={formDpi.tipo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none font-bold">
-                            <option value="">Seleziona tipologia...</option>
-                            <option value="ELMETTO">Elmetto</option>
-                            <option value="GUANTI">Guanti</option>
-                            <option value="SCARPE_ANTINFORTUNISTICHE">Scarpe Antinfortunistiche</option>
-                            <option value="OCCHIALI">Occhiali</option>
-                            <option value="ALTRO">Altro</option>
-                        </select>
-                    </div>
-
-                    {#if formDpi.tipo === 'ALTRO'}
-                        <div class="space-y-1" transition:slide>
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
-                            <input bind:value={formDpi.nomeDpi} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
-                        </div>
-                    {/if}
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Data Consegna</label>
-                            <input bind:value={formDpi.dataConsegna} type="date" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Scadenza Revisione *</label>
-                            <input bind:value={formDpi.dataScadenzaRevisione} type="date" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-green-600 outline-none" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
-                    <button onclick={() => (showAddDpiModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-                    <button
-                            onclick={salvaDpi}
-                            disabled={!formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataScadenzaRevisione || isSavingDpi}
-                            class="bg-green-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-green-700 transition-colors"
-                    >
-                        {#if isSavingDpi}<Loader2 size={14} class="animate-spin"/>{:else}<ShieldCheck size={14}/>{/if} Assegna
-                    </button>
-                </div>
-            </div>
-        </div>
-    {/if}
-
     {#if showDeleteModal}
         <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
                 <div class="p-8 text-center">
-                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40}/></div>
                     <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere dipendente?</h2>
                     <p class="text-sm text-gray-400 mb-8">Il lavoratore <span class="font-bold text-[#1B4B6B]">{dipendenteDaEliminare?.nome} {dipendenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.</p>
                     <div class="flex flex-col gap-3">
@@ -809,7 +712,7 @@
                 <div class="p-8 text-center">
                     <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
                     <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere DPI?</h2>
-                    <p class="text-sm text-gray-400 mb-8">Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo.replace(/_/g, ' ')}</span></p>
+                    <p class="text-sm text-gray-400 mb-8">Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo?.replace(/_/g, ' ')}</span></p>
                     <div class="flex flex-col gap-3">
                         <button onclick={confermaEliminaDPI} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Rimozione</button>
                         <button onclick={() => (showDeleteDpiModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>

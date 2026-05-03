@@ -213,10 +213,8 @@
 
 				<div class="flex items-center gap-4">
 					<div class="text-right hidden sm:block">
-						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">{aziendaNome ? aziendaNome.split(' ')[0] : 'Area'}</p>
-					</div>
-					<div class="w-10 h-10 bg-[#1B4B6B] rounded-lg flex items-center justify-center text-white shadow-md">
-						<Building2 size={20} />
+						<p class="text-xs font-extrabold text-[#1B4B6B] uppercase">{aziendaNome}</p>
+						<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Profilo Aziendale</p>
 					</div>
 				</div>
 			</div>

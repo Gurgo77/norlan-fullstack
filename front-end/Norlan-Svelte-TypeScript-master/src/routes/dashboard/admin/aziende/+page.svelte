@@ -33,7 +33,7 @@
 	let showUploadModal = $state(false);
 	let isUploading = $state(false);
 	let uploadFile = $state<File | null>(null);
-	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataScadenza: '' });
+	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataRilascio: '', dataScadenza: '' });
 	let idDocumentoDaAggiornare = $state<number | null>(null);
 
 	// Stato Personale
@@ -178,7 +178,7 @@
 	// Funzione dedicata per quando si carica un documento partendo da zero
 	function apriModalUploadNuovo() {
 		idDocumentoDaAggiornare = null;
-		formDocumento = { modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataScadenza: '' };
+		formDocumento = { modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataRilascio: '', dataScadenza: '' };
 		showUploadModal = true;
 	}
 
@@ -187,19 +187,21 @@
 		idDocumentoDaAggiornare = doc.idDocumento; // Memorizziamo chi dobbiamo cancellare
 		formDocumento.modulo = doc.modulo;
 		formDocumento.tipologia = doc.tipologia;
-		formDocumento.dataScadenza = ''; // Resettiamo la data per il nuovo file
+		formDocumento.dataRilascio = ''; // Resettiamo la data per il nuovo file
+		formDocumento.dataScadenza = '';
 		showUploadModal = true;
 	}
 
 	async function gestisciUpload() {
-		if (!uploadFile || !selectedAzienda || !formDocumento.dataScadenza) return;
+		if (!uploadFile || !selectedAzienda || !formDocumento.dataScadenza || !formDocumento.dataRilascio) return;
 		isUploading = true;
 		try {
 			const fd = new FormData();
 			fd.append('file', uploadFile);
 			fd.append('modulo', formDocumento.modulo);
 			fd.append('tipologia', formDocumento.tipologia);
-			fd.append('dataScadenza', formDocumento.dataScadenza);
+			fd.append('dataScadenzaStr', formDocumento.dataScadenza);
+			fd.append('dataRilascioStr', formDocumento.dataRilascio); // Inviamo al backend
 
 			// 1. Prima facciamo l'upload del file nuovo
 			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
@@ -373,7 +375,7 @@
 						<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl shadow-inner"><FileText size={24} /></div>
 						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiAziendaliFiltrati.length})</h2>
 					</div>
-					<button onclick={apriModalUploadNuovo} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 hover:bg-[#153a54] transition-all shadow-md">
+					<button onclick={apriModalUploadNuovo} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-2.5 rounded-xl font-extrabold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-all shadow-md">
 						<Plus size={16} /> Carica Documento
 					</button>
 				</div>
@@ -430,7 +432,7 @@
 						<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl shadow-inner"><Users size={24} /></div>
 						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale ({dipendentiCorrenti.length})</h2>
 					</div>
-					<button onclick={() => (showDipendenteModal = true)} class="bg-[#1B4B6B] text-white px-6 py-2.5 rounded-xl font-bold uppercase text-[10px] flex items-center gap-2 shadow-md hover:bg-[#153a54] transition-all">
+					<button onclick={() => (showDipendenteModal = true)} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-2.5 rounded-xl font-extrabold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-all shadow-md">
 						<UserPlus size={16} /> Aggiungi Dipendente
 					</button>
 				</div>
@@ -473,7 +475,7 @@
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Dipendente</h2>
-					<button onclick={() => (showDipendenteModal = false)}><X size={24}/></button>
+					<button onclick={() => (showDipendenteModal = false)} class="hover:text-red-400 hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 space-y-4">
 					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nome *</label><input bind:value={formDipendente.nome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
@@ -502,26 +504,36 @@
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><FileText size={20}/> Carica Documento</h2>
-					<button onclick={() => (showUploadModal = false)}><X size={24}/></button>
+					<button onclick={() => (showUploadModal = false)} class="hover:text-red-400 hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 space-y-6">
 					<div class="grid grid-cols-2 gap-4">
 						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label><select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-[#1B4B6B]">{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}</select></div>
 						<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label><select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-[#1B4B6B]">{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}</select></div>
 					</div>
-					<div>
-						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
-						<input
-								type="date"
-								min="1000-01-01"
-								max="9999-12-31"
-								bind:value={formDocumento.dataScadenza}
-								class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-[#1B4B6B]"
-						/>
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data di Rilascio *</label>
+							<input
+									type="date"
+									max="9999-12-31"
+									bind:value={formDocumento.dataRilascio}
+									class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none"
+							/>
+						</div>
+						<div>
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data Scadenza *</label>
+							<input
+									type="date"
+									max="9999-12-31"
+									bind:value={formDocumento.dataScadenza}
+									class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none"
+							/>
+						</div>
 					</div>
 					<div class="border-2 border-dashed border-gray-100 rounded-3xl p-8 text-center bg-gray-50/50 group"><input type="file" accept=".pdf,.doc,.docx" id="fileUpload" class="hidden" onchange={(e) => uploadFile = e.currentTarget.files?.[0] || null} /><label for="fileUpload" class="cursor-pointer flex flex-col items-center gap-3"><div class="p-4 bg-white rounded-full text-[#1B4B6B] shadow-sm group-hover:scale-110 transition-transform"><Upload size={24} /></div><span class="text-xs font-black text-gray-500 uppercase tracking-tighter">{uploadFile ? uploadFile.name : 'Seleziona file'}</span></label></div>
 				</div>
-				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t"><button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button><button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54]">{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}</button></div>
+				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t"><button onclick={() => (showUploadModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400">Annulla</button><button onclick={gestisciUpload} disabled={isUploading || !uploadFile || !formDocumento.dataScadenza || !formDocumento.dataRilascio} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54]">{#if isUploading}<Loader2 size={14} class="animate-spin" />{/if} {isUploading ? 'Salvataggio...' : 'Conferma'}</button></div>
 			</div>
 		</div>
 	{/if}
@@ -531,7 +543,7 @@
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><Building2 size={20}/> Nuova Anagrafica Aziendale</h2>
-					<button onclick={() => (showModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
+					<button onclick={() => (showModal = false)} class="hover:text-red-400 hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 max-h-[80vh] overflow-y-auto">
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">

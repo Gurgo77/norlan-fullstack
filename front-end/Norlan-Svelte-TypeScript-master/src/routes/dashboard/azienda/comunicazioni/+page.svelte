@@ -7,6 +7,7 @@
 	import { ChatService } from '$lib/services/ChatService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
+	import { page } from '$app/stores';
 
 	// Modelli
 	import { Messaggio } from '$lib/models/Messaggio';
@@ -33,8 +34,8 @@
 	const STAFF_ID = 1; // ID convenzionale dello Staff NorLan
 
 	onMount(async () => {
-		currentUser = AuthService.getSession(); //
-		token = AuthService.getToken() || ''; //
+		currentUser = AuthService.getSession();
+		token = AuthService.getToken() || '';
 
 		if (currentUser) {
 			try {
@@ -53,13 +54,23 @@
 					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Consulenza", isStaff: true },
 					...listaDipendenti
 				];
+
+				// 3. Controlla se c'è un chatId nell'URL e apri la conversazione
+				const chatIdDaUrl = $page.url.searchParams.get('chatId');
+				if (chatIdDaUrl) {
+					const contattoTrovato = contatti.find(c => String(c.id) === chatIdDaUrl);
+					if (contattoTrovato) {
+						await selectContact(contattoTrovato);
+					}
+				}
+
 			} catch (error) {
 				console.error("Errore nel recupero della rubrica dipendenti", error);
 			} finally {
 				isLoading = false;
 			}
 
-			// 3. Connessione al WebSocket
+			// 4. Connessione al WebSocket
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						// Ricezione messaggio in tempo reale
@@ -75,7 +86,7 @@
 	});
 
 	onDestroy(() => {
-		if (chatService) chatService.disconnect(); //
+		if (chatService) chatService.disconnect();
 	});
 
 	async function selectContact(contatto: Contatto) {
