@@ -4,7 +4,6 @@
   </script>
   
   <style>
-    /* Slide-in animation for hero section */
     @keyframes slideInFromBottom {
       from {
         transform: translateY(100%);
@@ -23,7 +22,6 @@
   
   <div class="min-h-screen pt-20 bg-white" in:fade out:fade>
     <section class="relative h-[70vh] flex items-center justify-center overflow-hidden">
-      <!-- Immagine di sfondo -->
       <div class="absolute inset-0 w-full h-full blur-sm">
         <img
           src="/NorLan.jpg"
@@ -31,9 +29,7 @@
           class="w-full h-full object-cover"
         />
       </div>
-      <!-- Overlay gradiente -->
       <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50"></div>
-      <!-- Contenuto sovrapposto -->
       <div class="container mx-auto px-4 relative z-10 text-center slide-in-bottom">
         <h1 class="text-4xl md:text-5xl font-bold text-white">
           Informativa sulla Privacy
@@ -44,7 +40,6 @@
       </div>
     </section>
   
-    <!-- Main Content -->
     <section class="py-20 bg-gray-50 text-center px-4">
       <div class="max-w-4xl mx-auto text-left">
         <h2 class="text-2xl md:text-3xl font-bold text-[#1B4B6B] mb-4">Informativa sulla Privacy</h2>
@@ -55,7 +50,6 @@
           In particolare, vengono richiesti, in applicazione del principio di minimizzazione, solo i dati necessari per dare riscontro alla Sua richiesta, ovvero: Nome e Cognome, indirizzo di posta elettronica ed eventuali dati ulteriori da Lei inseriti nella sezione “messaggio”.
         </p>
   
-        <!-- Finalità e Base Giuridica del Trattamento -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Finalità e Base Giuridica del Trattamento</h3>
           <p class="text-gray-600 mb-4">
@@ -75,7 +69,6 @@
           </ul>
         </div>
   
-        <!-- Tipologia e Fonte dei Dati Personali Trattati -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Tipologia e Fonte dei Dati Personali Trattati</h3>
           <p class="text-gray-600 mb-4">
@@ -83,7 +76,6 @@
           </p>
         </div>
   
-        <!-- Principi del Trattamento -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Principi del Trattamento</h3>
           <p class="text-gray-600 mb-4">
@@ -91,7 +83,6 @@
           </p>
         </div>
   
-        <!-- Modalità e Luogo del Trattamento -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Modalità e Luogo del Trattamento</h3>
           <p class="text-gray-600 mb-4">
@@ -99,7 +90,6 @@
           </p>
         </div>
   
-        <!-- Natura Obbligatoria o Facoltativa del Conferimento -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Natura Obbligatoria o Facoltativa del Conferimento</h3>
           <p class="text-gray-600 mb-4">
@@ -107,7 +97,6 @@
           </p>
         </div>
   
-        <!-- Comunicazione dei Dati -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Comunicazione dei Dati</h3>
           <p class="text-gray-600 mb-4">
@@ -115,7 +104,6 @@
           </p>
         </div>
   
-        <!-- Trasferimento dei Dati verso un Paese Terzo e/o un’Organizzazione Internazionale e Garanzie -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Trasferimento dei Dati verso un Paese Terzo e/o un’Organizzazione Internazionale e Garanzie</h3>
           <p class="text-gray-600 mb-4">
@@ -123,7 +111,6 @@
           </p>
         </div>
   
-        <!-- Conservazione dei Dati -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Conservazione dei Dati</h3>
           <p class="text-gray-600 mb-4">
@@ -131,7 +118,6 @@
           </p>
         </div>
   
-        <!-- Processi Automatizzati -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Processi Automatizzati</h3>
           <p class="text-gray-600 mb-4">
@@ -139,7 +125,6 @@
           </p>
         </div>
   
-        <!-- Diritti degli Interessati -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Diritti degli Interessati</h3>
           <p class="text-gray-600 mb-4">
@@ -158,7 +143,6 @@
           </ul>
         </div>
   
-        <!-- Titolare del Trattamento -->
         <div class="mt-8">
           <h3 class="text-xl font-bold text-[#1B4B6B] mb-2">Titolare del Trattamento</h3>
           <p class="text-gray-600 mb-4">

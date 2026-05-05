@@ -8,7 +8,6 @@
 		BarChart, Star, BookOpen
 	} from 'lucide-svelte';
 
-	// Modelli
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Docente, type DocenteData } from '$lib/models/Docente';
 	import { StatoCorso } from '$lib/models/Enums';
@@ -23,12 +22,10 @@
 		commenti: string[];
 	}
 
-	// Servizi
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
 
-	// --- STATO REATTIVO GLOBALE ---
 	let corsi = $state<CorsoFormazione[]>([]);
 	let docenti = $state<Docente[]>([]);
 	let dipendenti = $state<any[]>([]);
@@ -36,13 +33,11 @@
 	let isSaving = $state(false);
 	let searchQuery = $state('');
 
-	// --- STATI MODALI ---
 	let showModalNuovo = $state(false);
 	let showModalPresenze = $state(false);
 	let showModalUpload = $state(false);
 	let showModalFeedback = $state(false);
 
-	// --- STATI OPERATIVI (MACCHINA A STATI) ---
 	let selectedCorso = $state<CorsoFormazione | null>(null);
 	let iscrizioniAttuali = $state<IscrizioneCorso[]>([]);
 	let presenzeSelezionate = $state<number[]>([]);
@@ -52,7 +47,6 @@
 	let isLoadingFeedback = $state(false);
 	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
 
-	// Form di creazione (Con Data e Luogo)
 	let formCorso = $state<Partial<CorsoFormazioneRequest>>({
 		titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined
 	});
@@ -61,7 +55,6 @@
 			!!formCorso.titolo && !!formCorso.dataOrario && !!formCorso.luogoFisico && !!formCorso.idDocente
 	);
 
-	// --- REGOLA 4: PULIZIA DASHBOARD ADMIN ---
 	const corsiAttiviAdmin = $derived(
 			corsi.filter(c => c.stato !== StatoCorso.CERTIFICATO)
 	);
@@ -144,20 +137,19 @@
 		if (!isFormValid) return;
 		isSaving = true;
 		try {
-			const payload = {
+			const payload: CorsoFormazioneRequest = {
 				titolo: formCorso.titolo!,
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
-				docente: { idUtente: formCorso.idDocente! },
-				stato: StatoCorso.PROGRAMMATO
-			} as any;
+				idDocente: formCorso.idDocente!
+			};
 
 			const nuovo = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovo];
 
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
-		} catch (error) {
+		} catch {
 			alert("Impossibile programmare il corso.");
 		} finally {
 			isSaving = false;
@@ -169,7 +161,7 @@
 		try {
 			await FormazioneService.deleteCorso(idCorso);
 			corsi = corsi.filter(c => c.idCorso !== idCorso);
-		} catch (error) {
+		} catch {
 			alert("Errore durante l'eliminazione.");
 		}
 	}
@@ -181,7 +173,7 @@
 		try {
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 			presenzeSelezionate = iscrizioniAttuali.filter(i => i.presenzaConfermata).map(i => i.idUtente);
-		} catch (error) {
+		} catch {
 			alert("Impossibile caricare il registro iscritti.");
 			showModalPresenze = false;
 		} finally {
@@ -219,7 +211,7 @@
 		fileUploads = {};
 		try {
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
-		} catch (error) {
+		} catch {
 			alert("Impossibile caricare i dati.");
 			showModalUpload = false;
 		} finally {
@@ -273,8 +265,7 @@
 		statsFeedback = null;
 		try {
 			statsFeedback = await FeedbackService.getStatisticheCorso(corso.idCorso);
-		} catch (error) {
-			console.error("Errore recupero feedback:", error);
+		} catch {
 			alert("Impossibile caricare i feedback.");
 			showModalFeedback = false;
 		} finally {
@@ -414,7 +405,6 @@
 			{/if}
 		</div>
 
-		<!-- ARCHIVIO STORICO (FEEDBACK SEMPRE CONSULTABILI) -->
 		<div class="mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-3 opacity-60 hover:opacity-100 transition-opacity">
 				<div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg"><BookOpen size={20}/></div>
@@ -573,7 +563,6 @@
 	</div>
 {/if}
 
-<!-- MODALE FEEDBACK STATS -->
 {#if showModalFeedback && selectedCorso}
 	<div class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
 		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" transition:scale>

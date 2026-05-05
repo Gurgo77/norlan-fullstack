@@ -1,20 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import { base, resolveRoute } from '$app/paths';
 	import {
 		LayoutDashboard, BookOpen, Users, Clock, ArrowRight,
 		MessageSquare, CheckCircle2, MapPin, Calendar, Loader2,
 		FileText, Play, CheckSquare
 	} from 'lucide-svelte';
 
-	// Import Servizi e Modelli
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AuthService } from '$lib/services/AuthService';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { StatoCorso } from '$lib/models/Enums';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 
-	// --- INTERFACCE ---
 	interface DashboardStats {
 		corsiInCorso: number;
 		studentiTotali: number;
@@ -32,7 +31,6 @@
 		stato: StatoCorso;
 	}
 
-	// --- STATO REATTIVO ---
 	let isLoading = $state(true);
 	let nomeDocente = $state('Docente');
 	let stats = $state<DashboardStats>({ corsiInCorso: 0, studentiTotali: 0, materialiCaricati: 0 });
@@ -49,20 +47,16 @@
 		if (!session) return;
 
 		try {
-			// Recupero Dati Anagrafici per saluto
 			const profilo = await AnagraficaService.getDocenteById(session.idUtente);
-			nomeDocente = (profilo as any).nome || session.email.split('@')[0];
+			nomeDocente = (profilo as { nome?: string }).nome || session.email.split('@')[0];
 
-			// 1. Recupero Corsi del Docente
 			const tuttiCorsi = await FormazioneService.getAllCorsi();
 			const mieiCorsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
 
-			// 2. Suddivisione FSM (Macchina a Stati)
 			const corsiInSvolgimento = mieiCorsi.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO);
 			const corsiProgrammati = mieiCorsi.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato);
 			corsiDaValidare = mieiCorsi.filter(c => c.stato === StatoCorso.CONCLUSO);
 
-			// 3. Calcolo Studenti e Materiali (Operazione Asincrona Parallela)
 			let totaleStudenti = 0;
 			let totaleMateriali = 0;
 
@@ -84,7 +78,6 @@
 				materialiCaricati: totaleMateriali
 			};
 
-			// 4. Elaborazione Lezioni Imminenti (Unisci Programmati e In Svolgimento)
 			const corsiAttivi = [...corsiInSvolgimento, ...corsiProgrammati];
 			const oggiZero = new Date();
 			oggiZero.setHours(0, 0, 0, 0);
@@ -105,12 +98,12 @@
 					})
 					.filter(lez => lez.dataCompleta.getTime() >= oggiZero.getTime() || lez.stato === StatoCorso.IN_SVOLGIMENTO)
 					.sort((a, b) => a.dataCompleta.getTime() - b.dataCompleta.getTime())
-					.slice(0, 3); // Prendo solo i prossimi 3
+					.slice(0, 3);
 
 			lezioniImminenti = lezioniElaborate;
 
 		} catch (error) {
-			console.error("Errore nel caricamento della dashboard docente:", error);
+			console.error(error);
 		} finally {
 			isLoading = false;
 		}
@@ -120,7 +113,6 @@
 
 <div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
 
-	<!-- HEADER -->
 	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -143,7 +135,6 @@
 		</div>
 	{:else}
 
-		<!-- STATS CARDS -->
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-xl transition-all group">
 				<div class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -168,11 +159,10 @@
 
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
-			<!-- COLONNA LEZIONI IMMINENTI (Larga) -->
 			<div class="xl:col-span-2 space-y-6">
 				<div class="flex items-center justify-between px-2">
 					<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Prossime Lezioni</h2>
-					<a href="/dashboard/docente/corsi" class="text-[10px] font-black text-[#1B4B6B] uppercase tracking-widest hover:underline flex items-center gap-1">
+					<a href="{resolveRoute('/dashboard/docente/corsi')}" class="text-[10px] font-black text-[#1B4B6B] uppercase tracking-widest hover:underline flex items-center gap-1">
 						Tutti i corsi <ArrowRight size={12} />
 					</a>
 				</div>
@@ -207,7 +197,7 @@
 							</div>
 
 							<div class="w-full md:w-auto relative z-10 shrink-0">
-								<a href="/dashboard/docente/corsi" class="w-full md:w-auto px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 {lezione.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-[#1B4B6B] hover:bg-gray-100'}">
+								<a href="{resolveRoute('/dashboard/docente/corsi')}" class="w-full md:w-auto px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 {lezione.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-[#1B4B6B] hover:bg-gray-100'}">
 									{#if lezione.stato === StatoCorso.IN_SVOLGIMENTO}
 										Apri Corso <Play size={14} fill="currentColor" />
 									{:else}
@@ -228,7 +218,6 @@
 				</div>
 			</div>
 
-			<!-- COLONNA AZIONI / NOTIFICHE (Stretta) -->
 			<div class="space-y-6">
 				<div class="flex items-center justify-between px-2">
 					<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Azioni Richieste</h2>
@@ -240,7 +229,7 @@
 						<p class="text-[9px] font-black uppercase tracking-widest text-red-500 mb-4 border-b border-red-50 pb-2">Registri da chiudere</p>
 						<div class="space-y-3 mb-6">
 							{#each corsiDaValidare as corso}
-								<a href="/dashboard/docente/corsi" class="block bg-red-50 p-4 rounded-2xl border border-red-100 hover:bg-red-100 transition-colors group">
+								<a href="{resolveRoute('/dashboard/docente/corsi')}" class="block bg-red-50 p-4 rounded-2xl border border-red-100 hover:bg-red-100 transition-colors group">
 									<div class="flex items-start gap-3">
 										<div class="p-2 bg-white rounded-lg text-red-500 shrink-0 shadow-sm"><CheckSquare size={16} /></div>
 										<div>
@@ -260,11 +249,11 @@
 
 					<p class="text-[9px] font-black uppercase tracking-widest text-[#1B4B6B] mb-4 border-b border-gray-50 pb-2">Scorciatoie Rapide</p>
 					<div class="grid grid-cols-2 gap-3">
-						<a href="/dashboard/docente/studenti" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-[#1B4B6B]/20 hover:bg-blue-50 transition-all text-[#1B4B6B] group">
+						<a href="{resolveRoute('/dashboard/docente/studenti')}" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-[#1B4B6B]/20 hover:bg-blue-50 transition-all text-[#1B4B6B] group">
 							<Users size={20} class="mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
 							<span class="text-[9px] font-black uppercase tracking-widest text-center">I Tuoi<br>Studenti</span>
 						</a>
-						<a href="/dashboard/docente/messaggi" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-[#1B4B6B]/20 hover:bg-blue-50 transition-all text-[#1B4B6B] group">
+						<a href="{resolveRoute('/dashboard/docente/messaggi')}" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-[#1B4B6B]/20 hover:bg-blue-50 transition-all text-[#1B4B6B] group">
 							<MessageSquare size={20} class="mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
 							<span class="text-[9px] font-black uppercase tracking-widest text-center">Apri<br>Chat</span>
 						</a>

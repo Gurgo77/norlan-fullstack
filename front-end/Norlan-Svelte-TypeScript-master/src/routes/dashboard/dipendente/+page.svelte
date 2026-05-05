@@ -1,20 +1,19 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
+	import { base, resolveRoute } from '$app/paths';
 	import {
-		ShieldAlert, HardHat, Calendar, FileBadge, Download,
-		MessageSquare, Star, Clock, AlertTriangle, CheckCircle2,
+		HardHat, Calendar, FileBadge, Download,
+		MessageSquare, Clock, AlertTriangle, CheckCircle2,
 		X, Send, Loader2, ChevronRight, User, ShieldCheck, LayoutDashboard
 	} from 'lucide-svelte';
 
-	// Import Servizi e Modelli
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
+	import { ChatService } from '$lib/services/ChatService';
 	import { Messaggio } from '$lib/models/Messaggio';
 
-	// --- INTERFACCE LOCALI ---
 	interface Impegno {
 		id: number;
 		tipo: 'CORSO' | 'FEEDBACK';
@@ -38,15 +37,23 @@
 		titolo: string;
 		tipo: 'ATTESTATO' | 'DOCUMENTO';
 		sbloccato: boolean;
-		data: string; // Aggiunto per visualizzare la data dell'attestato
+		data: string;
 	}
 
-	// --- STATO REATTIVO (Svelte 5) ---
+	interface DpiBackendData {
+		idAssegnazione?: number;
+		id?: number;
+		tipo?: string;
+		nomeDpi?: string;
+		dataScadenzaRevisione?: string;
+		dataScadenza?: string;
+		note?: string;
+	}
+
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utente = $state<DipendenteDTO | null>(null);
 
-	// Gestione Widget Chat
 	let isChatOpen = $state(false);
 	let chatMessage = $state('');
 	let chatService = $state<ChatService | null>(null);
@@ -54,7 +61,6 @@
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
 	const STAFF_ID = 1;
 
-	// Indicatori di Stato
 	let statoFormazione = $state<'OK' | 'WARNING' | 'DANGER'>('OK');
 	let statoDPI = $state<'OK' | 'WARNING' | 'DANGER'>('OK');
 
@@ -66,7 +72,6 @@
 		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
 	}).format(new Date());
 
-	// --- CARICAMENTO DATI ---
 	onMount(async () =>
 	{
 		currentUser = AuthService.getSession();
@@ -75,8 +80,7 @@
 		if (!currentUser || !token) return;
 
 		try {
-			// Fetch parallelo dei dati reali per massimizzare le performance
-			const [dipendenteData, dpiData, iscrizioniData, cronologiaChat] = await Promise.all([
+			const [dipendenteData, dpiDataRaw, iscrizioniData, cronologiaChat] = await Promise.all([
 				LavoratoreService.getById(currentUser.idUtente),
 				LavoratoreService.getDpiByLavoratore(currentUser.idUtente),
 				FormazioneService.getIscrizioniUtente(currentUser.idUtente),
@@ -88,13 +92,14 @@
 
 			const oggi = new Date().getTime();
 
-			// 1. Logica DPI: calcolo scadenze e stato globale
 			let hasDpiWarning = false;
 			let hasDpiDanger = false;
 
-			dotazioniDPI = dpiData.map((d: any) => {
+			const dpiData = dpiDataRaw as unknown as DpiBackendData[];
+
+			dotazioniDPI = dpiData.map((d: DpiBackendData) => {
 				const dataScad = d.dataScadenzaRevisione || d.dataScadenza;
-				const scadenza = new Date(dataScad).getTime();
+				const scadenza = dataScad ? new Date(dataScad).getTime() : 0;
 				const diffGiorni = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
 
 				let s: 'OK' | 'WARNING' | 'DANGER' = 'OK';
@@ -102,21 +107,19 @@
 				else if (diffGiorni <= 30) { s = 'WARNING'; hasDpiWarning = true; }
 
 				return {
-					id: d.idAssegnazione || d.id,
+					id: d.idAssegnazione || d.id || 0,
 					nome: (d.tipo || d.nomeDpi || 'Dispositivo').replace(/_/g, ' '),
-					matricola: d.note || `ID-${d.idAssegnazione || d.id}`,
+					matricola: d.note || `ID-${d.idAssegnazione || d.id || 0}`,
 					stato: s,
 					revisione: dataScad ? new Date(dataScad).toLocaleDateString('it-IT') : 'N.D.',
 					timestamp: scadenza
 				};
 			});
 
-			// Ordina DPI: quelli scaduti o in scadenza prima (timestamp minore)
 			dotazioniDPI.sort((a, b) => a.timestamp - b.timestamp);
 
 			statoDPI = hasDpiDanger ? 'DANGER' : (hasDpiWarning ? 'WARNING' : 'OK');
 
-			// 2. Logica Formazione: Corsi futuri e Attestati
 			let hasCorsiImminenti = false;
 			iscrizioniData.forEach(i => {
 				const dataOrario = new Date(i.dataOrarioCorso).getTime();
@@ -144,12 +147,10 @@
 				}
 			});
 
-			// Ordina impegni: quelli più vicini a oggi (timestamp minore) prima
 			impegni.sort((a, b) => a.timestamp - b.timestamp);
 
 			statoFormazione = hasCorsiImminenti ? 'WARNING' : 'OK';
 
-			// 3. WebSocket Chat
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
@@ -195,7 +196,6 @@
 </script>
 
 <div in:fade class="max-w-7xl mx-auto space-y-8 pb-20">
-	<!-- Intestazione -->
 	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -217,9 +217,8 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Accesso ai registri...</span>
 		</div>
 	{:else}
-		<!-- Status Bar -->
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<a href="/dashboard/dipendente/corsi" class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl transition-all">
+			<a href="{resolveRoute('/dashboard/dipendente/corsi')}" class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl transition-all">
 				<div class="flex items-center gap-6">
 					<div class="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg {getStatusBadge(statoFormazione)}">
 						{#if statoFormazione === 'OK'} <CheckCircle2 size={30} />
@@ -233,7 +232,7 @@
 				<ChevronRight size={24} class="text-gray-200 group-hover:text-[#1B4B6B]" />
 			</a>
 
-			<a href="/dashboard/dipendente/dpi" class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl transition-all">
+			<a href="{resolveRoute('/dashboard/dipendente/dpi')}" class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl transition-all">
 				<div class="flex items-center gap-6">
 					<div class="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg {getStatusBadge(statoDPI)}">
 						<HardHat size={30} />
@@ -248,7 +247,6 @@
 		</div>
 
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-			<!-- Colonna Sinistra -->
 			<div class="xl:col-span-2 space-y-8">
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
@@ -275,10 +273,9 @@
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
 							<ShieldCheck size={20} class="text-emerald-500" /> Dispositivi di Protezione (DPI)
 						</h3>
-						<a href="/dashboard/dipendente/dpi" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a>
+						<a href="{resolveRoute('/dashboard/dipendente/dpi')}" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a>
 					</div>
 					<div class="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-4">
-						<!-- Mostriamo l'intera lista ordinata senza lo slice(0,3) -->
 						{#each dotazioniDPI as dpi}
 							<div class="flex items-center justify-between group">
 								<div>
@@ -296,13 +293,12 @@
 					</div>
 				</div>
 
-				<!-- Nuova Card Attestati -->
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
 							<FileBadge size={20} class="text-purple-500" /> Attestati Conseguiti
 						</h3>
-						<a href="/dashboard/dipendente/attestati" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi archivio</a>
+						<a href="{resolveRoute('/dashboard/dipendente/attestati')}" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi archivio</a>
 					</div>
 					<div class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-2">
 						{#each materiali as mat}
@@ -316,7 +312,7 @@
 										<span class="text-[9px] font-black text-gray-400 uppercase mt-0.5 block">Data: {mat.data}</span>
 									</div>
 								</div>
-								<a href="/dashboard/dipendente/attestati" class="text-gray-400 hover:text-[#1B4B6B] transition-colors p-2 bg-white rounded-lg border border-gray-200 hover:border-[#1B4B6B] shrink-0 ml-4">
+								<a href="{resolveRoute('/dashboard/dipendente/attestati')}" class="text-gray-400 hover:text-[#1B4B6B] transition-colors p-2 bg-white rounded-lg border border-gray-200 hover:border-[#1B4B6B] shrink-0 ml-4">
 									<Download size={16} />
 								</a>
 							</div>
@@ -329,7 +325,6 @@
 
 			</div>
 
-			<!-- Colonna Destra -->
 			<div class="space-y-8">
 				<div class="bg-gray-100 rounded-[2.5rem] p-8 flex flex-col items-center text-center">
 					<div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm text-[#1B4B6B]">
@@ -337,14 +332,13 @@
 					</div>
 					<h4 class="text-sm font-black text-[#1B4B6B] uppercase">{utente?.cognome} {utente?.nome}</h4>
 					<p class="text-[9px] font-bold text-gray-400 uppercase mb-6">{utente?.codiceFiscale}</p>
-					<a href="/dashboard/dipendente/account" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl text-[10px] font-black uppercase border border-gray-200 hover:bg-gray-50 transition-all">Gestisci Profilo</a>
+					<a href="{resolveRoute('/dashboard/dipendente/account')}" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl text-[10px] font-black uppercase border border-gray-200 hover:bg-gray-50 transition-all">Gestisci Profilo</a>
 				</div>
 			</div>
 		</div>
 	{/if}
 </div>
 
-<!-- Widget Chat flottante -->
 <div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
 		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-96 rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">

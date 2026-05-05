@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import {
 		Building2, Plus, Trash2, ShieldCheck, ChevronRight, ChevronLeft,
 		Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin,
@@ -9,7 +10,6 @@
 		Mail, MessageSquare
 	} from 'lucide-svelte';
 
-	// Modelli e Servizi
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
 	import { Documento } from '$lib/models/Documento';
 	import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
@@ -17,7 +17,6 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
 	let documentiCorrenti = $state<Documento[]>([]);
@@ -29,34 +28,28 @@
 	let showModal = $state(false);
 	let isSaving = $state(false);
 
-	// Stato Documenti
 	let showUploadModal = $state(false);
 	let isUploading = $state(false);
 	let uploadFile = $state<File | null>(null);
 	let formDocumento = $state({ modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataRilascio: '', dataScadenza: '' });
 	let idDocumentoDaAggiornare = $state<number | null>(null);
 
-	// Stato Personale
 	let showDipendenteModal = $state(false);
 	let isSavingDipendente = $state(false);
 	let formDipendente = $state({ nome: '', cognome: '', codiceFiscale: '', email: '', password: '' });
 
-	// Modali eliminazione
 	let showDeleteDocModal = $state(false);
 	let docDaEliminare = $state<Documento | null>(null);
 	let showDeleteDipModal = $state(false);
 	let dipDaEliminare = $state<DipendenteDTO | null>(null);
 
-	// Stato Anagrafica Azienda
 	let formAzienda = $state({ email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false });
 	let showDeleteModal = $state(false);
 	let aziendaDaEliminare = $state<Azienda | null>(null);
 	let confermaTesto = $state('');
 
-	// --- LOGICA DERIVATA ---
 	const isFormValid = $derived(formAzienda.ragioneSociale.trim() !== '' && formAzienda.partitaIva.length === 11 && formAzienda.email.trim() !== '' && formAzienda.password.trim() !== '');
 
-	// Validazione dipendente: Richiede Email e Password
 	const isDipendenteValid = $derived(
 			formDipendente.nome.trim() !== '' &&
 			formDipendente.cognome.trim() !== '' &&
@@ -68,10 +61,7 @@
 	const filteredAziende = $derived(aziende.filter(a => a.ragioneSociale.toLowerCase().includes(searchQuery.toLowerCase())));
 	const isConfermaValida = $derived(confermaTesto.trim().toUpperCase() === 'ELIMINA');
 
-	// FILTRO DOCUMENTI: Esclude gli attestati dei corsi
 	const documentiAziendaliFiltrati = $derived(documentiCorrenti.filter(doc => doc.tipologia !== 'ATTESTATO_CORSO'));
-
-	// --- AZIONI ---
 
 	onMount(async () => {
 		try {
@@ -99,8 +89,7 @@
 	}
 
 	async function vaiADettaglioDipendente(idUtente: string | number) {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		return await goto(`/dashboard/admin/dipendenti?id=${idUtente}`);
+		return await goto(`${base}/dashboard/admin/dipendenti?id=${idUtente}`);
 	}
 
 	function apreGmail(email: string) {
@@ -110,8 +99,7 @@
 
 	async function vaiInChat(idUtente: string | number | undefined) {
 		if (!idUtente) return;
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		return await goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
+		return await goto(`${base}/dashboard/admin/comunicazioni?chatId=${idUtente}`);
 	}
 
 	function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }
@@ -175,19 +163,17 @@
 		}
 	}
 
-	// Funzione dedicata per quando si carica un documento partendo da zero
 	function apriModalUploadNuovo() {
 		idDocumentoDaAggiornare = null;
 		formDocumento = { modulo: ModuloServizio.SICUREZZA, tipologia: TipoDocumento.DVR, dataRilascio: '', dataScadenza: '' };
 		showUploadModal = true;
 	}
 
-	// Funzione per quando si preme "Aggiorna Ora" su un file scaduto
 	function preparaAggiornamento(doc: Documento) {
-		idDocumentoDaAggiornare = doc.idDocumento; // Memorizziamo chi dobbiamo cancellare
+		idDocumentoDaAggiornare = doc.idDocumento;
 		formDocumento.modulo = doc.modulo;
 		formDocumento.tipologia = doc.tipologia;
-		formDocumento.dataRilascio = ''; // Resettiamo la data per il nuovo file
+		formDocumento.dataRilascio = '';
 		formDocumento.dataScadenza = '';
 		showUploadModal = true;
 	}
@@ -201,22 +187,19 @@
 			fd.append('modulo', formDocumento.modulo);
 			fd.append('tipologia', formDocumento.tipologia);
 			fd.append('dataScadenzaStr', formDocumento.dataScadenza);
-			fd.append('dataRilascioStr', formDocumento.dataRilascio); // Inviamo al backend
+			fd.append('dataRilascioStr', formDocumento.dataRilascio);
 
-			// 1. Prima facciamo l'upload del file nuovo
 			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
 
-			// 2. Se l'upload è andato a buon fine E stavamo aggiornando un file, eliminiamo il vecchio
 			if (idDocumentoDaAggiornare !== null) {
 				await DocumentoService.deleteDocumento(idDocumentoDaAggiornare);
 			}
 
-			// 3. Sincronizziamo la tabella
 			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedAzienda.idUtente);
 
 			showUploadModal = false;
 			uploadFile = null;
-			idDocumentoDaAggiornare = null; // Reset
+			idDocumentoDaAggiornare = null;
 		} catch (error) {
 			console.error("Errore Dettagliato Upload:", error);
 			const err = error as { response?: { data?: Record<string, unknown> | string }, message?: string };

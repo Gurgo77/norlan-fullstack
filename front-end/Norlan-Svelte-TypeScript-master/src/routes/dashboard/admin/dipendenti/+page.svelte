@@ -2,15 +2,14 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import { fade, scale, slide } from 'svelte/transition';
+    import { base, resolveRoute } from '$app/paths';
+    import { fade, scale } from 'svelte/transition';
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Calendar, MessageSquare, Plus,
-        AlertCircle, CheckCircle, Clock
+        FileText, ShieldCheck, Download, Calendar, MessageSquare, AlertCircle, CheckCircle, Clock
     } from 'lucide-svelte';
 
-    // Servizi e Modelli
     import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { DocumentoService } from '$lib/services/DocumentoService';
@@ -25,9 +24,9 @@
 
     interface DpiEsteso extends AssegnazioneDPI {
         nomeDpi?: string;
+        id?: number;
     }
 
-    // --- STATO REATTIVO ---
     let lavoratori = $state<DipendenteEsteso[]>([]);
     let aziende = $state<Azienda[]>([]);
     let isLoading = $state(true);
@@ -48,14 +47,12 @@
         nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
     });
 
-    // --- STATI ATTESTATI E DPI (Eliminazione) ---
     let showDeleteDocModal = $state(false);
     let docDaEliminare = $state<Documento | null>(null);
 
     let showDeleteDpiModal = $state(false);
     let dpiDaEliminare = $state<DpiEsteso | null>(null);
 
-    // --- LOGICA DERIVATA ---
     const filteredLavoratori = $derived(
         lavoratori.filter(l =>
             l.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -65,7 +62,6 @@
         )
     );
 
-    // Svelte 5: Usiamo $derived.by per eseguire un blocco di logica che ritorna un oggetto
     const lavoratoriRaggruppati = $derived.by(() => {
         const gruppi: Record<string, DipendenteEsteso[]> = {};
 
@@ -91,7 +87,6 @@
         formDipendente.password.trim() !== ''
     );
 
-    // --- LOGICA SEMAFORO (Card Colorate e Ordinamento) ---
     function getStatoScadenza(dataScadenza: string | undefined) {
         if (!dataScadenza) return { colore: 'text-green-600', bgBadge: 'bg-green-50', borderBadge: 'border-green-200', bgTop: 'bg-green-500', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
 
@@ -126,7 +121,6 @@
         })
     );
 
-    // --- AZIONI ---
     onMount(async () => {
         try {
             const [resLavoratori, resAziende] = await Promise.all([
@@ -188,8 +182,7 @@
 
     async function vaiInChat(idUtente: string | number | undefined) {
         if (!idUtente) return;
-        // eslint-disable-next-line svelte/no-navigation-without-resolve
-        return await goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
+        return await goto(resolveRoute(`/dashboard/admin/comunicazioni?chatId=${idUtente}`));
     }
 
     async function salvaDipendente() {
@@ -307,7 +300,7 @@
             `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
-        await goto(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`);
+        await goto(resolveRoute(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`));
     }
 
     function preparaEliminaDPI(dpi: DpiEsteso) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
@@ -315,7 +308,7 @@
     async function confermaEliminaDPI() {
         if (!dpiDaEliminare) return;
         try {
-            const idReale = dpiDaEliminare.idAssegnazione || (dpiDaEliminare as any).id;
+            const idReale = dpiDaEliminare.idAssegnazione || dpiDaEliminare.id;
             if (idReale) {
                 await LavoratoreService.deleteDpi(idReale);
             }
@@ -366,7 +359,6 @@
                 <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
             </div>
         {:else}
-            <!-- Svelte 5: lavoratoriRaggruppati ora è valutato direttamente come oggetto -->
             {#each Object.entries(lavoratoriRaggruppati) as [nomeAzienda, dipendentiAzienda] (nomeAzienda)}
                 <div class="mb-12">
                     <div class="flex items-center gap-3 mb-6 pb-2 border-b-2 border-gray-100">
@@ -383,7 +375,6 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {#each dipendentiAzienda as l (l.idUtente)}
-                            <!-- Modificate le classi hover per allinearle a quelle di Azienda -->
                             <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#1B4B6B]/20 hover:-translate-y-1 transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
 
                                 <div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
@@ -503,7 +494,6 @@
                                                 <Calendar size={10} />
                                                 <span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
                                             </div>
-                                            <!-- Logica Semaforo -->
                                             <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.borderBadge} {stato.bgBadge} {stato.colore}">
                                                 <IconaStato size={12} />
                                                 <span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>

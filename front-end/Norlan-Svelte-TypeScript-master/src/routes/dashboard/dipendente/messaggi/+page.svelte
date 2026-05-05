@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import {
 		MessageSquare, Search, Loader2, Building2,
-		Send, X, GraduationCap, ShieldCheck, User, Clock, Users
+		Send, GraduationCap, ShieldCheck, Clock, Users
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI
 	import { Messaggio } from '$lib/models/Messaggio';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -15,9 +15,7 @@
 	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
 
 	import type { DipendenteData } from '$lib/models/Dipendente';
-	import type { AdminData } from '$lib/models/Admin';
 
-	// INTERFACCE LOCALI PER LA RUBRICA
 	interface ContattoChat {
 		idUtente: number;
 		nome: string;
@@ -29,7 +27,12 @@
 	interface AziendaRaw { ragioneSociale?: string; }
 	interface DocenteRaw { nome?: string; cognome?: string; titolo?: string; }
 
-	// STATO CON RUNE SVELTE 5
+	interface DipendenteBackend extends DipendenteData {
+		idAzienda?: number;
+		azienda?: { idUtente: number };
+		azienda_id?: number;
+	}
+
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
@@ -39,7 +42,6 @@
 	let messaggiChat = $state<Messaggio[]>([]);
 	let nuovoMessaggioTesto = $state('');
 
-	// WebSockets
 	let chatService = $state<ChatService | null>(null);
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
 
@@ -50,18 +52,14 @@
 		if (!session || !token) return;
 
 		try {
-			// 1. Recupero anagrafica dipendente
 			utente = (await LavoratoreService.getById(session.idUtente)) as unknown as DipendenteData;
 			const rubrica: ContattoChat[] = [];
 
-			// 2a. AGGIUNTA ADMIN (Condizionale: solo se l'admin ha già scritto al dipendente)
 			try {
 				const adm = await AnagraficaService.getAdminById(1);
 				if (adm) {
-					// Verifichiamo se c'è già una cronologia di messaggi con l'Admin
 					const cronologiaAdmin = await ChatService.getCronologia(session.idUtente, adm.idUtente);
 
-					// Se la cronologia ha almeno un messaggio, significa che la chat è stata avviata
 					if (cronologiaAdmin && cronologiaAdmin.length > 0) {
 						rubrica.push({
 							idUtente: adm.idUtente,
@@ -71,10 +69,11 @@
 						});
 					}
 				}
-			} catch(e) { console.warn("Errore caricamento admin o verifica cronologia:", e); }
+			} catch(e) { console.warn(e); }
 
-			// 2b. Aggiungiamo l'Azienda (Datore di Lavoro)
-			const idAzienda = utente.idAzienda || (utente as any).azienda?.idUtente || (utente as any).azienda_id;
+			const dipendenteBackend = utente as DipendenteBackend;
+			const idAzienda = dipendenteBackend.idAzienda || dipendenteBackend.azienda?.idUtente || dipendenteBackend.azienda_id;
+
 			if (idAzienda) {
 				try {
 					const aziendaData = await AnagraficaService.getAziendaById(idAzienda) as AziendaRaw;
@@ -84,21 +83,20 @@
 						ruolo: 'AZIENDA',
 						sottotitolo: 'Datore di Lavoro'
 					});
-				} catch(e) { console.warn("Errore caricamento azienda:", e); }
+				} catch(e) { console.warn(e); }
 			}
 
-			// 2c. Recupero Iscrizioni e raggruppamento per Docente
 			const iscrizioni = await FormazioneService.getIscrizioniUtente(session.idUtente);
-			const mapDocenti = new Map<number, { email: string, corsi: Set<string> }>();
+			const mapDocenti = new SvelteMap<number, { email: string, corsi: SvelteSet<string> }>();
 
 			for (const iscrizione of iscrizioni) {
 				try {
 					const corso = await FormazioneService.getCorsoById(iscrizione.idCorso);
 					if (!mapDocenti.has(corso.idDocente)) {
-						mapDocenti.set(corso.idDocente, { email: corso.emailDocente, corsi: new Set() });
+						mapDocenti.set(corso.idDocente, { email: corso.emailDocente, corsi: new SvelteSet<string>() });
 					}
 					mapDocenti.get(corso.idDocente)!.corsi.add(corso.titolo);
-				} catch(e) { console.warn("Errore dettagli corso:", e); }
+				} catch(e) { console.warn(e); }
 			}
 
 			for (const [idDocente, data] of mapDocenti.entries()) {
@@ -108,7 +106,7 @@
 					if (docenteData && docenteData.nome && docenteData.cognome) {
 						nomeDocenteVisivo = `${docenteData.titolo || 'Docente'} ${docenteData.nome} ${docenteData.cognome}`;
 					}
-				} catch(e) { console.warn("Errore anagrafica docente:", e); }
+				} catch(e) { console.warn(e); }
 
 				rubrica.push({
 					idUtente: idDocente,
@@ -121,7 +119,6 @@
 
 			contatti = rubrica;
 
-			// 3. Connessione WebSocket
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (contattoSelezionato && (msg.idMittente === contattoSelezionato.idUtente || msg.idMittente === session.idUtente)) {
@@ -129,12 +126,12 @@
 							scrollChat();
 						}
 					},
-					(err: string) => console.error("Errore WebSocket:", err)
+					(err: string) => console.error(err)
 			);
 			chatService.connect(token, session.idUtente);
 
 		} catch (error) {
-			console.error("Errore inizializzazione chat:", error);
+			console.error(error);
 		} finally {
 			isLoading = false;
 		}
@@ -177,7 +174,6 @@
 
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
-	<!-- COLONNA SINISTRA: RUBRICA -->
 	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
 		<div class="p-8 border-b border-gray-100 bg-white">
 			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
@@ -228,7 +224,6 @@
 		</div>
 	</div>
 
-	<!-- COLONNA DESTRA: CHAT -->
 	<div class="flex-1 flex flex-col bg-white">
 		{#if contattoSelezionato}
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
@@ -293,6 +288,5 @@
 	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 
-	/* Layout fix per non far scorrere la pagina intera */
 	:global(body) { overflow: hidden; }
 </style>

@@ -1,28 +1,25 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolveRoute } from '$app/paths';
 	import { fade, slide } from 'svelte/transition';
 	import { Mail, Lock, Loader2, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { isAxiosError } from 'axios';
-	import { onMount } from 'svelte'; // <-- Import per il ciclo di vita
+	import { onMount } from 'svelte';
 
 	let email = $state('');
 	let password = $state('');
 	let isLoading = $state(false);
 	let errorMessage = $state('');
 
-	// Nuovo stato per gestire la visibilità della password
 	let showPassword = $state(false);
 
-	// --- CONTROLLO ANTI-BOUNCE ---
 	onMount(() => {
 		const session = AuthService.getSession();
 		if (session) {
-			// Se ha già una sessione, skippa il login e vai dritto alla sua dashboard
-			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			goto(resolveRoute(AuthService.getDashboardRouteByRole(session.ruolo)), { replaceState: true });
 		}
 	});
-	// ----------------------------
 
 	async function handleLogin(e: Event) {
 		e.preventDefault();
@@ -30,39 +27,31 @@
 		isLoading = true;
 
 		try {
-			// NOTA: Passiamo un UNICO OGGETTO con le proprietà email e password
 			const user = await AuthService.login({
 				email: email,
 				password: password
 			});
 
 			if (user.richiedeCambioPassword) {
-				goto('/dashboard/cambio-obbligatorio');
+				goto(resolveRoute('/dashboard/cambio-obbligatorio'));
 				return;
 			}
 
-			// Il resto della logica di reindirizzamento va bene
 			if (user.ruolo === 'ADMIN') {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/dashboard/admin');
+				goto(resolveRoute('/dashboard/admin'));
 			} else if (user.ruolo === 'AZIENDA') {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/dashboard/azienda');
+				goto(resolveRoute('/dashboard/azienda'));
 			} else if (user.ruolo === 'DOCENTE') {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/dashboard/docente');
+				goto(resolveRoute('/dashboard/docente'));
 			} else if (user.ruolo === 'DIPENDENTE') {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/dashboard/dipendente');
+				goto(resolveRoute('/dashboard/dipendente'));
 			} else {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
-				goto('/dashboard');
+				goto(resolveRoute('/dashboard'));
 			}
 
 		} catch (err: unknown) {
-			console.error('Errore critico durante il login:', err);
+			console.error('[Login] Errore critico:', err);
 
-			// Gestione errori corretta
 			if (isAxiosError(err)) {
 				if (err.response?.status === 401) {
 					errorMessage = 'Credenziali errate. Riprova.';

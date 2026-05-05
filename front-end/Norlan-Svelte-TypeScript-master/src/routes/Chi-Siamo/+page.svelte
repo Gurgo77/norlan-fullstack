@@ -3,7 +3,6 @@
   import { fade } from 'svelte/transition';
   import { Shield, BadgeCheck, Users, Medal, GraduationCap, Calendar, Clock } from 'lucide-svelte';
 
-  // Data for certifications
   const certifications = [
     {
       icon: Shield,
@@ -52,7 +51,6 @@
     }
   ];
 
-  // Data for education
   const education = [
     {
       icon: GraduationCap,
@@ -122,14 +120,12 @@
       details: "Presso il Comando CC 'Cacciatori di Puglia' di Amendola (FG)"
     }
   ];
-  // For animations
   let visible = false;
 
   onMount(() => {
     visible = true;
   });
 
-  // Animation parameters for items
   const springParams = {
     stiffness: 0.3,
     damping: 0.7
@@ -137,7 +133,6 @@
 </script>
 
 <style>
-  /* Floating effect for service cards */
   @keyframes float {
     0%, 100% {
       transform: translateY(0);
@@ -169,7 +164,6 @@
 
 <main class="min-h-screen pt-20 bg-white" in:fade out:fade>
   <section class="relative h-[70vh] flex items-center justify-center">
-    <!-- Immagine di background -->
     <div class="absolute inset-0 w-full h-full blur-sm">
       <img
         src="/NorLan-ChiSiamo.jpg"
@@ -177,7 +171,6 @@
         class="w-full h-full object-cover"
       />
     </div>
-    <!-- Overlay gradiente -->
     <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50"></div>
     <div class="container mx-auto px-4 relative z-10">
       <div class="max-w-3xl mx-auto text-center slide-in-bottom">

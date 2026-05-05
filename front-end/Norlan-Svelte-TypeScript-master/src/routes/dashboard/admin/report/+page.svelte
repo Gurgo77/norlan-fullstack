@@ -12,7 +12,11 @@
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
-	let filtroGravita = $state<'TUTTI' | 'INFO' | 'ERROR'>('TUTTI');
+
+	type FiltroGravita = 'TUTTI' | 'INFO' | 'ERROR';
+	const filtriDisponibili: FiltroGravita[] = ['TUTTI', 'INFO', 'ERROR'];
+	let filtroGravita = $state<FiltroGravita>('TUTTI');
+
 	let currentPage = $state(1);
 	const itemsPerPage = 15;
 
@@ -26,8 +30,7 @@
 		try {
 			logs = await SistemaService.getAllLogs();
 			logs.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
-		} catch (error) {
-			console.error("Errore durante il recupero dei log di sistema:", error);
+		} catch {
 		} finally {
 			isLoading = false;
 		}
@@ -153,9 +156,9 @@
 					/>
 				</div>
 				<div class="flex bg-gray-100 p-1 rounded-xl">
-					{#each ['TUTTI', 'INFO', 'ERROR'] as filtro}
+					{#each filtriDisponibili as filtro}
 						<button
-								onclick={() => filtroGravita = filtro as any}
+								onclick={() => filtroGravita = filtro}
 								class="px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all {filtroGravita === filtro ? 'bg-white shadow text-[#1B4B6B]' : 'text-gray-400 hover:text-gray-600'}"
 						>
 							{filtro}

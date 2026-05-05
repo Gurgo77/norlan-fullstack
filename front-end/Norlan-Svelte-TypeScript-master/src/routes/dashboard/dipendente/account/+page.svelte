@@ -6,16 +6,13 @@
 		Save, ShieldCheck, Loader2, Briefcase
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI
 	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 
-	// STATO PRINCIPALE (Svelte 5)
 	let isLoading = $state(true);
 	let utente = $state<DipendenteData | null>(null);
 
-	// STATI PER IL CAMBIO PASSWORD
 	let isPasswordFormVisible = $state(false);
 	let vecchiaPassword = $state('');
 	let nuovaPassword = $state('');
@@ -53,11 +50,9 @@
 		isChangingPassword = true;
 
 		try {
-			// Nota: Assicurati di aver aggiunto il metodo cambiaPassword in AuthService.ts
 			await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
 			passwordSuccessMessage = 'Password aggiornata con successo!';
 
-			// Reset campi
 			vecchiaPassword = '';
 			nuovaPassword = '';
 			confermaPassword = '';
@@ -118,7 +113,6 @@
 							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Privata</label>
 							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-70">
 								<Mail size={18} class="text-gray-400" />
-								<!-- Resa in sola lettura e tolto il bind -->
 								<input type="email" value={utente.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
 							</div>
 						</div>

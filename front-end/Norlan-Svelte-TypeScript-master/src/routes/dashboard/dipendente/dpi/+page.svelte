@@ -6,11 +6,9 @@
 		Search, Loader2, Info, RefreshCw, FileText
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI UFFICIALI
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 
-	// 1. DEFINIZIONE TIPI (Interna per mappare il DTO alla vista)
 	type ComplianceStatus = 'OK' | 'WARNING' | 'DANGER';
 	type OpzioneFiltro = 'TUTTI' | ComplianceStatus;
 
@@ -22,7 +20,15 @@
 		revisione: string;
 	}
 
-	// 2. STATO CON RUNE (Svelte 5)
+	interface DpiBackendData {
+		idAssegnazione?: number;
+		id?: number;
+		tipo?: string;
+		nomeDpi?: string;
+		dataScadenzaRevisione?: string;
+		dataScadenza?: string;
+	}
+
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroStato = $state<OpzioneFiltro>('TUTTI');
@@ -30,10 +36,8 @@
 	let dotazioni = $state<Dpi[]>([]);
 	let utente = $state<DipendenteDTO | null>(null);
 
-	// Array di opzioni per il filtro fortemente tipizzato
 	const opzioniFiltro: OpzioneFiltro[] = ['TUTTI', 'OK', 'WARNING', 'DANGER'];
 
-	// 3. HELPER DI CALCOLO E UI
 	function impostaFiltro(valore: OpzioneFiltro) {
 		filtroStato = valore;
 	}
@@ -47,11 +51,8 @@
 		return configs[stato];
 	}
 
-	/**
-	 * Calcola lo stato del DPI basandosi sulla data di scadenza reale
-	 */
 	function calcolaStato(dataScadenzaStr: string | undefined | null): ComplianceStatus {
-		if (!dataScadenzaStr) return 'OK'; // Se non c'è scadenza, è regolare a vita
+		if (!dataScadenzaStr) return 'OK';
 
 		const oggi = new Date().getTime();
 		const scadenza = new Date(dataScadenzaStr).getTime();
@@ -62,23 +63,21 @@
 		return 'OK';
 	}
 
-	// --- CARICAMENTO DATI ---
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
 
 		try {
-			// Fetch parallelo dei dati anagrafici e della lista DPI del dipendente
-			const [dipendenteData, dpiData] = await Promise.all([
+			const [dipendenteData, dpiDataRaw] = await Promise.all([
 				LavoratoreService.getById(session.idUtente),
 				LavoratoreService.getDpiByLavoratore(session.idUtente)
 			]);
 
 			utente = dipendenteData;
 
-			// Mapping dal DTO del backend alla struttura usata dall'interfaccia
-			// Usiamo (d: any) per allineare in sicurezza i campi reali del JSON (tipo, dataScadenzaRevisione, idAssegnazione)
-			dotazioni = dpiData.map((d: any) => {
+			const dpiData = dpiDataRaw as unknown as DpiBackendData[];
+
+			dotazioni = dpiData.map((d: DpiBackendData) => {
 				const idReale = d.idAssegnazione || d.id || Date.now();
 				const nomeReale = d.tipo ? d.tipo.replace(/_/g, ' ') : (d.nomeDpi || 'SCONOSCIUTO');
 				const dataReale = d.dataScadenzaRevisione || d.dataScadenza;
@@ -86,7 +85,7 @@
 				return {
 					id: idReale,
 					nome: nomeReale,
-					matricola: `DPI-${idReale}`, // Generiamo una matricola di default
+					matricola: `DPI-${idReale}`,
 					stato: calcolaStato(dataReale),
 					revisione: dataReale ? new Date(dataReale).toLocaleDateString('it-IT') : 'NON PREVISTA'
 				};
@@ -99,10 +98,8 @@
 		}
 	});
 
-	// 4. LOGICA REATTIVA - Null Safe Navigation
 	const dpiFiltrati = $derived(
 			dotazioni.filter(d => {
-				// Rendiamo sicura la ricerca evitando TypeError: Cannot read properties of undefined
 				const searchSafe = searchQuery ? searchQuery.toLowerCase() : '';
 				const nomeSafe = d.nome ? d.nome.toLowerCase() : '';
 				const matricolaSafe = d.matricola ? d.matricola.toLowerCase() : '';

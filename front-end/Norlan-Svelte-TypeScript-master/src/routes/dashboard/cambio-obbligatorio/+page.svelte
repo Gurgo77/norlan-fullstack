@@ -12,7 +12,6 @@
 
     onMount(() => {
         const session = AuthService.getSession();
-        // Se arriva qui per sbaglio e NON deve cambiare password, lo cacciamo
         if (!session || !session.richiedeCambioPassword) {
             goto('/login');
         }
@@ -30,9 +29,6 @@
         isLoading = true;
         try {
             await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
-
-            // Per ragioni di sicurezza, dopo aver forzato il cambio password iniziale,
-            // la prassi standard è invalidare la sessione e far riloggare l'utente con le nuove credenziali pulite.
             AuthService.logout();
             alert("Password aggiornata con successo. Effettua nuovamente l'accesso.");
             goto('/login');

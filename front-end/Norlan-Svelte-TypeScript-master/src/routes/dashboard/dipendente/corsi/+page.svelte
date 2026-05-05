@@ -15,33 +15,28 @@
 		AlertTriangle
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI UFFICIALI
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
 
-	// Definiamo localmente l'interfaccia del DTO per evitare errori di importazione
 	interface MaterialeDidatticoDTO {
 		idMateriale: number;
 		titoloDocumento: string;
 		percorsoFile?: string;
 	}
 
-	// Estensione dell'interfaccia per gestire i materiali e lo stato feedback nel frontend
 	interface IscrizioneConMateriali extends IscrizioneCorso {
 		materiali: MaterialeDidatticoDTO[];
 		isLoadingMateriali: boolean;
 		feedbackInviatoLocalmente?: boolean;
 	}
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let iscrizioni = $state<IscrizioneConMateriali[]>([]);
 	let currentUserId = $state<number | null>(null);
 
-	// --- STATI MODALE FEEDBACK ---
 	let showModalFeedback = $state(false);
 	let selectedCorsoPerFeedback = $state<IscrizioneConMateriali | null>(null);
 	let ratingDocenza = $state(0);
@@ -50,7 +45,6 @@
 	let isSubmittingFeedback = $state(false);
 	let feedbackSuccess = $state(false);
 
-	// --- CARICAMENTO DATI ---
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -91,7 +85,6 @@
 		}
 	});
 
-	// --- LOGICA DERIVATA ---
 	const iscrizioniAttive = $derived(
 			iscrizioni.filter((i) => {
 				const isOperativo = i.statoCorso === 'PROGRAMMATO' || i.statoCorso === 'IN_SVOLGIMENTO';
@@ -108,7 +101,6 @@
 			)
 	);
 
-	// --- AZIONI CORSI ---
 	function formatData(isoString: string) {
 		if (!isoString) return 'Data non definita';
 		return new Date(isoString)
@@ -137,7 +129,6 @@
 		}
 	}
 
-	// --- AZIONI FEEDBACK ---
 	function apriModaleFeedback(iscrizione: IscrizioneConMateriali) {
 		selectedCorsoPerFeedback = iscrizione;
 		ratingDocenza = 0;
@@ -155,7 +146,6 @@
 
 		isSubmittingFeedback = true;
 		try {
-			// Ricostruiamo il payload assicurandoci che commento sia al massimo undefined se vuoto, non una stringa vuota
 			const payload = {
 				idUtente: currentUserId, // Prendo l'ID salvato globalmente, non cerco di estrarlo dall'iscrizione
 				idCorso: selectedCorsoPerFeedback.idCorso,
@@ -164,7 +154,6 @@
 				commento: commentoFeedback.trim() === '' ? undefined : commentoFeedback.trim()
 			};
 
-			// Forziamo il bypass del tipo TS su axios in caso ci sia un typo in `FeedbackDTO`
 			await FeedbackService.inviaFeedback(payload as any);
 
 			const index = iscrizioni.findIndex(i => i.idCorso === selectedCorsoPerFeedback!.idCorso);
@@ -180,12 +169,10 @@
 		} catch (error: any) {
 			console.error("Errore invio feedback:", error);
 
-			// Estrai il messaggio di errore per capire se il corso era già recensito o meno
 			const errorData = error.response?.data;
 			const errorMsg = typeof errorData === 'string' ? errorData : "Si è verificato un errore durante l'invio del feedback.";
 			alert(errorMsg);
 
-			// Rimuove il banner del corso se il backend rileva che ha già lasciato il feedback in passato
 			if (errorMsg.includes('già registrato')) {
 				const index = iscrizioni.findIndex(i => i.idCorso === selectedCorsoPerFeedback!.idCorso);
 				if (index !== -1) iscrizioni[index].feedbackInviatoLocalmente = true;
@@ -287,7 +274,6 @@
 								</div>
 							</div>
 
-							<!-- AREA MATERIALI DIDATTICI -->
 							{#if iscrizione.isLoadingMateriali}
 								<div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
 									<Loader2 size={12} class="animate-spin"/>
@@ -335,7 +321,6 @@
 	{/if}
 </div>
 
-<!-- MODALE FEEDBACK -->
 {#if showModalFeedback && selectedCorsoPerFeedback}
 	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
 		 transition:fade>
@@ -366,7 +351,6 @@
 					<h3 class="text-[#1B4B6B] font-extrabold text-sm uppercase leading-tight">{selectedCorsoPerFeedback.titoloCorso}</h3>
 				</div>
 
-				<!-- Rating Docenza -->
 				<div class="space-y-2">
 					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Preparazione
 						Docente *</label>
@@ -383,7 +367,6 @@
 					</div>
 				</div>
 
-				<!-- Rating Contenuti -->
 				<div class="space-y-2 border-t border-gray-50 pt-4">
 					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Qualità dei
 						Contenuti *</label>
@@ -400,7 +383,6 @@
 					</div>
 				</div>
 
-				<!-- Commento (Textarea) -->
 				<div class="space-y-1 border-t border-gray-50 pt-4">
 					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Note o
 						Suggerimenti (Opzionale)</label>

@@ -3,16 +3,14 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		FileBadge, Download, Search, Loader2,
-		FileText, Calendar, CheckCircle2, Info
+		FileText, Calendar
 	} from 'lucide-svelte';
 
-	// IMPORT MODELLI E SERVIZI UFFICIALI
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
@@ -24,7 +22,6 @@
 		if (!session) return;
 
 		try {
-			// Fetch parallelo ottimizzato
 			const [dipendenteData, iscrizioniData] = await Promise.all([
 				LavoratoreService.getById(session.idUtente),
 				FormazioneService.getIscrizioniUtente(session.idUtente)
@@ -39,22 +36,16 @@
 		}
 	});
 
-	/**
-	 * Download fisico tramite l'endpoint dedicato che naviga la FSM nel backend
-	 */
 	async function scaricaAttestato(idCorso: number) {
 		if (!utente) return;
 
 		try {
-			// Usiamo il Service ufficiale che ha già il basePath '/api/formazione'
 			const blob = await FormazioneService.downloadAttestato(idCorso, utente.idUtente);
 
-			// Programmazione difensiva
 			if (!blob || blob.size === 0) {
 				throw new Error("Il file restituito dal server è vuoto o corrotto.");
 			}
 
-			// Creazione del link di download temporaneo nel browser
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
@@ -70,11 +61,7 @@
 		}
 	}
 
-	/**
-	 * LOGICA REATTIVA FSM
-	 * Verifica la proprietà piatta generata dal DTO del backend.
-	 */
-	const attestatiDisponibili = $derived(
+	attestatiDisponibili = $derived(
 			iscrizioni.filter(i =>
 					i.presenzaConfermata === true &&
 					i.idDocumento !== undefined &&

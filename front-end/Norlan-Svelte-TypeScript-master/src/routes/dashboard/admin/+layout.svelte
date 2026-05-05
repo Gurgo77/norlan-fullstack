@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { base, resolveRoute } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
@@ -29,7 +30,7 @@
 	}
 
 	function isActive(href: string) {
-		return $page.url.pathname === href;
+		return $page.url.pathname === `${base}${href}`;
 	}
 
 	function isSubMenuActive(subItems: any[]) {
@@ -60,17 +61,17 @@
 		const session = AuthService.getSession();
 
 		if (!session) {
-			await goto('/login', { replaceState: true });
+			await goto(resolveRoute('/login'), { replaceState: true });
 			return;
 		}
 
 		if (session.richiedeCambioPassword) {
-			await goto('/dashboard/cambio-obbligatorio', { replaceState: true });
+			await goto(resolveRoute('/dashboard/cambio-obbligatorio'), { replaceState: true });
 			return;
 		}
 
 		if (session.ruolo !== 'ADMIN') {
-			await goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
+			await goto(resolveRoute(AuthService.getDashboardRouteByRole(session.ruolo)), { replaceState: true });
 			return;
 		}
 
@@ -134,12 +135,12 @@
 	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
 		<aside class="sticky top-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50">
 			<div class="p-8 shrink-0">
-				<img src="/NorLan.jpg" alt="NorLan Logo" class="h-10 w-auto rounded-md shadow-sm">
+				<img src="{base}/NorLan.jpg" alt="NorLan Logo" class="h-10 w-auto rounded-md shadow-sm">
 				<p class="text-[10px] font-black text-white/40 uppercase mt-2 tracking-widest italic">Control Panel</p>
 			</div>
 
 			<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-				<a href="/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
+				<a href="{base}/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
 					<Home size={18} />
 					Home Sito
 				</a>
@@ -165,7 +166,7 @@
 							<div transition:slide class="ml-4 mt-1 mb-2 space-y-1 border-l border-white/10 pl-2">
 								{#each item.subItems as subItem (subItem.href)}
 									<a
-											href={subItem.href}
+											href="{base}{subItem.href}"
 											class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group {isActive(subItem.href) ? 'bg-white/10 text-white shadow-sm border-l-2 border-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}"
 									>
 										<subItem.icon size={16} class="shrink-0" />
@@ -177,7 +178,7 @@
 
 					{:else}
 						<a
-								href={item.href}
+								href="{base}{item.href}"
 								class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isActive(item.href) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 						>
 							<item.icon size={20} class="shrink-0" />
@@ -266,18 +267,14 @@
 				{@render children()}
 			</div>
 
-			<!-- FOOTER DASHBOARD CENTRATO -->
 			<footer class="mt-12 pt-8 pb-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 shrink-0 relative z-10">
 
-				<!-- Sinistra: NorLan -->
 				<div class="text-[10px] font-black text-[#1B4B6B] uppercase tracking-[0.2em] opacity-80">
 					© {new Date().getFullYear()} NorLan
 				</div>
 
-				<!-- Separatore visivo (visibile solo da PC) -->
 				<div class="hidden sm:block w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
 
-				<!-- Destra: Sviluppatori -->
 				<div class="flex flex-wrap items-center justify-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
 					<span>Piattaforma Gestionale sviluppata da</span>
 					<a href="https://www.linkedin.com/in/antonio-gurgoglione/" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Antonio Gurgoglione</a>
