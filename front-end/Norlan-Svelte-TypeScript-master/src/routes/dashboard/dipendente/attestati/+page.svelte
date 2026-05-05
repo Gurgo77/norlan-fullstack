@@ -3,7 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		FileBadge, Download, Search, Loader2,
-		FileText, Calendar, CheckCircle2, Info
+		FileText, Calendar
 	} from 'lucide-svelte';
 
 	// IMPORT MODELLI E SERVIZI UFFICIALI

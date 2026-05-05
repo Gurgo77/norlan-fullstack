@@ -1,10 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { toast } from 'svelte-sonner'; // Assicurati di installare svelte-sonner
-  import { Mail, Phone, Send } from 'lucide-svelte'; // Assicurati di avere installato lucide-svelte
+  import { toast } from 'svelte-sonner';
+  import { Mail, Phone, Send } from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
 
-  // Stato del form
   let formData = {
     nome: '',
     cognome: '',
@@ -13,16 +11,14 @@
     privacyAccepted : false
   };
 
-  // Stato dell'invio
   let status: 'idle' | 'sending' | 'success' | 'error' = 'idle';
 
-  // Funzione per gestire l'invio del form
   async function handleSubmit(e: Event) {
     e.preventDefault();
     status = 'sending';
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch('http://localhost:8080/api/public/contatto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -34,10 +30,10 @@
       }
 
       status = 'success';
-      formData = { nome: '', cognome: '', email: '', messaggio: '' , privacyAccepted: true };
+      formData = { nome: '', cognome: '', email: '', messaggio: '' , privacyAccepted: false }; // false di base
       toast.success('Messaggio inviato con successo!');
-
       setTimeout(() => (status = 'idle'), 1500);
+
     } catch (error) {
       console.error('Errore:', error);
       status = 'error';
@@ -48,7 +44,6 @@
 </script>
 
 <style>
-  /* Float animation for contact info */
   @keyframes float {
     0%, 100% {
       transform: translateY(0);
@@ -62,7 +57,6 @@
     animation: float 3s infinite;
   }
 
-  /* Slide-in animation for hero section */
   @keyframes slideInFromBottom {
     from {
       transform: translateY(100%);
@@ -81,7 +75,6 @@
 
 <div class="min-h-screen pt-20 bg-white" in:fade out:fade>
   <section class="relative h-[70vh] flex items-center justify-center overflow-hidden">
-    <!-- Immagine di sfondo -->
     <div class="absolute inset-0 w-full h-full blur-sm">
       <img
         src="/NorLan.jpg"
@@ -89,9 +82,7 @@
         class="w-full h-full object-cover"
       />
     </div>
-    <!-- Overlay gradiente -->
     <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50"></div>
-    <!-- Contenuto sovrapposto -->
     <div class="container mx-auto px-4 relative z-10 text-center slide-in-bottom">
       <h1 class="text-4xl md:text-5xl font-bold text-white ">
         Contattaci
@@ -105,10 +96,8 @@
   <section class="py-20">
     <div class="container mx-auto px-4">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-        <!-- Informazioni di Contatto -->
         <div class="lg:sticky lg:top-24 space-y-8 bg-gray-50 p-8 rounded-xl ombraChiSiamo float">
           <h2 class="text-3xl font-bold text-[#1B4B6B] mb-8">Informazioni di Contatto</h2>
-
           <div class="space-y-8">
             <div class="flex items-center space-x-6">
               <div class="bg-[#1B4B6B] p-4 rounded-full flex-shrink-0">
@@ -119,7 +108,6 @@
                 <p class="text-gray-700 text-lg">339/6342332</p>
               </div>
             </div>
-
             <div class="flex items-center space-x-6">
               <div class="bg-[#1B4B6B] p-4 rounded-full flex-shrink-0">
                 <Mail class="w-6 h-6 text-white" />
@@ -132,14 +120,11 @@
             </div>
           </div>
         </div>
-
-        <!-- Form di Contatto -->
         <div class="bg-gray-50 p-8 rounded-xl ombraChiSiamo">
           <h2 class="text-3xl font-bold text-[#1B4B6B] mb-8">Invia un messaggio</h2>
           <form id="Contatto" on:submit|preventDefault={handleSubmit} class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <!-- svelte-ignore a11y_label_has_associated_control -->
                 <label class="block text-[#1B4B6B] font-semibold mb-2">Nome</label>
                 <input
                   type="text"
@@ -149,7 +134,6 @@
                 />
               </div>
               <div>
-                <!-- svelte-ignore a11y_label_has_associated_control -->
                 <label class="block text-[#1B4B6B] font-semibold mb-2">Cognome</label>
                 <input
                   type="text"
@@ -159,9 +143,7 @@
                 />
               </div>
             </div>
-            
             <div>
-              <!-- svelte-ignore a11y_label_has_associated_control -->
               <label class="block text-[#1B4B6B] font-semibold mb-2">Email</label>
               <input
                 type="email"
@@ -170,11 +152,8 @@
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
               />
             </div>
-            
             <div>
-              <!-- svelte-ignore a11y_label_has_associated_control -->
               <label class="block text-[#1B4B6B] font-semibold mb-2">Messaggio</label>
-              <!-- svelte-ignore element_invalid_self_closing_tag -->
               <textarea
                 required
                 rows={5}
@@ -182,8 +161,6 @@
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
               />
             </div>
-            
-            <!-- Aggiunta del checkbox per la privacy - CORRETTO CON bind:checked -->
             <div class="flex items-start">
               <div class="flex items-center h-5">
                 <input
