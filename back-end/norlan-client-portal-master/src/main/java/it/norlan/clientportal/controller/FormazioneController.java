@@ -43,7 +43,7 @@ public class FormazioneController {
     private MaterialeDidatticoService materialeService;
 
     @Autowired
-    private UtenteRepository utenteRepository;
+    private UtenteService utenteService;
 
     @Autowired
     private DocumentoService documentoService;
@@ -149,7 +149,7 @@ public class FormazioneController {
             Authentication authentication) {
 
         String emailDocente = authentication.getName();
-        Utente docente = utenteRepository.findByEmail(emailDocente)
+        Utente docente = utenteService.findByEmail(emailDocente)
                 .orElseThrow(() -> new SecurityException("Impossibile risolvere l'identità del docente."));
 
         corsoService.controfirmaDocente(id, docente.getIdUtente());

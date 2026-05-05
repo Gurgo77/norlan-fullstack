@@ -4,7 +4,7 @@ import it.norlan.clientportal.dto.UtenteDTO;
 import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.repository.UtenteRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +23,11 @@ public class UtenteService {
 
     @Autowired
     private NotificaService notificaService;
+
+    @Transactional(readOnly = true)
+    public Optional<Utente> findByEmail(String email) {
+        return utenteRepository.findByEmail(email);
+    }
 
     public Utente registraUtente(Utente utente) {
 
