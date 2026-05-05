@@ -3,7 +3,6 @@ package it.norlan.clientportal.controller;
 import it.norlan.clientportal.dto.AuthRequestDTO;
 import it.norlan.clientportal.dto.AuthResponseDTO;
 import it.norlan.clientportal.model.Utente;
-import it.norlan.clientportal.repository.UtenteRepository; // Assicurati di avere questo repository
 import it.norlan.clientportal.security.JwtUtil;
 import it.norlan.clientportal.service.LogSincronizzazioneService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +25,6 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    @Autowired
-    private UtenteRepository utenteRepository;
-
      @Autowired
      private JwtUtil jwtUtil;
 
@@ -45,7 +41,7 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            Optional<Utente> utenteOpt = utenteRepository.findByEmail(request.getEmail());
+            Optional<Utente> utenteOpt = utenteService.findByEmail(request.getEmail());
 
             if (utenteOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utente non trovato");
