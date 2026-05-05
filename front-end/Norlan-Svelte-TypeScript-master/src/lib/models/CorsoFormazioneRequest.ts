@@ -1,6 +1,6 @@
 export interface CorsoFormazioneRequest {
 	titolo: string;
-	dataOrario: string; // ISO date
+	dataOrario: string;
 	luogoFisico: string;
 	capacitaMassima: number;
 	idDocente: number;

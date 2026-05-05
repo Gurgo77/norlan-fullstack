@@ -125,11 +125,6 @@
   onMount(() => {
     visible = true;
   });
-
-  const springParams = {
-    stiffness: 0.3,
-    damping: 0.7
-  };
 </script>
 
 <style>
@@ -166,9 +161,9 @@
   <section class="relative h-[70vh] flex items-center justify-center">
     <div class="absolute inset-0 w-full h-full blur-sm">
       <img
-        src="/NorLan-ChiSiamo.jpg"
-        alt="Background"
-        class="w-full h-full object-cover"
+              src="/NorLan-ChiSiamo.jpg"
+              alt="Background"
+              class="w-full h-full object-cover"
       />
     </div>
     <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50"></div>
@@ -202,7 +197,7 @@
       </h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        {#each certifications as cert, idx}
+        {#each certifications as cert}
           <div class="bg-white rounded-xl p-6 relative overflow-hidden group ombraChiSiamo float">
             <div class="absolute top-0 right-0 bg-[#1B4B6B]/5 w-32 h-32 rounded-full -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-500"></div>
 
@@ -222,10 +217,10 @@
               </p>
               {#if cert.link}
                 <a
-                  href={cert.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center justify-center space-x-2 bg-[#1B4B6B] text-white px-4 py-2 rounded-lg hover:bg-[#1B4B6B]/90 transition-all mt-4 w-full"
+                        href={cert.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center justify-center space-x-2 bg-[#1B4B6B] text-white px-4 py-2 rounded-lg hover:bg-[#1B4B6B]/90 transition-all mt-4 w-full"
                 >
                   <span class="font-medium typing">Verifica Certificazione</span>
                   <BadgeCheck size={20} />
@@ -250,7 +245,7 @@
         <div class="relative">
           <div class="absolute top-0 bottom-0 left-8 w-0.5 bg-[#1B4B6B]/20"></div>
 
-          {#each education as item, idx}
+          {#each education as item}
             <div class="relative mb-8 ml-20">
               <div class="absolute -left-18 mt-0">
                 <div class="bg-white p-2 rounded-full shadow-md">

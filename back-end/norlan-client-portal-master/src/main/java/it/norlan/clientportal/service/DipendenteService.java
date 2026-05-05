@@ -2,8 +2,7 @@ package it.norlan.clientportal.service;
 
 import it.norlan.clientportal.dto.DipendenteDTO;
 import it.norlan.clientportal.model.Dipendente;
-import it.norlan.clientportal.repository.DipendenteRepository;
-import it.norlan.clientportal.repository.AziendaRepository;
+import it.norlan.clientportal.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +19,21 @@ public class DipendenteService {
 
     @Autowired
     private AziendaRepository aziendaRepository;
+
+    @Autowired
+    private AssegnazioneDPIRepository dpiRepository;
+
+    @Autowired
+    private IscrizioneCorsoRepository iscrizioneRepository;
+
+    @Autowired
+    private NotificaRepository notificaRepository;
+
+    @Autowired
+    private MessaggioRepository messaggioRepository;
+
+    @Autowired
+    private FeedbackRepository feedbackRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -44,10 +58,25 @@ public class DipendenteService {
 
     @Transactional
     public void eliminaDipendente(Integer id) {
+        Dipendente dip = dipendenteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lavoratore non trovato"));
 
-        Dipendente dip = dipendenteRepository.findById(id).orElseThrow();
         String nomeCompleto = dip.getNome() + " " + dip.getCognome();
         String ragioneSociale = dip.getAzienda().getRagioneSociale();
+
+        dpiRepository.deleteAll(dpiRepository.findByDipendenteIdUtente(id));
+
+        feedbackRepository.deleteAll(feedbackRepository.findAll().stream()
+                .filter(f -> f.getIscrizione().getId().getIdUtente().equals(id))
+                .toList());
+
+        iscrizioneRepository.deleteAll(iscrizioneRepository.findByUtenteIdUtente(id));
+
+        notificaRepository.deleteAll(notificaRepository.findByDestinatarioIdUtenteOrderByDataInvioDesc(id));
+
+        messaggioRepository.deleteAll(messaggioRepository.findAll().stream()
+                .filter(m -> m.getMittente().getIdUtente().equals(id) || m.getDestinatario().getIdUtente().equals(id))
+                .toList());
 
         dipendenteRepository.deleteById(id);
 
@@ -89,7 +118,6 @@ public class DipendenteService {
 
     public DipendenteDTO convertToDTO(Dipendente dipendente) {
         DipendenteDTO dto = new DipendenteDTO();
-
         dto.setIdUtente(dipendente.getIdUtente());
         dto.setEmail(dipendente.getEmail());
         dto.setRuolo(dipendente.getRuolo());
@@ -101,7 +129,6 @@ public class DipendenteService {
             dto.setIdAzienda(dipendente.getAzienda().getIdUtente());
             dto.setRagioneSocialeAzienda(dipendente.getAzienda().getRagioneSociale());
         }
-
         return dto;
     }
 }

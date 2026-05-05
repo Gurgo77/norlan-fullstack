@@ -16,6 +16,7 @@
 		sottotitolo: string;
 		isStaff: boolean;
 	}
+
 	let chatService: ChatService | null = null;
 	let currentUser: UserSession | null = $state(null);
 	let token: string = $state('');
@@ -54,7 +55,7 @@
 				}
 
 			} catch (error) {
-				console.error("Errore nel recupero della rubrica dipendenti", error);
+				console.error("Si è verificato un errore durante il recupero dei contatti aziendali:", error);
 			} finally {
 				isLoading = false;
 			}
@@ -66,7 +67,7 @@
 							scrollToBottom();
 						}
 					},
-					(err: string) => console.error("Errore WebSocket:", err)
+					(err: string) => console.error("Errore critico durante la comunicazione in tempo reale (WebSocket):", err)
 			);
 			chatService.connect(token, currentUser.idUtente);
 		}

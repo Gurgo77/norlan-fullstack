@@ -44,6 +44,7 @@
 		dataConsegna: '',
 		dataScadenzaRevisione: ''
 	});
+
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -67,7 +68,7 @@
 			registro = risultati.flat();
 
 		} catch (error) {
-			console.error("Errore nel caricamento del registro DPI:", error);
+			console.error("Si è verificato un errore durante il caricamento del registro DPI aziendale:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -138,11 +139,12 @@
 
 			showDpiModal = false;
 		} catch (error) {
-			alert("Errore salvataggio DPI.");
+			alert("Impossibile completare l'operazione di salvataggio del dispositivo. Riprovare o contattare il supporto tecnico.");
 		} finally {
 			isSavingDpi = false;
 		}
 	}
+
 	const filteredRegistro = $derived(
 			registro.filter(d => {
 				const tipoSafe = d.tipo ? d.tipo.toString().toLowerCase() : '';
@@ -271,6 +273,7 @@
 		</div>
 	</div>
 </div>
+
 {#if showDpiModal}
 	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
 		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
@@ -278,7 +281,7 @@
 				<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
 					<ShieldCheck size={20}/> {formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}
 				</h2>
-				<button onclick={() => (showDpiModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
+				<button onclick={() => (showDpiModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 			</div>
 			<div class="p-8 space-y-6">
 				<div>
@@ -331,6 +334,7 @@
 		</div>
 	</div>
 {/if}
+
 <style>
 	:global(body) { background-color: #F9FAFB; }
 </style>

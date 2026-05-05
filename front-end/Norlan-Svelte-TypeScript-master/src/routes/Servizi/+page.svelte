@@ -211,9 +211,9 @@
   <section class="relative h-[70vh] flex items-center justify-center overflow-hidden">
     <div class="absolute inset-0 w-full h-full blur-sm">
       <img
-        src="/NorLan.jpg"
-        alt="Background"
-        class="w-full h-full object-cover"
+              src="/NorLan.jpg"
+              alt="Background"
+              class="w-full h-full object-cover"
       />
     </div>
     <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50"></div>
@@ -229,10 +229,10 @@
       <div class="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
         <div class="lg:w-1/3 slide-in-bottom">
           <div class="sticky top-24 space-y-2">
-            {#each services as service, index}
+            {#each services as service, index (service.title)}
               <button
-                on:click={() => setActiveService(index)}
-                class={`
+                      on:click={() => setActiveService(index)}
+                      class={`
                   w-full text-left p-6 rounded-xl transition-all duration-300
                   border-2 border-gray-300 pulse-border
                   ${activeService === index
@@ -255,13 +255,13 @@
                 </h2>
               </div>
 
-              {#each services[activeService].content as section}
+              {#each services[activeService].content as section (section.title)}
                 <div class="bg-white rounded-xl shadow-lg border-2 border-gray-200">
                   <div class="bg-[#1B4B6B] px-6 py-4">
                     <h3 class="text-lg font-semibold text-white">{section.title}</h3>
                   </div>
                   <div class="p-6 space-y-4">
-                    {#each section.content as item}
+                    {#each section.content as item (item)}
                       <div class="flex items-start gap-4">
                         <ChevronRight class="w-5 h-5 text-[#1B4B6B] flex-shrink-0 mt-1" />
                         <p class="text-gray-700 leading-relaxed">{item}</p>

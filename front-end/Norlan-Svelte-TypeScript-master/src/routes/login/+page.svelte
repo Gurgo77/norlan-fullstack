@@ -50,7 +50,7 @@
 			}
 
 		} catch (err: unknown) {
-			console.error('[Login] Errore critico:', err);
+			console.error('Errore riscontrato durante la procedura di autenticazione:', err);
 
 			if (isAxiosError(err)) {
 				if (err.response?.status === 401) {
@@ -61,7 +61,7 @@
 					errorMessage = 'Errore di comunicazione col server. Riprova più tardi.';
 				}
 			} else {
-				errorMessage = 'Errore tecnico. Controlla la console.';
+				errorMessage = 'Errore tecnico imprevisto.';
 			}
 		} finally {
 			isLoading = false;

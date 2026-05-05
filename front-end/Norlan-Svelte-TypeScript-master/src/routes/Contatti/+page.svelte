@@ -1,7 +1,7 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner';
   import { Mail, Phone, Send } from 'lucide-svelte';
-	import { fade } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
 
   let formData = {
     nome: '',
@@ -30,12 +30,12 @@
       }
 
       status = 'success';
-      formData = { nome: '', cognome: '', email: '', messaggio: '' , privacyAccepted: false }; // false di base
+      formData = { nome: '', cognome: '', email: '', messaggio: '' , privacyAccepted: false };
       toast.success('Messaggio inviato con successo!');
       setTimeout(() => (status = 'idle'), 1500);
 
     } catch (error) {
-      console.error('Errore:', error);
+      console.error('Errore di comunicazione durante la trasmissione del modulo di contatto:', error);
       status = 'error';
       toast.error('Errore nell\'invio del messaggio');
       setTimeout(() => (status = 'idle'), 1500);
@@ -77,9 +77,9 @@
   <section class="relative h-[70vh] flex items-center justify-center overflow-hidden">
     <div class="absolute inset-0 w-full h-full blur-sm">
       <img
-        src="/NorLan.jpg"
-        alt="Background"
-        class="w-full h-full object-cover"
+              src="/NorLan.jpg"
+              alt="Background"
+              class="w-full h-full object-cover"
       />
     </div>
     <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50"></div>
@@ -127,48 +127,48 @@
               <div>
                 <label class="block text-[#1B4B6B] font-semibold mb-2">Nome</label>
                 <input
-                  type="text"
-                  required
-                  bind:value={formData.nome}
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
+                        type="text"
+                        required
+                        bind:value={formData.nome}
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
                 />
               </div>
               <div>
                 <label class="block text-[#1B4B6B] font-semibold mb-2">Cognome</label>
                 <input
-                  type="text"
-                  required
-                  bind:value={formData.cognome}
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
+                        type="text"
+                        required
+                        bind:value={formData.cognome}
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
                 />
               </div>
             </div>
             <div>
               <label class="block text-[#1B4B6B] font-semibold mb-2">Email</label>
               <input
-                type="email"
-                required
-                bind:value={formData.email}
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
+                      type="email"
+                      required
+                      bind:value={formData.email}
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
               />
             </div>
             <div>
               <label class="block text-[#1B4B6B] font-semibold mb-2">Messaggio</label>
               <textarea
-                required
-                rows={5}
-                bind:value={formData.messaggio}
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
+                      required
+                      rows={5}
+                      bind:value={formData.messaggio}
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4B6B] focus:border-transparent text-black"
               />
             </div>
             <div class="flex items-start">
               <div class="flex items-center h-5">
                 <input
-                  id="privacy"
-                  type="checkbox"
-                  required
-                  bind:checked={formData.privacyAccepted}
-                  class="w-4 h-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#1B4B6B]"
+                        id="privacy"
+                        type="checkbox"
+                        required
+                        bind:checked={formData.privacyAccepted}
+                        class="w-4 h-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#1B4B6B]"
                 />
               </div>
               <div class="ml-3 text-sm">
@@ -177,11 +177,11 @@
                 </label>
               </div>
             </div>
-            
+
             <button
-              type="submit"
-              disabled={status === 'sending' || !formData.privacyAccepted}
-              class={`w-full py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors ${
+                    type="submit"
+                    disabled={status === 'sending' || !formData.privacyAccepted}
+                    class={`w-full py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors ${
                 status === 'sending'
                   ? 'bg-gray-400 cursor-not-allowed'
                   : status === 'success'
@@ -195,9 +195,9 @@
             >
               <span class="text-white">
                 {status === 'sending' ? 'Invio in corso...' :
-                 status === 'success' ? 'Messaggio inviato!' :
-                 status === 'error' ? 'Errore nell\'invio' :
-                 'Invia Messaggio'}
+                        status === 'success' ? 'Messaggio inviato!' :
+                                status === 'error' ? 'Errore nell\'invio' :
+                                        'Invia Messaggio'}
               </span>
               <Send class="w-4 h-4 text-white" />
             </button>

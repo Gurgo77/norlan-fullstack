@@ -20,8 +20,8 @@ export class ChatService {
 	) {}
 
 	connect(token: string, userId: number | string): void {
-		if (typeof window !== 'undefined' && !(window as any).global) {
-			(window as any).global = window;
+		if (typeof window !== 'undefined' && !('global' in window)) {
+			(window as Window & { global?: Window }).global = window;
 		}
 
 		const baseUrl = (httpClient.defaults.baseURL || 'http://localhost:8080').replace(/\/$/, '');
@@ -34,7 +34,7 @@ export class ChatService {
 				Authorization: `Bearer ${token}`
 			},
 			onConnect: () => {
-				console.log('✅ Connessione Chat STOMP Stabilita con successo!');
+				console.log('Connessione Chat STOMP stabilita con successo.');
 
 				this.client?.subscribe(`/user/${userId}/queue/messages`, (message) => {
 					const data: MessaggioData = JSON.parse(message.body);
@@ -46,11 +46,11 @@ export class ChatService {
 				});
 			},
 			onStompError: (frame) => {
-				console.error('❌ STOMP Error:', frame.headers['message']);
+				console.error('Errore STOMP riscontrato:', frame.headers['message']);
 				this.onError(frame.headers['message'] || 'Errore di connessione STOMP al server');
 			},
 			onWebSocketError: (event) => {
-				console.error('❌ Errore critico WebSocket:', event);
+				console.error('Errore critico WebSocket:', event);
 			}
 		});
 

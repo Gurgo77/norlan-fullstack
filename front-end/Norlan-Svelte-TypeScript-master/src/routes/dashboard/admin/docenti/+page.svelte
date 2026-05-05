@@ -51,7 +51,7 @@
             const res = await AnagraficaService.getAllDocenti();
             docenti = res as DocenteData[];
         } catch (error) {
-            console.error("Errore caricamento docenti:", error);
+            console.error("Errore durante il recupero dell'elenco docenti:", error);
         } finally {
             isLoading = false;
         }
@@ -64,7 +64,7 @@
             const tuttiCorsi = await FormazioneService.getAllCorsi();
             corsiDocente = tuttiCorsi.filter(c => c.idDocente === docente.idUtente);
         } catch (error) {
-            console.error("Errore caricamento corsi docente:", error);
+            console.error("Errore durante il caricamento dei corsi associati al docente:", error);
             corsiDocente = [];
         } finally {
             isLoadingDettaglio = false;
@@ -100,7 +100,7 @@
             showAddModal = false;
             formDocente = { nome: '', cognome: '', specializzazioneTecnica: '', email: '', password: '' };
         } catch (error) {
-            console.error("Errore salvataggio docente:", error);
+            console.error("Si è verificato un errore durante il salvataggio dell'anagrafica docente:", error);
         } finally {
             isSaving = false;
         }
@@ -121,7 +121,7 @@
             if (selectedDocente?.idUtente === docenteDaEliminare.idUtente) selectedDocente = null;
             docenteDaEliminare = null;
         } catch (error) {
-            console.error("Errore eliminazione:", error);
+            console.error("Errore durante la rimozione del docente dal sistema:", error);
         }
     }
 </script>
@@ -262,7 +262,7 @@
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
                 <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
                     <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><GraduationCap size={20}/> Registra Docente</h2>
-                    <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
+                    <button onclick={() => (showAddModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
                 </div>
                 <div class="p-8 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
@@ -314,7 +314,8 @@
 
     {#if showDeleteModal}
         <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+            <!-- Modificata larghezza a max-w-sm per renderlo più piccolo -->
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" in:scale>
                 <div class="p-8 text-center">
                     <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
                     <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere Docente?</h2>

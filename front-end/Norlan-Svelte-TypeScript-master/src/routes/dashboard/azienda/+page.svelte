@@ -123,7 +123,7 @@
 						nomeCompletoDipendente: `${d.nome} ${d.cognome}`,
 						statoDerivato: calcolaStatoDpi(dpi.dataScadenzaRevisione || dpi.dataScadenza)
 					})) as DpiRegistro[];
-				} catch (e) {
+				} catch {
 					return [];
 				}
 			});
@@ -139,12 +139,12 @@
 							scrollChat();
 						}
 					},
-					(err: string) => console.error("Errore Chat Widget:", err)
+					(err: string) => console.error("Errore riscontrato nel modulo di comunicazione chat:", err)
 			);
 			chatService.connect(token, currentUser.idUtente);
 
 		} catch (error) {
-			console.error("Errore sincronizzazione dashboard azienda:", error);
+			console.error("Si è verificato un errore durante la sincronizzazione della dashboard aziendale:", error);
 		} finally {
 			isLoading = false;
 			setTimeout(scrollChat, 100);
@@ -376,7 +376,7 @@
 					<ShieldCheck size={16} />
 					<span class="text-xs font-black uppercase tracking-widest">Supporto NorLan</span>
 				</div>
-				<button onclick={() => isChatOpen = false} class="hover:text-red-400 transition-colors"><X size={16} /></button>
+				<button onclick={() => isChatOpen = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={16} /></button>
 			</div>
 			<div bind:this={chatScrollContainer} class="flex-1 bg-gray-50 p-4 overflow-y-auto space-y-3 custom-scrollbar">
 				{#each messaggiChat as msg (msg.idMessaggio)}

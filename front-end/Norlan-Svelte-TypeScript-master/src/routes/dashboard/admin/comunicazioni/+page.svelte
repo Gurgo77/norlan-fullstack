@@ -146,7 +146,7 @@
 			}
 
 		} catch (error) {
-			console.error("Errore nel recupero della rubrica:", error);
+			console.error("Errore durante il recupero della rubrica contatti:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -157,7 +157,7 @@
 						messaggi = [...messaggi, msg];
 						scrollToBottom();
 					},
-					(err: string) => { console.error("Errore Chat:", err); }
+					(err: string) => { console.error("Errore di comunicazione del servizio chat:", err); }
 			);
 			chatService.connect(token, currentUser.idUtente);
 		}

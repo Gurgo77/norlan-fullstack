@@ -149,7 +149,7 @@
                 }
             }
         } catch (error) {
-            console.error("Errore caricamento dati:", error);
+            console.error("Errore durante il caricamento dei dati:", error);
         } finally {
             isLoading = false;
         }
@@ -166,7 +166,7 @@
             documentiCorrenti = resDocs;
             dpiCorrenti = resDpis as unknown as DpiEsteso[];
         } catch (error) {
-            console.error("Errore caricamento dettaglio dipendente:", error);
+            console.error("Errore durante il caricamento dei dettagli del dipendente:", error);
         } finally {
             isLoadingDettaglio = false;
         }
@@ -174,7 +174,7 @@
 
     function apreGmail(email: string) {
         if (!email) {
-            alert("Nessuna email registrata per questo dipendente.");
+            alert("Nessun indirizzo email registrato per questo dipendente.");
             return;
         }
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, '_blank');
@@ -182,7 +182,7 @@
 
     async function vaiInChat(idUtente: string | number | undefined) {
         if (!idUtente) return;
-        return await goto(resolveRoute(`/dashboard/admin/comunicazioni?chatId=${idUtente}`));
+        return await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${idUtente}`);
     }
 
     async function salvaDipendente() {
@@ -213,8 +213,8 @@
             showAddModal = false;
             formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: '' };
         } catch (error) {
-            console.error("Dettaglio errore registrazione:", error);
-            alert("Errore durante la registrazione. Controlla la console per i dettagli.");
+            console.error("Dettaglio dell'errore durante la registrazione:", error);
+            alert("Si è verificato un errore durante la registrazione del dipendente.");
         } finally {
             isSaving = false;
         }
@@ -237,7 +237,7 @@
             }
             dipendenteDaEliminare = null;
         } catch {
-            alert("Impossibile eliminare il dipendente.");
+            alert("Si è verificato un errore durante l'eliminazione del dipendente.");
         }
     }
 
@@ -251,7 +251,7 @@
             a.click();
             URL.revokeObjectURL(u);
         } catch {
-            alert("Errore download.");
+            alert("Si è verificato un errore durante il download del documento.");
         }
     }
 
@@ -265,7 +265,7 @@
             showDeleteDocModal = false;
             docDaEliminare = null;
         } catch {
-            alert("Errore eliminazione attestato.");
+            alert("Si è verificato un errore durante l'eliminazione dell'attestato.");
         }
     }
 
@@ -274,7 +274,7 @@
         const azienda = aziende.find(a => String(a.idUtente) === String(selectedDipendente?.idAzienda));
 
         if (!azienda || !azienda.email) {
-            alert("Attenzione: L'azienda associata non ha un'email registrata.");
+            alert("L'azienda associata non ha un indirizzo email registrato nel sistema.");
             return;
         }
 
@@ -300,7 +300,7 @@
             `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${selectedDipendente.nome} ${selectedDipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
-        await goto(resolveRoute(`/dashboard/admin/comunicazioni?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`));
+        await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${selectedDipendente.idAzienda}&msg=${testoMessaggio}`);
     }
 
     function preparaEliminaDPI(dpi: DpiEsteso) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
@@ -317,8 +317,8 @@
             showDeleteDpiModal = false;
             dpiDaEliminare = null;
         } catch (error) {
-            console.error("Errore eliminazione DPI dal Database:", error);
-            alert("Errore eliminazione DPI.");
+            console.error("Errore durante l'eliminazione del DPI dal database:", error);
+            alert("Si è verificato un errore durante l'eliminazione del dispositivo di protezione individuale.");
         }
     }
 

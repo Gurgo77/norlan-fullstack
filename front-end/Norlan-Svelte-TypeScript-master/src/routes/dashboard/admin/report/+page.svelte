@@ -21,8 +21,8 @@
 	const itemsPerPage = 15;
 
 	$effect(() => {
-		searchQuery;
-		filtroGravita;
+		void searchQuery;
+		void filtroGravita;
 		currentPage = 1;
 	});
 
@@ -30,7 +30,8 @@
 		try {
 			logs = await SistemaService.getAllLogs();
 			logs.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
-		} catch {
+		} catch (error) {
+			console.error("Errore durante il recupero dei log di sistema:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -156,7 +157,7 @@
 					/>
 				</div>
 				<div class="flex bg-gray-100 p-1 rounded-xl">
-					{#each filtriDisponibili as filtro}
+					{#each filtriDisponibili as filtro (filtro)}
 						<button
 								onclick={() => filtroGravita = filtro}
 								class="px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all {filtroGravita === filtro ? 'bg-white shadow text-[#1B4B6B]' : 'text-gray-400 hover:text-gray-600'}"

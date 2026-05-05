@@ -11,6 +11,12 @@
     import { AuthService } from '$lib/services/AuthService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
 
+    interface ServerError {
+        response?: {
+            data?: string;
+        };
+    }
+
     let isLoading = $state(true);
     let isSaving = $state(false);
     let azienda = $state<AziendaData | null>(null);
@@ -29,7 +35,7 @@
             try {
                 azienda = await AnagraficaService.getAziendaById(session.idUtente);
             } catch (error) {
-                console.error("Errore caricamento profilo azienda:", error);
+                console.error("Si è verificato un errore durante il recupero dei dati del profilo aziendale:", error);
             }
         }
         isLoading = false;
@@ -43,8 +49,8 @@
             showSuccessMessage = true;
             setTimeout(() => (showSuccessMessage = false), 3000);
         } catch (error) {
-            console.error("Errore salvataggio:", error);
-            alert("Si è verificato un errore durante il salvataggio dei dati.");
+            console.error("Il sistema ha riscontrato un errore critico durante il salvataggio delle modifiche anagrafiche:", error);
+            alert("Impossibile completare l'operazione di salvataggio. Riprovare o contattare il supporto tecnico.");
         } finally {
             isSaving = false;
         }
@@ -54,21 +60,23 @@
         passwordError = '';
         passwordSuccessMessage = '';
         if (!vecchiaPassword || !nuovaPassword || !confermaPassword) {
-            passwordError = 'Compila tutti i campi.';
+            passwordError = 'Tutti i campi sono obbligatori.';
             return;
         }
         if (nuovaPassword !== confermaPassword) {
-            passwordError = 'Le password non coincidono.';
+            passwordError = 'La nuova password e la conferma non corrispondono.';
             return;
         }
         isChangingPassword = true;
         try {
             await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
-            passwordSuccessMessage = 'Password aggiornata!';
+            passwordSuccessMessage = 'Credenziali aggiornate correttamente.';
             vecchiaPassword = ''; nuovaPassword = ''; confermaPassword = '';
             setTimeout(() => { isPasswordFormVisible = false; passwordSuccessMessage = ''; }, 2500);
-        } catch (error: any) {
-            passwordError = error.response?.data || 'Errore. Verifica la password attuale.';
+        } catch (error) {
+            const err = error as ServerError;
+            console.error("Si è verificato un errore durante la procedura di aggiornamento della password:", err);
+            passwordError = err.response?.data || "Errore durante l'aggiornamento. Verificare che la password attuale sia corretta.";
         } finally {
             isChangingPassword = false;
         }

@@ -5,7 +5,7 @@ import { LogSincronizzazione, type LogSincronizzazioneData } from '$lib/models/L
 export interface CreateLogRequest {
 	descrizioneEvento: string;
 	esitoPositivo: boolean;
-	noteTecniche?: string; // Opzionale
+	noteTecniche?: string;
 }
 
 export class SistemaService {
@@ -38,10 +38,6 @@ export class SistemaService {
 		await httpClient.patch(`${this.basePath}/notifiche/${idNotifica}/letta`);
 	}
 
-	/**
-	 * Elimina una notifica letta/vecchia.
-	 * BE: DELETE /api/sistema/notifiche/{idNotifica}
-	 */
 	static async deleteNotifica(idNotifica: number | string): Promise<void> {
 		await httpClient.delete(`${this.basePath}/notifiche/${idNotifica}`);
 	}
@@ -65,7 +61,7 @@ export class SistemaService {
 
 	static async pulisciLogVecchi(giorniVecchiaia: number = 30): Promise<void> {
 		await httpClient.delete(`${this.basePath}/logs/pulizia`, {
-			params: { giorniVecchiaia } // Inviato come query param ?giorniVecchiaia=30
+			params: { giorniVecchiaia }
 		});
 	}
 }

@@ -1,7 +1,7 @@
 import httpClient from '$lib/api/httpClient';
 import type { DipendenteData } from '$lib/models/Dipendente';
-import type { AziendaData } from '$lib/models/Azienda'; // <-- AGGIUNGI QUESTO
-import type {AdminData} from '$lib/models/Admin';
+import type { AziendaData } from '$lib/models/Azienda';
+import type { AdminData } from '$lib/models/Admin';
 
 export interface AuthRequestDTO {
 	email: string;
@@ -68,7 +68,6 @@ export class AnagraficaService {
 		return response.data.length > 0;
 	}
 
-
 	static async deleteAzienda(idAzienda: number | string): Promise<void> {
 		await httpClient.delete(`${this.basePath}/aziende/${idAzienda}`);
 	}
@@ -98,7 +97,6 @@ export class AnagraficaService {
 		await httpClient.delete(`${this.basePath}/docenti/${idDocente}`);
 	}
 
-
 	static async getAdminById(id: number | string): Promise<AdminData> {
 		const response = await httpClient.get<AdminData>(`${this.basePath}/admin/${id}`);
 		return response.data;
@@ -108,9 +106,8 @@ export class AnagraficaService {
 		await httpClient.put(`${this.basePath}/admin/${id}`, dati);
 	}
 
-	static async getAllDipendenti(): Promise<any[]> {
-		const response = await httpClient.get(`${this.basePath}/dipendenti`);
+	static async getAllDipendenti(): Promise<DipendenteData[]> {
+		const response = await httpClient.get<DipendenteData[]>(`${this.basePath}/dipendenti`);
 		return response.data;
 	}
-
 }

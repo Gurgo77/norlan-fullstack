@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolveRoute } from '$app/paths';
 	import {
 		Building2, Plus, Trash2, ShieldCheck, ChevronRight, ChevronLeft,
 		Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin,
 		FileText, Download, Calendar, X, AlertTriangle, Upload, UserPlus,
-		Mail, MessageSquare
+		Mail, MessageSquare, IdCard
 	} from 'lucide-svelte';
 
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
@@ -71,7 +71,7 @@
 			await Promise.all(aziende.map(async (a, i) => {
 				aziende[i].hasDipendenti = await AnagraficaService.hasDipendenti(a.idUtente);
 			}));
-		} catch { console.error("Errore onMount"); } finally { isLoading = false; }
+		} catch { console.error("Errore durante l'inizializzazione del componente."); } finally { isLoading = false; }
 	});
 
 	async function apriDettaglio(aziendaPreview: Azienda) {
@@ -85,11 +85,11 @@
 			const idx = aziende.findIndex(a => a.idUtente === aziendaPreview.idUtente);
 			if (idx !== -1) aziende[idx].hasDipendenti = hasDip;
 			dipendentiCorrenti = await LavoratoreService.getByAzienda(aziendaPreview.idUtente);
-		} catch { console.error("Errore dettaglio"); }
+		} catch { console.error("Errore durante il recupero dei dettagli dell'azienda."); }
 	}
 
 	async function vaiADettaglioDipendente(idUtente: string | number) {
-		return await goto(`${base}/dashboard/admin/dipendenti?id=${idUtente}`);
+		return await goto(`${resolveRoute('/dashboard/admin/dipendenti')}?id=${idUtente}`);
 	}
 
 	function apreGmail(email: string) {
@@ -99,7 +99,7 @@
 
 	async function vaiInChat(idUtente: string | number | undefined) {
 		if (!idUtente) return;
-		return await goto(`${base}/dashboard/admin/comunicazioni?chatId=${idUtente}`);
+		return await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${idUtente}`);
 	}
 
 	function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }
@@ -110,7 +110,7 @@
 			await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
 			documentiCorrenti = documentiCorrenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
 			showDeleteDocModal = false; docDaEliminare = null;
-		} catch { alert("Errore eliminazione documento."); }
+		} catch { alert("Errore durante l'eliminazione del documento."); }
 	}
 
 	function preparaEliminaDip(dip: DipendenteDTO) { dipDaEliminare = dip; showDeleteDipModal = true; }
@@ -126,7 +126,7 @@
 				if (idx !== -1) aziende[idx].hasDipendenti = false;
 			}
 			showDeleteDipModal = false; dipDaEliminare = null;
-		} catch { alert("Errore eliminazione dipendente."); }
+		} catch { alert("Errore durante l'eliminazione del dipendente."); }
 	}
 
 	async function salvaNuovoDipendente() {
@@ -156,8 +156,8 @@
 			showDipendenteModal = false;
 			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', password: '' };
 		} catch (error) {
-			console.error("Errore Creazione Dipendente:", error);
-			alert("Ops! Creazione fallita. Assicurati che l'email o il Codice Fiscale non siano già registrati a sistema.");
+			console.error("Errore riscontrato durante la creazione del dipendente:", error);
+			alert("Creazione fallita. Verificare che l'email o il Codice Fiscale non siano già registrati a sistema.");
 		} finally {
 			isSavingDipendente = false;
 		}
@@ -186,8 +186,8 @@
 			fd.append('file', uploadFile);
 			fd.append('modulo', formDocumento.modulo);
 			fd.append('tipologia', formDocumento.tipologia);
-			fd.append('dataScadenzaStr', formDocumento.dataScadenza);
-			fd.append('dataRilascioStr', formDocumento.dataRilascio);
+			fd.append('dataScadenza', formDocumento.dataScadenza);
+			fd.append('dataRilascio', formDocumento.dataRilascio);
 
 			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
 
@@ -201,11 +201,11 @@
 			uploadFile = null;
 			idDocumentoDaAggiornare = null;
 		} catch (error) {
-			console.error("Errore Dettagliato Upload:", error);
+			console.error("Errore riscontrato durante il caricamento del documento:", error);
 			const err = error as { response?: { data?: Record<string, unknown> | string }, message?: string };
 			const data = err.response?.data;
 			const messaggioServer = (typeof data === 'string' ? data : data?.message) || err.message || "Errore sconosciuto";
-			alert("Ops! L'upload è fallito. Il server dice: " + JSON.stringify(messaggioServer));
+			alert("Caricamento fallito. Risposta del server: " + JSON.stringify(messaggioServer));
 		} finally {
 			isUploading = false;
 		}
@@ -220,7 +220,7 @@
 			a.download = doc.filePath.split('/').pop() || 'doc.pdf';
 			a.click();
 			URL.revokeObjectURL(u);
-		} catch { alert("Errore download."); }
+		} catch { alert("Errore durante il download del documento."); }
 	}
 
 	async function salvaNuovaAzienda() {
@@ -233,7 +233,7 @@
 			aziende = (res as AziendaData[]).map(item => new Azienda(item));
 			showModal = false;
 			formAzienda = { email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
-		} catch { alert("Errore creazione."); } finally { isSaving = false; }
+		} catch { alert("Errore durante la creazione dell'azienda."); } finally { isSaving = false; }
 	}
 
 	function preparaEliminazione(a: Azienda | null) { if (!a) return; aziendaDaEliminare = a; confermaTesto = ''; showDeleteModal = true; }
@@ -244,7 +244,7 @@
 				await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente);
 				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
 				showDeleteModal = false; selectedAzienda = null;
-			} catch { alert("Errore eliminazione azienda."); }
+			} catch { alert("Errore durante l'eliminazione dell'azienda."); }
 		}
 	}
 </script>
@@ -455,21 +455,43 @@
 
 	{#if showDipendenteModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[120] p-4" transition:fade>
-			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Dipendente</h2>
-					<button onclick={() => (showDipendenteModal = false)} class="hover:text-red-400 hover:rotate-90 transition-all duration-300"><X size={24}/></button>
+					<button onclick={() => (showDipendenteModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 space-y-4">
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nome *</label><input bind:value={formDipendente.nome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cognome *</label><input bind:value={formDipendente.cognome} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Codice Fiscale *</label><input bind:value={formDipendente.codiceFiscale} maxlength="16" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-[#1B4B6B]" /></div>
+					<div class="grid grid-cols-2 gap-4">
+						<div class="space-y-1">
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
+							<input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+						</div>
+						<div class="space-y-1">
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
+							<input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+						</div>
+					</div>
 
-					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+					<div class="grid grid-cols-2 gap-4">
+						<div class="space-y-1">
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
+							<input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none uppercase" />
+						</div>
+						<div class="space-y-1">
+							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso *</label>
+							<input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+						</div>
+					</div>
 
-					<div>
-						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password Temporanea *</label>
-						<input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" />
+					<div class="space-y-1">
+						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
+						<input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+						<div class="mt-2 flex items-start gap-2">
+							<div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+							<p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+								Nota: Il lavoratore dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+							</p>
+						</div>
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
@@ -487,7 +509,7 @@
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><FileText size={20}/> Carica Documento</h2>
-					<button onclick={() => (showUploadModal = false)} class="hover:text-red-400 hover:rotate-90 transition-all duration-300"><X size={24}/></button>
+					<button onclick={() => (showUploadModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 space-y-6">
 					<div class="grid grid-cols-2 gap-4">
@@ -526,7 +548,7 @@
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
 					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><Building2 size={20}/> Nuova Anagrafica Aziendale</h2>
-					<button onclick={() => (showModal = false)} class="hover:text-red-400 hover:rotate-90 transition-all duration-300"><X size={24}/></button>
+					<button onclick={() => (showModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 max-h-[80vh] overflow-y-auto">
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">

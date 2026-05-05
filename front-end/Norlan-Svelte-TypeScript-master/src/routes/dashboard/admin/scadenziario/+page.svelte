@@ -11,6 +11,7 @@
 	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
+
 	let documenti = $state<Documento[]>([]);
 	let aziende = $state<Azienda[]>([]);
 	let isLoading = $state(true);
@@ -27,7 +28,7 @@
 			documenti = resDocumenti;
 
 		} catch (error) {
-			console.error("Errore nel caricamento dello scadenziario:", error);
+			console.error("Errore durante il caricamento dei dati dello scadenziario:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -40,8 +41,8 @@
 			await DocumentoService.deleteDocumento(idDocumento);
 			documenti = documenti.filter(d => d.idDocumento !== idDocumento);
 		} catch (error) {
-			console.error("Errore eliminazione:", error);
-			alert("Impossibile eliminare il documento.");
+			console.error("Errore durante la procedura di eliminazione:", error);
+			alert("Si è verificato un errore durante l'eliminazione del documento.");
 		}
 	}
 
@@ -63,8 +64,8 @@
 			document.body.removeChild(a);
 			window.URL.revokeObjectURL(url);
 		} catch (error) {
-			console.error("Errore download:", error);
-			alert("Impossibile scaricare il file. Verifica che il documento sia effettivamente presente sul server.");
+			console.error("Errore durante il download del documento:", error);
+			alert("Impossibile procedere con il download. Verificare la disponibilità del file sul server.");
 		}
 	}
 
@@ -149,8 +150,8 @@
 				<tr>
 					<th class="px-6 py-4">Azienda</th>
 					<th class="px-6 py-4">Documento</th>
-					<th class="px-6 py-4">Status Scadenza</th>
-					<th class="px-6 py-4">Iter</th>
+					<th class="px-6 py-4">Stato Scadenza</th>
+					<th class="px-6 py-4">Fase</th>
 					<th class="px-8 py-5 text-right">Azioni</th>
 				</tr>
 				</thead>

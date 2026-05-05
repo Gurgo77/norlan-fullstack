@@ -17,6 +17,7 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { Documento } from '$lib/models/Documento';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
+
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroCategoria = $state<ModuloServizio | 'TUTTI'>('TUTTI');
@@ -30,7 +31,7 @@
 			const tuttiDocs = await DocumentoService.getDocumentiByAzienda(session.idUtente);
 			documenti = tuttiDocs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
 		} catch (error) {
-			console.error('Errore nel caricamento documenti:', error);
+			console.error('Si è verificato un errore durante il caricamento dell\'archivio documentale:', error);
 		} finally {
 			isLoading = false;
 		}
@@ -47,7 +48,7 @@
 			a.click();
 			window.URL.revokeObjectURL(url);
 		} catch (error) {
-			console.error('Errore download:', error);
+			console.error('Si è verificato un problema tecnico durante il download del file selezionato:', error);
 		}
 	}
 
@@ -213,6 +214,7 @@
 		</div>
 	</div>
 </div>
+
 <style>
 	:global(body) {
 		background-color: #f9fafb;

@@ -1,4 +1,4 @@
-import httpClient from '$lib/api/httpClient'; // Alias SvelteKit
+import httpClient from '$lib/api/httpClient';
 import type { FeedbackRequest } from '$lib/models/FeedbackRequest';
 import type {FeedbackStatsDTO} from "$lib/models/Feedback";
 

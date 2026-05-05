@@ -43,7 +43,6 @@ export class DocumentoService {
 			formData,
 			{
 				headers: {
-					// Sovrascriviamo l'impostazione globale 'application/json' del file httpClient.ts
 					'Content-Type': 'multipart/form-data'
 				}
 			}
@@ -83,7 +82,6 @@ export class DocumentoService {
 		idDocumento: number | string,
 		dati: RichiestaRinnovoRequest | null = null
 	): Promise<RichiestaRinnovo> {
-		// Nel BE il RequestBody è required = false, quindi passiamo un oggetto vuoto se null
 		const response = await httpClient.post<RichiestaRinnovoData>(
 			`${this.basePath}/${idDocumento}/rinnovi`,
 			dati || {}

@@ -13,6 +13,20 @@
 	import { SistemaService } from '$lib/services/SistemaService';
 	import type { Notifica } from '$lib/models/Notifica';
 
+	interface SubMenuItem {
+		href: string;
+		label: string;
+		icon: any;
+	}
+
+	interface MenuItem {
+		href?: string;
+		id?: string;
+		label: string;
+		icon: any;
+		subItems?: SubMenuItem[];
+	}
+
 	let { children } = $props();
 
 	let userEmail = $state('Caricamento...');
@@ -38,7 +52,7 @@
 		return subItems.some((sub) => $page.url.pathname.includes(sub.href));
 	}
 
-	const menuItems = [
+	const menuItems: MenuItem[] = [
 		{ href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
 		{ id: 'utenti', label: 'Utenti', icon: Users, subItems: [
 				{ href: '/dashboard/admin/aziende', label: 'Aziende Clienti', icon: Building2 },
@@ -86,7 +100,7 @@
 			}
 
 		} catch (error) {
-			console.error("Errore nel recupero notifiche", error);
+			console.error("Errore durante il recupero delle notifiche:", error);
 			notificheCount = 0;
 		}
 	});
@@ -140,33 +154,33 @@
 			</div>
 
 			<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-				<a href="{base}/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
+				<a href={resolveRoute('/')} class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
 					<Home size={18} />
 					Home Sito
 				</a>
 
-				{#each menuItems as item (item.id || item.href)}
+				{#each menuItems as item (item.id ?? item.href ?? item.label)}
 					{#if item.subItems}
 						<button
-								onclick={() => toggleMenu(item.id)}
+								onclick={() => item.id && toggleMenu(item.id)}
 								class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 group {isSubMenuActive(item.subItems) ? 'text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 						>
 							<div class="flex items-center gap-3">
 								<item.icon size={20} class="shrink-0" />
 								<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>
 							</div>
-							{#if openMenus[item.id]}
+							{#if item.id && openMenus[item.id]}
 								<ChevronDown size={16} />
 							{:else}
 								<ChevronRight size={16} />
 							{/if}
 						</button>
 
-						{#if openMenus[item.id]}
+						{#if item.id && openMenus[item.id]}
 							<div transition:slide class="ml-4 mt-1 mb-2 space-y-1 border-l border-white/10 pl-2">
 								{#each item.subItems as subItem (subItem.href)}
 									<a
-											href="{base}{subItem.href}"
+											href={resolveRoute(subItem.href)}
 											class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group {isActive(subItem.href) ? 'bg-white/10 text-white shadow-sm border-l-2 border-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}"
 									>
 										<subItem.icon size={16} class="shrink-0" />
@@ -178,8 +192,8 @@
 
 					{:else}
 						<a
-								href="{base}{item.href}"
-								class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isActive(item.href) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
+								href={resolveRoute(item.href ?? '')}
+								class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {item.href && isActive(item.href) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 						>
 							<item.icon size={20} class="shrink-0" />
 							<span class="font-bold text-sm uppercase tracking-tight">{item.label}</span>

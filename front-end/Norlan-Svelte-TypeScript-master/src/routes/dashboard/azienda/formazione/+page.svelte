@@ -61,7 +61,6 @@
 
 			const idDocumentiDaFirmare = attestatiDaFirmare.map(d => d.idDocumento);
 			const promises = lavoratoriRaw.map(async (l) => {
-
 				const iscrizioniTutte = await FormazioneService.getIscrizioniUtente(l.idUtente);
 				const tuttiId = iscrizioniTutte.map(i => i.idCorso);
 				const iscrizioniDaCompletare = iscrizioniTutte.filter(i => {
@@ -86,11 +85,12 @@
 
 			dipendenti = await Promise.all(promises);
 		} catch (error) {
-			console.error('Errore caricamento:', error);
+			console.error('Si è verificato un errore durante il caricamento dei dati formativi aziendali:', error);
 		} finally {
 			isLoading = false;
 		}
 	});
+
 	const filteredDipendenti = $derived(
 			dipendenti.filter((d) => d.corsi.length > 0 && d.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
@@ -127,7 +127,7 @@
 			enrollSuccess = true;
 			setTimeout(() => { showModalIscrizione = false; enrollSuccess = false; }, 2000);
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Errore: Dipendente già iscritto o dati non validi" };
+			actionSuccess = { type: 'ERR', msg: "Operazione non riuscita: verificare i dati o l'iscrizione esistente." };
 			setTimeout(() => actionSuccess = null, 3000);
 		} finally { isEnrolling = false; }
 	}
@@ -152,11 +152,11 @@
 				}
 				return dip;
 			});
-			actionSuccess = { type: 'DEL', msg: "Iscrizione annullata con successo" };
+			actionSuccess = { type: 'DEL', msg: "Iscrizione annullata correttamente." };
 			showDeleteIscrizioneModal = false;
 			setTimeout(() => actionSuccess = null, 3000);
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Impossibile annullare l'iscrizione" };
+			actionSuccess = { type: 'ERR', msg: "Impossibile annullare l'iscrizione selezionata." };
 			setTimeout(() => actionSuccess = null, 3000);
 		} finally { isActionLoading = false; iscrizioneDaRimuovere = null; }
 	}
@@ -170,7 +170,7 @@
 			document.body.appendChild(a); a.click();
 			window.URL.revokeObjectURL(url); a.remove();
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Errore nel download del file" };
+			actionSuccess = { type: 'ERR', msg: "Impossibile procedere con il download del file selezionato." };
 			setTimeout(() => actionSuccess = null, 3000);
 		}
 	}
@@ -188,11 +188,11 @@
 			await DocumentoService.approvaDocumento(idDocumento);
 			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
 			delete fileFirmati[idDocumento];
-			dipendenti = dipendenti.map(dip => ({ ...dip, corsi: dip.corsi.filter(c => c.idDocumento !== idDocumento) }));
-			actionSuccess = { type: 'DOC', msg: "Attestati consegnati correttamente!" };
+			dipendenti = dipendenti.map(dip => ({ ...dip, corsi: dip.corsi.filter(c => c.idCorso !== idDocumento) }));
+			actionSuccess = { type: 'DOC', msg: "Documentazione consegnata e archiviata correttamente." };
 			setTimeout(() => actionSuccess = null, 4000);
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Errore durante la consegna" };
+			actionSuccess = { type: 'ERR', msg: "Si è verificato un problema durante la consegna degli attestati." };
 			setTimeout(() => actionSuccess = null, 3000);
 		} finally { isActionLoading = false; }
 	}
@@ -210,12 +210,14 @@
 			<p class="text-sm font-black uppercase tracking-tight">{actionSuccess.msg}</p>
 		</div>
 	{/if}
+
 	<div class="mb-10 flex flex-col lg:flex-row items-start justify-between gap-6">
 		<h1 class="text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">Formazione Dipendenti</h1>
 		<button onclick={apriModaleIscrizione} class="flex items-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white">
 			<BookPlus size={18} /> Iscrivi a Nuovo Corso
 		</button>
 	</div>
+
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center gap-4 py-32">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
@@ -252,12 +254,14 @@
 				</div>
 			</div>
 		{/if}
+
 		<div class="mb-10 flex gap-4 mt-8">
 			<div class="group relative flex-1">
 				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={18} />
 				<input bind:value={searchQuery} type="text" placeholder="Cerca dipendente..." class="w-full rounded-2xl border border-gray-100 bg-white py-4 pl-12 pr-4 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm" />
 			</div>
 		</div>
+
 		<div class="space-y-6">
 			{#each filteredDipendenti as dip (dip.id)}
 				<div class="group flex flex-col xl:flex-row items-center gap-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:border-[#1B4B6B]/20 hover:shadow-xl" in:scale>
@@ -298,10 +302,16 @@
 			{/if}
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center shrink-0">
 				<h2 class="text-lg font-extrabold uppercase">Iscrizione Formativa</h2>
-				<button onclick={() => showModalIscrizione = false} class="hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalIscrizione = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-8 flex-1 bg-gray-50/50 space-y-6">
-				<div class="space-y-2"><label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Dipendente *</label><select bind:value={idDipendenteSelezionato} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all"><option value="" disabled>-- Seleziona --</option>{#each dipendenti as dip (dip.id)}<option value={dip.id}>{dip.nomeCompleto}</option>{/each}</select></div>
+				<div class="space-y-2">
+					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Dipendente *</label>
+					<select bind:value={idDipendenteSelezionato} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all">
+						<option value="" disabled>-- Seleziona --</option>
+						{#each dipendenti as dip (dip.id)}<option value={dip.id}>{dip.nomeCompleto}</option>{/each}
+					</select>
+				</div>
 				<div class="space-y-2">
 					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Corso *</label>
 					<select bind:value={idCorsoSelezionato} disabled={idDipendenteSelezionato === ''} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all disabled:opacity-50">
@@ -333,6 +343,7 @@
 		</div>
 	</div>
 {/if}
+
 <style>
 	:global(body) { background-color: #f9fafb; }
 </style>

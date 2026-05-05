@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
+	import { resolveRoute } from '$app/paths';
 	import {
 		Building2, FileClock, AlertCircle, LayoutDashboard,
 		Users, GraduationCap, ArrowRight, UserSquare2, HardHat, FileText, CheckCircle2
@@ -76,7 +77,7 @@
 						};
 						return dpiEsteso;
 					});
-				} catch(e) {
+				} catch {
 					return [];
 				}
 			});
@@ -118,7 +119,7 @@
 							testoScadenza: calc.testo,
 							dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT'),
 							timestampScadenza: dataScad,
-							linkRedirect: '/dashboard/admin/scadenziario'
+							linkRedirect: resolveRoute('/dashboard/admin/scadenziario')
 						};
 					});
 
@@ -141,7 +142,7 @@
 					testoScadenza: calc.testo,
 					dataScadenza: new Date(dpi.dataScadenzaRevisione).toLocaleDateString('it-IT'),
 					timestampScadenza: scadMs,
-					linkRedirect: '/dashboard/admin/dpi'
+					linkRedirect: resolveRoute('/dashboard/admin/dpi')
 				};
 			});
 
@@ -157,7 +158,7 @@
 			avvisiCriticiCount = scadenzeImminenti.filter(s => s.status !== 'green').length;
 
 		} catch (error) {
-			console.error("Errore nel caricamento della dashboard:", error);
+			console.error("Si è verificato un errore durante il caricamento dei dati della dashboard amministrativa:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -190,7 +191,7 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-12">
-			<a href="/dashboard/admin/aziende" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 0}}>
+			<a href={resolveRoute('/dashboard/admin/aziende')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 0}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<Building2 size={24} />
@@ -203,7 +204,7 @@
 				</div>
 			</a>
 
-			<a href="/dashboard/admin/dipendenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 50}}>
+			<a href={resolveRoute('/dashboard/admin/dipendenti')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 50}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<Users size={24} />
@@ -216,7 +217,7 @@
 				</div>
 			</a>
 
-			<a href="/dashboard/admin/docenti" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 100}}>
+			<a href={resolveRoute('/dashboard/admin/docenti')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 100}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<UserSquare2 size={24} />
@@ -229,7 +230,7 @@
 				</div>
 			</a>
 
-			<a href="/dashboard/admin/formazione" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 150}}>
+			<a href={resolveRoute('/dashboard/admin/formazione')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 150}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<GraduationCap size={24} />
@@ -242,7 +243,7 @@
 				</div>
 			</a>
 
-			<a href="/dashboard/admin/dpi" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 200}}>
+			<a href={resolveRoute('/dashboard/admin/dpi')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 200}}>
 				<div class="flex justify-between items-start mb-4">
 					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
 						<HardHat size={24} />
@@ -271,7 +272,7 @@
 						<tr>
 							<th class="px-6 py-4">Azienda</th>
 							<th class="px-6 py-4">Dettaglio Pratica</th>
-							<th class="px-6 py-4 text-center">Status</th>
+							<th class="px-6 py-4 text-center">Stato</th>
 							<th class="px-6 py-4 text-right">Azione</th>
 						</tr>
 						</thead>
@@ -279,7 +280,7 @@
 						{#each scadenzeFiltrate as scadenza (scadenza.id)}
 							<tr class="hover:bg-gray-50/50 transition-colors group">
 								<td class="px-6 py-4 font-black text-[#1B4B6B] text-xs uppercase">
-									<a href="/dashboard/admin/aziende?id={scadenza.idAzienda}" class="hover:text-[#1B4B6B] transition-colors">
+									<a href={`${resolveRoute('/dashboard/admin/aziende')}?id=${scadenza.idAzienda}`} class="hover:text-[#1B4B6B] transition-colors">
 										{scadenza.azienda}
 									</a>
 								</td>
@@ -350,7 +351,7 @@
 					</p>
 				</div>
 
-				<a href="/dashboard/admin/comunicazioni" class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center justify-between group hover:border-[#1B4B6B] hover:shadow-md transition-all cursor-pointer">
+				<a href={resolveRoute('/dashboard/admin/comunicazioni')} class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center justify-between group hover:border-[#1B4B6B] hover:shadow-md transition-all cursor-pointer">
 					<div>
 						<h4 class="text-xs font-black text-[#1B4B6B] uppercase mb-1">Supporto Clienti</h4>
 						<p class="text-[10px] font-bold text-gray-400 uppercase">Apri la Chat NorLan</p>

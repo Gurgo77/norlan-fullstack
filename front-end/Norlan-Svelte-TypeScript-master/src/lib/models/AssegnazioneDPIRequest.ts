@@ -3,6 +3,6 @@ import type { TipoDPI } from './Enums';
 export interface AssegnazioneDPIRequest {
 	idDipendente: number;
 	tipo: TipoDPI;
-	dataScadenzaRevisione: string; // ISO date
+	dataScadenzaRevisione: string;
 	nomeDpi?: string;
 }

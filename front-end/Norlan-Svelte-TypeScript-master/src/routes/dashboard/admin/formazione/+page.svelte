@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Plus, X, Trash2, Search,
 		Calendar, MapPin, Loader2, User,
 		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users,
-		BarChart, Star, BookOpen
+		BarChart, Star, BookOpen, AlertTriangle
 	} from 'lucide-svelte';
 
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
@@ -13,6 +13,10 @@
 	import { StatoCorso } from '$lib/models/Enums';
 	import type { CorsoFormazioneRequest } from '$lib/models/CorsoFormazioneRequest';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
+	import { FormazioneService } from '$lib/services/FormazioneService';
+	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import { FeedbackService } from '$lib/services/FeedbackService';
+	import type { DipendenteDTO } from '$lib/services/LavoratoreService';
 
 	interface FeedbackStatsDTO {
 		idCorso: number;
@@ -22,13 +26,9 @@
 		commenti: string[];
 	}
 
-	import { FormazioneService } from '$lib/services/FormazioneService';
-	import { AnagraficaService } from '$lib/services/AnagraficaService';
-	import { FeedbackService } from '$lib/services/FeedbackService';
-
 	let corsi = $state<CorsoFormazione[]>([]);
 	let docenti = $state<Docente[]>([]);
-	let dipendenti = $state<any[]>([]);
+	let dipendenti = $state<DipendenteDTO[]>([]);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let searchQuery = $state('');
@@ -37,8 +37,10 @@
 	let showModalPresenze = $state(false);
 	let showModalUpload = $state(false);
 	let showModalFeedback = $state(false);
+	let showModalElimina = $state(false);
 
 	let selectedCorso = $state<CorsoFormazione | null>(null);
+	let idCorsoDaEliminare = $state<number | null>(null);
 	let iscrizioniAttuali = $state<IscrizioneCorso[]>([]);
 	let presenzeSelezionate = $state<number[]>([]);
 	let fileUploads = $state<Record<number, File>>({});
@@ -79,7 +81,6 @@
 		if (!selectedCorso || iscrizioniAttuali.length === 0 || dipendenti.length === 0) return [];
 
 		const presenti = iscrizioniAttuali.filter(i => i.presenzaConfermata);
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const map = new Map<number, { idAzienda: number, ragioneSociale: string, count: number }>();
 
 		presenti.forEach(isc => {
@@ -89,15 +90,17 @@
 			let idAzienda = null;
 			let nomeAzienda = "Azienda Sconosciuta";
 
-			if (dip.azienda && typeof dip.azienda === 'object') {
-				idAzienda = dip.azienda.idUtente || dip.azienda.id;
-				nomeAzienda = dip.azienda.ragioneSociale || dip.azienda.nome || nomeAzienda;
-			} else if (dip.aziendaId) {
-				idAzienda = dip.aziendaId;
-				nomeAzienda = dip.aziendaRagioneSociale || `Azienda ID ${idAzienda}`;
-			} else if (dip.idAzienda) {
-				idAzienda = dip.idAzienda;
-				nomeAzienda = dip.ragioneSocialeAzienda || `Azienda ID ${idAzienda}`;
+			const dipConAzienda = dip as any;
+
+			if (dipConAzienda.azienda && typeof dipConAzienda.azienda === 'object') {
+				idAzienda = dipConAzienda.azienda.idUtente || dipConAzienda.azienda.id;
+				nomeAzienda = dipConAzienda.azienda.ragioneSociale || dipConAzienda.azienda.nome || nomeAzienda;
+			} else if (dipConAzienda.aziendaId) {
+				idAzienda = dipConAzienda.aziendaId;
+				nomeAzienda = dipConAzienda.aziendaRagioneSociale || `Azienda ID ${idAzienda}`;
+			} else if (dipConAzienda.idAzienda) {
+				idAzienda = dipConAzienda.idAzienda;
+				nomeAzienda = dipConAzienda.ragioneSocialeAzienda || `Azienda ID ${idAzienda}`;
 			}
 
 			if (idAzienda) {
@@ -125,9 +128,9 @@
 
 			corsi = corsiRes;
 			docenti = (docentiRes as DocenteData[]).map(d => new Docente(d));
-			dipendenti = dipendentiRes;
+			dipendenti = dipendentiRes as DipendenteDTO[];
 		} catch (error) {
-			console.error("Errore nel caricamento dei dati:", error);
+			console.error("Errore durante il caricamento dei dati:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -137,11 +140,14 @@
 		if (!isFormValid) return;
 		isSaving = true;
 		try {
-			const payload: CorsoFormazioneRequest = {
+			const payload = {
 				titolo: formCorso.titolo!,
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
-				idDocente: formCorso.idDocente!
+				// Invece di idDocente: formCorso.idDocente!, scrivi così:
+				docente: {
+					idUtente: formCorso.idDocente!
+				}
 			};
 
 			const nuovo = await FormazioneService.createCorso(payload);
@@ -149,20 +155,34 @@
 
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
-		} catch {
-			alert("Impossibile programmare il corso.");
+		} catch (error: any) {
+			if (error.response?.status === 409) {
+				console.error("Conflitto rilevato durante la creazione del corso: possibile duplicazione o sovrapposizione oraria.");
+				alert("Impossibile creare il corso: i dati inseriti sono in conflitto con un record esistente o il docente è già impegnato.");
+			} else {
+				console.error("Errore durante la programmazione del corso:", error);
+				alert("Si è verificato un errore durante la programmazione del corso.");
+			}
 		} finally {
 			isSaving = false;
 		}
 	}
 
-	async function eliminaCorso(idCorso: number) {
-		if (!confirm("Sei sicuro di voler eliminare questo corso?")) return;
+	function preparaEliminaCorso(id: number) {
+		idCorsoDaEliminare = id;
+		showModalElimina = true;
+	}
+
+	async function confermaEliminaCorso() {
+		if (idCorsoDaEliminare === null) return;
 		try {
-			await FormazioneService.deleteCorso(idCorso);
-			corsi = corsi.filter(c => c.idCorso !== idCorso);
-		} catch {
-			alert("Errore durante l'eliminazione.");
+			await FormazioneService.deleteCorso(idCorsoDaEliminare);
+			corsi = corsi.filter(c => c.idCorso !== idCorsoDaEliminare);
+			showModalElimina = false;
+			idCorsoDaEliminare = null;
+		} catch (error) {
+			console.error("Errore durante la rimozione del corso dal sistema:", error);
+			alert("Si è verificato un errore durante l'eliminazione.");
 		}
 	}
 
@@ -174,7 +194,7 @@
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 			presenzeSelezionate = iscrizioniAttuali.filter(i => i.presenzaConfermata).map(i => i.idUtente);
 		} catch {
-			alert("Impossibile caricare il registro iscritti.");
+			alert("Errore durante il caricamento del registro iscritti.");
 			showModalPresenze = false;
 		} finally {
 			isActionLoading = false;
@@ -197,8 +217,8 @@
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.ATTESA_FIRMA_DOCENTE } as CorsoFormazione : c);
 			showModalPresenze = false;
 		} catch (error) {
-			console.error("Errore durante la chiamata API validaPresenze:", error);
-			alert("Errore durante la validazione del registro.");
+			console.error("Errore durante la validazione delle presenze:", error);
+			alert("Si è verificato un errore durante la validazione del registro.");
 		} finally {
 			isActionLoading = false;
 		}
@@ -212,7 +232,7 @@
 		try {
 			iscrizioniAttuali = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 		} catch {
-			alert("Impossibile caricare i dati.");
+			alert("Errore durante il caricamento dei dati.");
 			showModalUpload = false;
 		} finally {
 			isActionLoading = false;
@@ -233,7 +253,7 @@
 
 		const missing = aziendeCoinvolte.some(a => !fileUploads[a.idAzienda]);
 		if (missing) {
-			alert("Devi caricare un certificato PDF per tutte le aziende elencate.");
+			alert("È necessario caricare un certificato PDF per tutte le aziende elencate.");
 			return;
 		}
 
@@ -245,14 +265,14 @@
 			}));
 
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
-			alert("Attestati distribuiti correttamente! Le aziende riceveranno una notifica.");
+			alert("Attestati distribuiti correttamente. Le aziende riceveranno una notifica.");
 
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
 
 			showModalUpload = false;
 		} catch (error) {
-			console.error("Errore fatale durante l'upload degli attestati:", error);
-			alert("Errore durante il caricamento degli attestati. Controlla la console.");
+			console.error("Errore durante il caricamento degli attestati:", error);
+			alert("Si è verificato un errore durante il caricamento degli attestati.");
 		} finally {
 			isActionLoading = false;
 		}
@@ -266,7 +286,7 @@
 		try {
 			statsFeedback = await FeedbackService.getStatisticheCorso(corso.idCorso);
 		} catch {
-			alert("Impossibile caricare i feedback.");
+			alert("Errore durante il caricamento dei feedback.");
 			showModalFeedback = false;
 		} finally {
 			isLoadingFeedback = false;
@@ -394,7 +414,7 @@
 						<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 group hover:border-[#1B4B6B]/30 transition-all">
 							<div class="flex justify-between items-start mb-4">
 								<span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border border-gray-200 text-gray-600 bg-gray-50">Programmato</span>
-								<button onclick={() => eliminaCorso(corso.idCorso)} class="text-gray-300 hover:text-red-600"><Trash2 size={14} /></button>
+								<button onclick={() => preparaEliminaCorso(corso.idCorso)} class="text-gray-300 hover:text-red-600"><Trash2 size={14} /></button>
 							</div>
 							<h3 class="font-extrabold text-[#1B4B6B] text-sm uppercase mb-3 line-clamp-2">{corso.titolo}</h3>
 							<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5 mb-1"><Calendar size={12}/> {formattaData(corso.dataOrario)}</p>
@@ -437,7 +457,7 @@
 		<div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Programma Nuovo Corso</h2>
-				<button onclick={() => showModalNuovo = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalNuovo = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				<div class="flex flex-col gap-6">
@@ -479,7 +499,7 @@
 		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Validazione Presenze: {selectedCorso?.titolo}</h2>
-				<button onclick={() => showModalPresenze = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalPresenze = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isActionLoading}
@@ -487,7 +507,7 @@
 				{:else}
 					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i dipendenti che hanno effettivamente partecipato al corso.</p>
 					<div class="space-y-2">
-						{#each iscrizioniAttuali as isc}
+						{#each iscrizioniAttuali as isc (isc.idUtente)}
 							<label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-[#1B4B6B] transition-colors">
 								<div class="flex items-center gap-4">
 									<input type="checkbox" checked={presenzeSelezionate.includes(isc.idUtente)} onchange={() => togglePresenza(isc.idUtente)} class="w-5 h-5 accent-[#1B4B6B] rounded border-gray-300">
@@ -515,7 +535,7 @@
 		<div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-emerald-600 p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Distribuzione Attestati Aziendali</h2>
-				<button onclick={() => showModalUpload = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalUpload = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isActionLoading && aziendeCoinvolte.length === 0}
@@ -573,7 +593,7 @@
 					</h2>
 					<p class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso.titolo}</p>
 				</div>
-				<button onclick={() => showModalFeedback = false} class="hover:text-white hover:rotate-90 transition-all duration-300"><X size={28} /></button>
+				<button onclick={() => showModalFeedback = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={28} /></button>
 			</div>
 
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
@@ -597,7 +617,7 @@
 									<span class="text-xl font-bold text-gray-300">/5</span>
 								</div>
 								<div class="flex justify-center gap-1 mt-4">
-									{#each [1,2,3,4,5] as s}
+									{#each [1,2,3,4,5] as s (s)}
 										<Star size={16} fill={statsFeedback.mediaDocenza >= s ? "#EAB308" : "none"} class={statsFeedback.mediaDocenza >= s ? "text-yellow-400" : "text-gray-200"} />
 									{/each}
 								</div>
@@ -609,7 +629,7 @@
 									<span class="text-xl font-bold text-gray-300">/5</span>
 								</div>
 								<div class="flex justify-center gap-1 mt-4">
-									{#each [1,2,3,4,5] as s}
+									{#each [1,2,3,4,5] as s (s)}
 										<Star size={16} fill={statsFeedback.mediaContenuti >= s ? "#EAB308" : "none"} class={statsFeedback.mediaContenuti >= s ? "text-yellow-400" : "text-gray-200"} />
 									{/each}
 								</div>
@@ -624,7 +644,7 @@
 						</div>
 
 						<div class="space-y-4">
-							{#each statsFeedback.commenti as commento}
+							{#each statsFeedback.commenti as commento (commento)}
 								<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
 									<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0"><User size={16}/></div>
 									<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
@@ -642,6 +662,22 @@
 				<button onclick={() => showModalFeedback = false} class="w-full py-4 bg-gray-900 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-colors shadow-lg">
 					Chiudi Analisi
 				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showModalElimina}
+	<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[200] p-4" transition:fade>
+		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" in:scale>
+			<div class="p-8 text-center">
+				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il corso?</h2>
+				<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva e rimuoverà tutte le iscrizioni associate.</p>
+				<div class="flex flex-col gap-3">
+					<button onclick={confermaEliminaCorso} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Sì, elimina definitivamente</button>
+					<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla l'operazione</button>
+				</div>
 			</div>
 		</div>
 	</div>

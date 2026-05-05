@@ -87,7 +87,7 @@
             aziendeEspanse["Senza Azienda"] = true;
 
         } catch (error) {
-            console.error("Errore nel caricamento della pagina DPI:", error);
+            console.error("Errore durante il caricamento dei dati relativi ai dispositivi di protezione individuale:", error);
         } finally {
             isLoading = false;
         }
@@ -145,7 +145,7 @@
         const azienda = aziende.find(a => String(a.idUtente) === String(dipendente.idAzienda));
 
         if (!azienda || !azienda.email) {
-            alert("Attenzione: L'azienda associata non ha un'email registrata.");
+            alert("Impossibile procedere: l'azienda associata non dispone di un indirizzo email registrato nel sistema.");
             return;
         }
 

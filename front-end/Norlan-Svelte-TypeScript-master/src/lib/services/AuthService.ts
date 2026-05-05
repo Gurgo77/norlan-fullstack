@@ -1,5 +1,5 @@
 import httpClient from '$lib/api/httpClient';
-import type {AuthRequest} from "$lib/models/AuthRequest";
+import type { AuthRequest } from '$lib/models/AuthRequest';
 
 export interface LoginRequest {
 	email: string;
@@ -25,7 +25,6 @@ export class AuthService {
 	private static readonly basePath = '/api/auth';
 
 	static async login(credentials: AuthRequest): Promise<LoginResponse> {
-		// Assicurati che credentials sia un oggetto {email, password}
 		const response = await httpClient.post<LoginResponse>(`${this.basePath}/login`, credentials);
 		const authData = response.data;
 		this.setSession(authData);
@@ -68,7 +67,10 @@ export class AuthService {
 		try {
 			await httpClient.post(`${this.basePath}/logout`);
 		} catch (error) {
-			console.warn('Il server non ha risposto al logout, procedo con la pulizia locale.', error);
+			console.warn(
+				'Errore di comunicazione con il server durante il logout. Esecuzione della pulizia locale dei dati.',
+				error
+			);
 		} finally {
 			localStorage.removeItem('jwt_token');
 			localStorage.removeItem('userId');
@@ -90,12 +92,17 @@ export class AuthService {
 
 	static getDashboardRouteByRole(ruolo?: string): string {
 		switch (ruolo) {
-			case 'ADMIN': return '/dashboard/admin';
-			case 'AZIENDA': return '/dashboard/azienda';
-			case 'DOCENTE': return '/dashboard/docente';
+			case 'ADMIN':
+				return '/dashboard/admin';
+			case 'AZIENDA':
+				return '/dashboard/azienda';
+			case 'DOCENTE':
+				return '/dashboard/docente';
 			case 'LAVORATORE':
-			case 'DIPENDENTE': return '/dashboard/dipendente';
-			default: return '/login';
+			case 'DIPENDENTE':
+				return '/dashboard/dipendente';
+			default:
+				return '/login';
 		}
 	}
 }
