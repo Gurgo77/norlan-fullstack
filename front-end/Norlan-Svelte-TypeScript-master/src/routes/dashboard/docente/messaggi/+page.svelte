@@ -1,21 +1,16 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { page } from '$app/stores'; // <-- Import SvelteKit Store aggiunto
+	import { page } from '$app/stores';
 	import { Send, MessageSquare, Loader2, Clock, ShieldCheck, Users, GraduationCap } from 'lucide-svelte';
-
-	// IMPORT SERVIZI
 	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-
-	// IMPORT MODELLI
 	import { Messaggio } from '$lib/models/Messaggio';
 	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { StatoCorso } from '$lib/models/Enums';
 
-	// --- INTERFACCE PER LA RUBRICA ---
 	interface Contatto {
 		id: number;
 		nome: string;
@@ -23,11 +18,9 @@
 		ruolo: 'ADMIN' | 'STUDENTE';
 	}
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let chatService = $state<ChatService | null>(null);
 	let currentUser = $state<UserSession | null>(null);
 	let token = $state<string>('');
-
 	let contatti = $state<Contatto[]>([]);
 	let activeContact = $state<Contatto | null>(null);
 	let messaggi = $state<Messaggio[]>([]);
@@ -43,7 +36,6 @@
 
 		if (currentUser) {
 			try {
-				// 1. Recupero Dati Massivo (Solo Corsi e Dipendenti)
 				const [tuttiCorsi, tuttiDipendentiRaw] = await Promise.all([
 					FormazioneService.getAllCorsi(),
 					LavoratoreService.getAll()
@@ -51,7 +43,6 @@
 
 				const tuttiDipendenti = tuttiDipendentiRaw as unknown as DipendenteData[];
 
-				// 2. Filtro solo i corsi attivi del docente
 				const mieiCorsiAttivi = tuttiCorsi.filter(c =>
 						c.idDocente === currentUser!.idUtente &&
 						c.stato !== StatoCorso.CERTIFICATO
@@ -59,13 +50,11 @@
 
 				const studentiMap = new Map<number, DipendenteData>();
 
-				// 3. Incrocio locale dei dati
 				for (const corso of mieiCorsiAttivi) {
 					const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 
 					for (const iscr of iscritti) {
 						if (!studentiMap.has(iscr.idUtente)) {
-							// Cerco lo studente nell'array globale
 							const studente = tuttiDipendenti.find(d => d.idUtente === iscr.idUtente || (d as any).id === iscr.idUtente);
 
 							if (studente) {
@@ -75,7 +64,6 @@
 					}
 				}
 
-				// 4. Costruzione Liste Contatti
 				const listaStudenti: Contatto[] = Array.from(studentiMap.values()).map(s => ({
 					id: s.idUtente,
 					nome: `${s.nome} ${s.cognome}`,
@@ -83,13 +71,10 @@
 					ruolo: 'STUDENTE'
 				}));
 
-				// 5. Assegnazione Rubrica Finale
 				contatti = [
 					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Direzione", ruolo: 'ADMIN' },
 					...listaStudenti
 				];
-
-				// 6. Configurazione e Connessione WebSocket
 				chatService = new ChatService(
 						(msg: Messaggio) => {
 							if (activeContact && (msg.idMittente === activeContact.id || msg.idMittente === currentUser?.idUtente)) {
@@ -102,14 +87,12 @@
 
 				chatService.connect(token, currentUser.idUtente);
 
-				// --- LOGICA RILEVAMENTO DA URL ---
 				const chatIdDaUrl = $page.url.searchParams.get('chatId');
 				if (chatIdDaUrl) {
 					const targetId = parseInt(chatIdDaUrl, 10);
 					const targetContact = contatti.find(c => c.id === targetId);
 
 					if (targetContact) {
-						// Apre in automatico la chat trovata
 						await selectContact(targetContact);
 					}
 				}
@@ -146,7 +129,6 @@
 
 		chatService.sendMessage(payload);
 
-		// Simulazione locale ottimistica
 		const msgMock = new Messaggio({
 			idMessaggio: Date.now(),
 			idMittente: currentUser.idUtente,
@@ -172,7 +154,6 @@
 </script>
 
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
-	<!-- BARRA LATERALE CONTATTI -->
 	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
 		<div class="p-8 border-b border-gray-100 bg-white">
 			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
@@ -181,7 +162,6 @@
 			</h2>
 			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff e Studenti</p>
 		</div>
-
 		<div class="flex-1 overflow-y-auto custom-scrollbar">
 			{#if isLoading}
 				<div class="flex flex-col items-center justify-center p-20 gap-4">
@@ -213,18 +193,14 @@
 						</div>
 					</button>
 				{/each}
-
 				{#if contatti.length === 0}
 					<p class="text-center text-[10px] font-bold text-gray-400 uppercase py-10">Nessun contatto disponibile.</p>
 				{/if}
 			{/if}
 		</div>
 	</div>
-
-	<!-- AREA CHAT PRINCIPALE -->
 	<div class="flex-1 flex flex-col bg-white">
 		{#if activeContact}
-			<!-- Header Chat -->
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
 				<div class="flex items-center gap-5 min-w-0">
 					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20 shrink-0">
@@ -245,8 +221,6 @@
 					</div>
 				</div>
 			</div>
-
-			<!-- Corpo Messaggi -->
 			<div bind:this={chatScrollContainer} class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
 					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
@@ -262,8 +236,6 @@
 					</div>
 				{/each}
 			</div>
-
-			<!-- Form di Invio -->
 			<div class="p-8 border-t border-gray-100 bg-white shrink-0">
 				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input
@@ -282,7 +254,6 @@
 				</form>
 			</div>
 		{:else}
-			<!-- Schermata Vuota (Nessun contatto selezionato) -->
 			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-20 text-center">
 				<div class="p-10 bg-gray-50 rounded-[50px] mb-8" in:scale>
 					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
@@ -300,7 +271,5 @@
 	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
 	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-
-	/* Previene lo scorrimento del corpo principale mentre si chatta */
 	:global(body) { overflow: hidden; }
 </style>

@@ -10,14 +10,12 @@
 		AlertCircle, CheckCircle, Clock, RefreshCw
 	} from 'lucide-svelte';
 
-	// Servizi e Modelli
-	import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
+	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { AuthService } from '$lib/services/AuthService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { Documento } from '$lib/models/Documento';
 	import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
 
-	// Interfaccia estesa per la vista
 	interface DipendenteEsteso extends DipendenteDTO {
 		nomeAzienda?: string;
 	}
@@ -34,22 +32,18 @@
 		dataScadenzaRevisione: string;
 	}
 
-	// --- STATO REATTIVO ---
 	let lavoratori = $state<DipendenteEsteso[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let idAziendaCorrente = $state<number | string>('');
 	let nomeAziendaCorrente = $state<string>('La tua Azienda');
-
 	let selectedDipendente = $state<DipendenteEsteso | null>(null);
 	let documentiCorrenti = $state<Documento[]>([]);
 	let dpiCorrenti = $state<DpiEsteso[]>([]);
 	let isLoadingDettaglio = $state(false);
-
 	let showAddModal = $state(false);
 	let showDeleteModal = $state(false);
 	let isSaving = $state(false);
-
 	let dipendenteDaEliminare = $state<DipendenteEsteso | null>(null);
 	let formDipendente = $state({
 		nome: '',
@@ -58,16 +52,11 @@
 		email: '',
 		passwordHash: ''
 	});
-
-	// --- STATI DPI ---
 	let showDpiModal = $state(false);
 	let isSavingDpi = $state(false);
 	let formDpi = $state<FormDPI>({ idAssegnazione: null, tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' });
-
 	let showDeleteDpiModal = $state(false);
 	let dpiDaEliminare = $state<DpiEsteso | null>(null);
-
-	// --- LOGICA DERIVATA ---
 	const filteredLavoratori = $derived(
 			lavoratori.filter(l =>
 					l.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -75,15 +64,12 @@
 					l.codiceFiscale.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 	);
-
 	const isFormValid = $derived(
 			formDipendente.nome.trim() !== '' &&
 			formDipendente.cognome.trim() !== '' &&
 			formDipendente.codiceFiscale.length === 16 &&
 			formDipendente.passwordHash.trim() !== ''
 	);
-
-	// --- LOGICA SEMAFORO (Stile Admin Scadenziario) ---
 	function getStatoScadenza(dataScadenza: string | undefined) {
 		if (!dataScadenza) return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
 
@@ -98,7 +84,6 @@
 		return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
 	}
 
-	// Ordinamento derivato per le liste nei dettagli del dipendente
 	const sortedDocumentiCorrenti = $derived(
 			[...documentiCorrenti].sort((a, b) => {
 				const statoA = getStatoScadenza(a.dataScadenza);
@@ -119,7 +104,6 @@
 			})
 	);
 
-	// --- AZIONI ---
 	onMount(async () => {
 		try {
 			const session = AuthService.getSession();
@@ -176,7 +160,6 @@
 
 	async function vaiInChat(idUtente: string | number | undefined) {
 		if (!idUtente) return;
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		return await goto(`/dashboard/azienda/comunicazioni?chatId=${idUtente}`);
 	}
 
@@ -224,7 +207,6 @@
 		}
 	}
 
-	// --- LOGICA ATTESTATI (SOLO DOWNLOAD) ---
 	async function scaricaDoc(doc: Documento) {
 		try {
 			const b = await DocumentoService.downloadDocumento(doc.idDocumento);
@@ -239,7 +221,6 @@
 		}
 	}
 
-	// --- LOGICA DPI ---
 	function openNewDpiModal() {
 		formDpi = { idAssegnazione: null, tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
 		showDpiModal = true;
@@ -310,7 +291,6 @@
 </script>
 
 <div in:fade class="max-w-7xl mx-auto p-6">
-
 	{#if !selectedDipendente}
 		<div class="mb-10 flex justify-between items-start">
 			<div>
@@ -324,21 +304,18 @@
 				<UserPlus size={18} /> Aggiungi Dipendente
 			</button>
 		</div>
-
 		<div class="mb-8 flex gap-4">
 			<div class="relative w-72 group">
 				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={16} />
 				<input bind:value={searchQuery} type="text" placeholder="Cerca lavoratore..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase" />
 			</div>
 		</div>
-
 		{#if isLoading}
 			<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{#each filteredLavoratori as l (l.idUtente)}
 					<div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
-
 						<div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
 							<button
 									onclick={(e) => { e.stopPropagation(); preparaEliminazione(l); }}
@@ -346,7 +323,6 @@
 							>
 								<Trash2 size={18} />
 							</button>
-
 							<div class="flex items-center gap-4 mb-6">
 								<div class="w-14 h-14 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">
 									{l.nome[0]}{l.cognome[0]}
@@ -361,7 +337,6 @@
 									</div>
 								</div>
 							</div>
-
 							<div class="space-y-3 pt-4 border-t border-gray-50">
 								<div class="flex items-center justify-between text-[10px] font-bold uppercase">
 									<span class="text-gray-400 flex items-center gap-1"><IdCard size={12}/> C. Fiscale</span>
@@ -369,7 +344,6 @@
 								</div>
 							</div>
 						</div>
-
 						<button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
 							<div class="flex items-center gap-2"><FileText size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
 							<ChevronRight size={20} class="text-[#1B4B6B]" />
@@ -383,11 +357,9 @@
 				{/each}
 			</div>
 		{/if}
-
 	{:else}
 		<div in:fade>
 			<button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
-
 			<div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
 				<div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
 					<div class="flex items-center gap-6">
@@ -401,7 +373,6 @@
 							<h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedDipendente.nome} {selectedDipendente.cognome}</h1>
 						</div>
 					</div>
-
 					<div class="flex items-center gap-3">
 						<button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
 							<Mail size={16} /> Manda Mail
@@ -414,7 +385,6 @@
 						</button>
 					</div>
 				</div>
-
 				<div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/30">
 					<div>
 						<p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><IdCard size={12}/> Codice Fiscale</p>
@@ -426,12 +396,10 @@
 					</div>
 				</div>
 			</div>
-
 			{#if isLoadingDettaglio}
 				<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
@@ -439,7 +407,6 @@
 								<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2>
 							</div>
 						</div>
-
 						{#if sortedDocumentiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each sortedDocumentiCorrenti as doc (doc.idDocumento)}
@@ -463,8 +430,6 @@
 												<Calendar size={10} />
 												<span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
 											</div>
-
-											<!-- Logica Semaforo -->
 											<div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.border} {stato.bg} {stato.colore}">
 												<IconaStato size={12} />
 												<span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
@@ -479,7 +444,6 @@
 							</div>
 						{/if}
 					</div>
-
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
@@ -490,7 +454,6 @@
 								<Plus size={14} /> Assegna DPI
 							</button>
 						</div>
-
 						{#if sortedDpiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || Math.random())}
@@ -515,8 +478,6 @@
 												<Calendar size={10} />
 												<span class="text-[9px] font-bold uppercase">Scad: {dpi.dataScadenzaRevisione ? new Date(dpi.dataScadenzaRevisione).toLocaleDateString() : 'N.D.'}</span>
 											</div>
-
-											<!-- Logica Semaforo -->
 											<div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.border} {stato.bg} {stato.colore}">
 												<IconaStato size={12} />
 												<span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
@@ -537,7 +498,6 @@
 			{/if}
 		</div>
 	{/if}
-
 	{#if showAddModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
@@ -551,20 +511,16 @@
 						<div class="w-full p-3 bg-gray-200 border-none rounded-xl text-sm font-bold text-gray-500 flex items-center gap-2 cursor-not-allowed">
 							<Building2 size={16} /> {nomeAziendaCorrente}
 						</div>
-
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
 						<input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
 						<input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 					</div>
 					<div class="space-y-4">
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso</label>
 						<input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
 						<input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA80A01H501W" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Password di Accesso *</label>
 						<input bind:value={formDipendente.passwordHash} type="text" placeholder="Password temporanea" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 					</div>
@@ -578,7 +534,6 @@
 			</div>
 		</div>
 	{/if}
-
 	{#if showDeleteModal}
 		<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
@@ -594,8 +549,6 @@
 			</div>
 		</div>
 	{/if}
-
-	<!-- MODALE INSERIMENTO DPI (Azienda) -->
 	{#if showDpiModal}
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
@@ -617,14 +570,12 @@
 							<option value="ALTRO">Altro</option>
 						</select>
 					</div>
-
 					{#if formDpi.tipo === 'ALTRO'}
 						<div class="space-y-1" transition:slide>
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
 							<input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
 						</div>
 					{/if}
-
 					<div class="grid grid-cols-2 gap-4 mt-4">
 						<div>
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
@@ -649,7 +600,6 @@
 			</div>
 		</div>
 	{/if}
-
 	{#if showDeleteDpiModal}
 		<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
@@ -665,5 +615,4 @@
 			</div>
 		</div>
 	{/if}
-
 </div>

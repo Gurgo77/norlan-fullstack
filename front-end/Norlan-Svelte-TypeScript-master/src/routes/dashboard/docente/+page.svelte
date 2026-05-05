@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { base, resolveRoute } from '$app/paths';
+	import { resolveRoute } from '$app/paths';
 	import {
 		LayoutDashboard, BookOpen, Users, Clock, ArrowRight,
 		MessageSquare, CheckCircle2, MapPin, Calendar, Loader2,
-		FileText, Play, CheckSquare
+		Play, CheckSquare
 	} from 'lucide-svelte';
-
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AuthService } from '$lib/services/AuthService';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
@@ -34,7 +33,6 @@
 	let isLoading = $state(true);
 	let nomeDocente = $state('Docente');
 	let stats = $state<DashboardStats>({ corsiInCorso: 0, studentiTotali: 0, materialiCaricati: 0 });
-
 	let lezioniImminenti = $state<LezioneImminente[]>([]);
 	let corsiDaValidare = $state<CorsoFormazione[]>([]);
 
@@ -49,23 +47,18 @@
 		try {
 			const profilo = await AnagraficaService.getDocenteById(session.idUtente);
 			nomeDocente = (profilo as { nome?: string }).nome || session.email.split('@')[0];
-
 			const tuttiCorsi = await FormazioneService.getAllCorsi();
 			const mieiCorsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
-
 			const corsiInSvolgimento = mieiCorsi.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO);
 			const corsiProgrammati = mieiCorsi.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato);
 			corsiDaValidare = mieiCorsi.filter(c => c.stato === StatoCorso.CONCLUSO);
-
 			let totaleStudenti = 0;
 			let totaleMateriali = 0;
-
 			const conteggiPromises = mieiCorsi.filter(c => c.stato !== StatoCorso.CERTIFICATO).map(async (corso) => {
 				const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 				const materiali = await FormazioneService.getMaterialiByCorso(corso.idCorso);
 				return { numIscritti: iscritti.length, numMateriali: materiali.length };
 			});
-
 			const risultatiConteggi = await Promise.all(conteggiPromises);
 			risultatiConteggi.forEach(res => {
 				totaleStudenti += res.numIscritti;
@@ -77,7 +70,6 @@
 				studentiTotali: totaleStudenti,
 				materialiCaricati: totaleMateriali
 			};
-
 			const corsiAttivi = [...corsiInSvolgimento, ...corsiProgrammati];
 			const oggiZero = new Date();
 			oggiZero.setHours(0, 0, 0, 0);
@@ -112,7 +104,6 @@
 </script>
 
 <div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
-
 	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -127,14 +118,12 @@
 			</p>
 		</div>
 	</div>
-
 	{#if isLoading}
 		<div class="py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione dati didattici...</span>
 		</div>
 	{:else}
-
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 			<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-xl transition-all group">
 				<div class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -145,7 +134,6 @@
 					<p class="text-4xl font-black text-[#1B4B6B] leading-none">{stats.corsiInCorso}</p>
 				</div>
 			</div>
-
 			<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-xl transition-all group">
 				<div class="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
 					<Users size={28} />
@@ -156,9 +144,7 @@
 				</div>
 			</div>
 		</div>
-
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-
 			<div class="xl:col-span-2 space-y-6">
 				<div class="flex items-center justify-between px-2">
 					<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Prossime Lezioni</h2>
@@ -166,15 +152,12 @@
 						Tutti i corsi <ArrowRight size={12} />
 					</a>
 				</div>
-
 				<div class="space-y-4">
 					{#each lezioniImminenti as lezione (lezione.idCorso)}
 						<div class="bg-white rounded-3xl border {lezione.isOggi ? 'border-[#1B4B6B] shadow-xl shadow-blue-900/5' : 'border-gray-100 shadow-sm'} p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group hover:border-[#1B4B6B]/30 transition-all">
-
 							{#if lezione.isOggi}
 								<div class="absolute top-0 right-0 w-32 h-32 bg-[#1B4B6B]/5 rounded-full blur-3xl"></div>
 							{/if}
-
 							<div class="flex items-center gap-6 relative z-10 w-full md:w-auto">
 								<div class="w-16 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 {lezione.isOggi ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-[#1B4B6B]'}">
 									<span class="text-xs font-black uppercase tracking-tighter">{lezione.isOggi ? 'OGGI' : lezione.dataStr.split(' ')[0]}</span>
@@ -182,7 +165,6 @@
 										<span class="text-[9px] font-bold uppercase">{lezione.dataStr.split(' ')[1]}</span>
 									{/if}
 								</div>
-
 								<div class="flex-1 min-w-0">
 									{#if lezione.stato === StatoCorso.IN_SVOLGIMENTO}
 										<span class="inline-block bg-blue-100 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest mb-1">In Svolgimento</span>
@@ -195,7 +177,6 @@
 									</div>
 								</div>
 							</div>
-
 							<div class="w-full md:w-auto relative z-10 shrink-0">
 								<a href="{resolveRoute('/dashboard/docente/corsi')}" class="w-full md:w-auto px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 {lezione.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-[#1B4B6B] hover:bg-gray-100'}">
 									{#if lezione.stato === StatoCorso.IN_SVOLGIMENTO}
@@ -207,7 +188,6 @@
 							</div>
 						</div>
 					{/each}
-
 					{#if lezioniImminenti.length === 0}
 						<div class="bg-white rounded-3xl border border-dashed border-gray-200 p-12 text-center shadow-sm">
 							<Calendar size={40} class="mx-auto text-gray-200 mb-4" />
@@ -217,14 +197,11 @@
 					{/if}
 				</div>
 			</div>
-
 			<div class="space-y-6">
 				<div class="flex items-center justify-between px-2">
 					<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Azioni Richieste</h2>
 				</div>
-
 				<div class="bg-white rounded-3xl border border-gray-100 p-6 h-full shadow-sm">
-
 					{#if corsiDaValidare.length > 0}
 						<p class="text-[9px] font-black uppercase tracking-widest text-red-500 mb-4 border-b border-red-50 pb-2">Registri da chiudere</p>
 						<div class="space-y-3 mb-6">
@@ -246,7 +223,6 @@
 							<p class="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Tutti i registri sono a norma</p>
 						</div>
 					{/if}
-
 					<p class="text-[9px] font-black uppercase tracking-widest text-[#1B4B6B] mb-4 border-b border-gray-50 pb-2">Scorciatoie Rapide</p>
 					<div class="grid grid-cols-2 gap-3">
 						<a href="{resolveRoute('/dashboard/docente/studenti')}" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-[#1B4B6B]/20 hover:bg-blue-50 transition-all text-[#1B4B6B] group">
@@ -258,13 +234,11 @@
 							<span class="text-[9px] font-black uppercase tracking-widest text-center">Apri<br>Chat</span>
 						</a>
 					</div>
-
 				</div>
 			</div>
 		</div>
 	{/if}
 </div>
-
 <style>
 	:global(body) { background-color: #F9FAFB; }
 </style>

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import { ShieldAlert, Lock, Loader2, Save } from 'lucide-svelte';
+    import { ShieldAlert, Lock, Loader2 } from 'lucide-svelte';
     import { AuthService } from '$lib/services/AuthService';
 
     let vecchiaPassword = $state('');
@@ -51,13 +51,11 @@
                 Al primo accesso, è obbligatorio personalizzare la password di sistema temporanea per garantire la protezione dei dati.
             </p>
         </div>
-
         <form onsubmit={handleSubmit} class="space-y-6">
             <div class="space-y-2">
                 <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password Temporanea (Attuale)</label>
                 <input type="password" bind:value={vecchiaPassword} required class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:border-[#1B4B6B]" />
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nuova Password</label>
@@ -68,11 +66,9 @@
                     <input type="password" bind:value={confermaPassword} required class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:border-[#1B4B6B]" />
                 </div>
             </div>
-
             {#if error}
                 <p class="text-red-500 text-[10px] font-black uppercase tracking-widest bg-red-50 p-3 rounded-xl border border-red-100 text-center">{error}</p>
             {/if}
-
             <button
                     type="submit"
                     disabled={isLoading}

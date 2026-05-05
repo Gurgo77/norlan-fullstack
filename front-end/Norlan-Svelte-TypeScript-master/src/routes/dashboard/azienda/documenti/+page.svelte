@@ -16,8 +16,7 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AuthService } from '$lib/services/AuthService';
 	import { Documento } from '$lib/models/Documento';
-	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums'; // Aggiunto import TipoDocumento
-
+	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroCategoria = $state<ModuloServizio | 'TUTTI'>('TUTTI');
@@ -112,7 +111,6 @@
 			</div>
 		</div>
 	</div>
-
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
 		<div class="flex flex-wrap gap-3">
 			<button
@@ -124,7 +122,6 @@
 			>
 				Tutti
 			</button>
-
 			{#each Object.values(ModuloServizio) as cat (cat)}
 				<button
 						onclick={() => (filtroCategoria = cat)}
@@ -137,7 +134,6 @@
 				</button>
 			{/each}
 		</div>
-
 		<div class="relative w-full md:w-72">
 			<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
 			<input
@@ -148,7 +144,6 @@
 			/>
 		</div>
 	</div>
-
 	{#if isLoading}
 		<div class="flex h-64 flex-col items-center justify-center gap-4 text-gray-300">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
@@ -213,13 +208,11 @@
 			<p class="text-xs font-black uppercase tracking-tight text-[#1B4B6B]">Richiesta Documenti Speciali</p>
 			<p class="text-[10px] font-medium uppercase tracking-tighter text-gray-500">
 				Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la
-				<!-- Aggiunto ?chatId=1 all'href -->
 				<a href="/dashboard/azienda/comunicazioni?chatId=1" class="font-black text-[#1B4B6B] underline">Chat NorLan</a>.
 			</p>
 		</div>
 	</div>
 </div>
-
 <style>
 	:global(body) {
 		background-color: #f9fafb;

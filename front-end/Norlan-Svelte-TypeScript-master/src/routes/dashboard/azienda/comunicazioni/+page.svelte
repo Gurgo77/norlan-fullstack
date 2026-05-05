@@ -1,37 +1,30 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { Send, Building2, MessageSquare, Loader2, User, Clock, Hash, ShieldCheck, Users } from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, User, Clock, ShieldCheck, Users } from 'lucide-svelte';
 
-	// Servizi
 	import { ChatService } from '$lib/services/ChatService';
-	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
+	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { page } from '$app/stores';
 
-	// Modelli
 	import { Messaggio } from '$lib/models/Messaggio';
 
-	// --- INTERFACCE PER LA RUBRICA ---
 	interface Contatto {
 		id: number;
 		nome: string;
 		sottotitolo: string;
 		isStaff: boolean;
 	}
-
-	// --- STATO REATTIVO ---
 	let chatService: ChatService | null = null;
 	let currentUser: UserSession | null = $state(null);
 	let token: string = $state('');
-
 	let contatti: Contatto[] = $state([]);
 	let activeContact: Contatto | null = $state(null);
 	let messaggi: Messaggio[] = $state([]);
 	let newMessage: string = $state('');
 	let isLoading: boolean = $state(true);
-
-	const STAFF_ID = 1; // ID convenzionale dello Staff NorLan
+	const STAFF_ID = 1;
 
 	onMount(async () => {
 		currentUser = AuthService.getSession();
@@ -39,10 +32,7 @@
 
 		if (currentUser) {
 			try {
-				// 1. Carichiamo i dipendenti dell'azienda
 				const dipendentiRaw = await LavoratoreService.getByAzienda(currentUser.idUtente);
-
-				// 2. Costruiamo la lista contatti (Staff + Dipendenti)
 				const listaDipendenti: Contatto[] = dipendentiRaw.map(d => ({
 					id: d.idUtente,
 					nome: `${d.nome} ${d.cognome}`,
@@ -55,7 +45,6 @@
 					...listaDipendenti
 				];
 
-				// 3. Controlla se c'è un chatId nell'URL e apri la conversazione
 				const chatIdDaUrl = $page.url.searchParams.get('chatId');
 				if (chatIdDaUrl) {
 					const contattoTrovato = contatti.find(c => String(c.id) === chatIdDaUrl);
@@ -70,10 +59,8 @@
 				isLoading = false;
 			}
 
-			// 4. Connessione al WebSocket
 			chatService = new ChatService(
 					(msg: Messaggio) => {
-						// Ricezione messaggio in tempo reale
 						if (activeContact && (msg.idMittente === activeContact.id || msg.idMittente === currentUser?.idUtente)) {
 							messaggi = [...messaggi, msg];
 							scrollToBottom();
@@ -93,7 +80,6 @@
 		activeContact = contatto;
 		messaggi = [];
 		if (currentUser && activeContact) {
-			// Recupero cronologia via REST
 			messaggi = await ChatService.getCronologia(currentUser.idUtente, contatto.id);
 			scrollToBottom();
 		}
@@ -102,14 +88,12 @@
 	function sendMessage() {
 		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
 
-		// Invio tramite WebSocket
 		chatService.sendMessage({
 			idMittente: currentUser.idUtente,
 			idDestinatario: activeContact.id,
 			testo: newMessage
 		});
 
-		// Mock locale per feedback immediato
 		const msgMock = new Messaggio({
 			idMessaggio: Date.now(),
 			idMittente: currentUser.idUtente,
@@ -246,7 +230,5 @@
 	.custom-scrollbar::-webkit-scrollbar { width: 3px; }
 	.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 	.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(27, 75, 107, 0.1); border-radius: 10px; }
-
-	/* Layout fix */
 	:global(body) { overflow: hidden; }
 </style>

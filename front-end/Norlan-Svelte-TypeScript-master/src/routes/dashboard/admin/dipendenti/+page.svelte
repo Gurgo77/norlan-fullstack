@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import { base, resolveRoute } from '$app/paths';
+    import { resolveRoute } from '$app/paths';
     import { fade, scale } from 'svelte/transition';
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,

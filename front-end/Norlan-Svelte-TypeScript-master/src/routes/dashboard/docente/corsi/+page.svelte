@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale, slide } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import {
 		X, Search, Calendar, Loader2, CheckSquare, UploadCloud, CheckCircle2, Clock, BarChart3, Star, BookOpen, Play, AlertTriangle, Send, FileText, Download
 	} from 'lucide-svelte';
 
-	// IMPORT SERVIZI E MODELLI UFFICIALI
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { StatoCorso } from '$lib/models/Enums';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
@@ -14,13 +13,11 @@
 	import { FeedbackService } from '$lib/services/FeedbackService';
 	import httpClient from '$lib/api/httpClient';
 
-	// Estensione per gestire il numero iscritti
 	interface CorsoFormazioneEsteso extends CorsoFormazione {
 		numeroIscritti?: number;
 		isLoadingIscritti?: boolean;
 	}
 
-	// Interfaccia DTO del Feedback
 	interface FeedbackStatsDTO {
 		idCorso: number;
 		mediaDocenza: number;
@@ -29,39 +26,26 @@
 		commenti: string[];
 	}
 
-	// --- STATO CON RUNE SVELTE 5 ---
 	let isLoading = $state(true);
 	let corsi = $state<CorsoFormazioneEsteso[]>([]);
 	let queryRicerca = $state('');
 	let filtroStato = $state<StatoCorso | ''>('');
-
-	// --- STATI MODALI ---
 	let showModalFirma = $state(false);
 	let showModalMateriale = $state(false);
 	let showModalFeedback = $state(false);
-
-	// Banner di successo globale
 	let actionSuccess = $state<{type: 'OK' | 'ERR', msg: string} | null>(null);
-
-	// Nuovi stati per il modale Cambio Stato
 	let showCambioStatoModal = $state(false);
 	let corsoDaCambiareStato = $state<CorsoFormazioneEsteso | null>(null);
 	let nuovoStatoPrevisto = $state<StatoCorso | null>(null);
-
 	let isActionLoading = $state(false);
 	let selectedCorso = $state<CorsoFormazioneEsteso | null>(null);
 	let iscrittiPresenti = $state<IscrizioneCorso[]>([]);
-
 	let isUploadingMateriale = $state(false);
 	let selectedCorsoMateriale = $state<CorsoFormazione | null>(null);
 	let fileMateriale = $state<File | null>(null);
 	let titoloMateriale = $state('');
-
-	// Stato Feedback
 	let isLoadingFeedback = $state(false);
 	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
-
-	// Per visualizzare i materiali già caricati
 	let materialiCaricati = $state<any[]>([]);
 	let isLoadingMateriali = $state(false);
 
@@ -96,7 +80,6 @@
 		}
 	});
 
-	// --- LOGICA FILTRI ---
 	const corsiAttiviDocente = $derived(
 			corsi.filter(c => c.stato !== StatoCorso.VALIDATO && c.stato !== StatoCorso.CERTIFICATO)
 	);
@@ -109,18 +92,15 @@
 			})
 	);
 
-	// Sezioni FSM
 	const corsiDaFirmare = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.ATTESA_FIRMA_DOCENTE));
 	const corsiConclusiAttesaAdmin = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.CONCLUSO));
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => !c.stato || c.stato === StatoCorso.PROGRAMMATO));
 
-	// Archivio Storico
 	const corsiArchiviati = $derived(
 			corsi.filter(c => (c.stato === StatoCorso.VALIDATO || c.stato === StatoCorso.CERTIFICATO) && (c.titolo || '').toLowerCase().includes(queryRicerca.toLowerCase()))
 	);
 
-	// --- AZIONI ---
 	function triggerBanner(msg: string, type: 'OK' | 'ERR' = 'OK') {
 		actionSuccess = { type, msg };
 		setTimeout(() => actionSuccess = null, 4000);
@@ -171,7 +151,6 @@
 		isLoadingMateriali = true;
 
 		try {
-			// Recupero file già caricati per il corso selezionato
 			const res = await httpClient.get(`/api/formazione/corsi/${corso.idCorso}/materiali`);
 			materialiCaricati = res.data;
 		} catch {
@@ -208,7 +187,6 @@
 
 			triggerBanner("Materiale didattico caricato con successo!");
 
-			// Ricarica la lista per vedere il nuovo file
 			const res = await httpClient.get(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`);
 			materialiCaricati = res.data;
 
@@ -253,32 +231,25 @@
 </script>
 
 <div in:fade class="pb-20 max-w-7xl mx-auto">
-	<!-- Banner di Successo Globale -->
 	{#if actionSuccess}
 		<div class="fixed top-24 right-8 z-[250] {actionSuccess.type === 'OK' ? 'bg-emerald-600' : 'bg-red-600'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 transition-all" in:scale out:fade>
 			{#if actionSuccess.type === 'OK'}<CheckCircle2 size={24} />{:else}<AlertTriangle size={24} />{/if}
 			<p class="text-sm font-black uppercase tracking-tight">{actionSuccess.msg}</p>
 		</div>
 	{/if}
-
 	<div class="mb-10">
 		<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Pannello Docenza</h1>
 		<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Gestione lezioni e analisi qualità</p>
 	</div>
-
-	<!-- FILTRI -->
 	<div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 mb-10">
 		<div class="relative flex-1">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
 			<input bind:value={queryRicerca} type="text" placeholder="CERCA CORSO..." class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5" />
 		</div>
 	</div>
-
 	{#if isLoading}
 		<div class="py-32 text-center"><Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto" /></div>
 	{:else}
-
-		<!-- SEZIONE: DA FIRMARE -->
 		{#if corsiDaFirmare.length > 0}
 			<div class="mb-14">
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><CheckSquare size={24}/> Registri da Firmare</h2>
@@ -297,8 +268,6 @@
 				</div>
 			</div>
 		{/if}
-
-		<!-- SEZIONE: CONCLUSI -->
 		{#if corsiConclusiAttesaAdmin.length > 0}
 			<div class="mb-14">
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><Clock size={24}/> Attesa Admin</h2>
@@ -315,8 +284,6 @@
 				</div>
 			</div>
 		{/if}
-
-		<!-- SEZIONE: IN SVOLGIMENTO -->
 		<div class="mb-14">
 			<h2 class="text-xl font-extrabold text-blue-700 uppercase mb-6 flex items-center gap-3"><Play size={24}/> Corsi In Svolgimento</h2>
 			{#if corsiInSvolgimento.length === 0}
@@ -339,8 +306,6 @@
 				</div>
 			{/if}
 		</div>
-
-		<!-- SEZIONE: PROGRAMMATI -->
 		<div class="mb-14">
 			<h2 class="text-xl font-extrabold text-gray-700 uppercase mb-6 flex items-center gap-3"><Calendar size={24}/> Corsi Programmati</h2>
 			{#if corsiProgrammati.length === 0}
@@ -362,8 +327,6 @@
 				</div>
 			{/if}
 		</div>
-
-		<!-- SEZIONE: ARCHIVIO (Blu NorLan) -->
 		<div class="mb-14 opacity-70 hover:opacity-100 transition-opacity">
 			<h2 class="text-xl font-extrabold text-gray-500 uppercase mb-6 flex items-center gap-3 border-b pb-2"><BookOpen size={24}/> Archivio Storico</h2>
 			{#if corsiArchiviati.length === 0}
@@ -383,8 +346,6 @@
 		</div>
 	{/if}
 </div>
-
-<!-- MODALE CAMBIO STATO -->
 {#if showCambioStatoModal}
 	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
 		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
@@ -402,7 +363,6 @@
 					<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Concludere il corso?</h2>
 					<p class="text-sm text-gray-500 mb-8">Il corso <span class="font-bold text-[#1B4B6B]">{corsoDaCambiareStato?.titolo}</span> passerà allo stato CONCLUSO.</p>
 				{/if}
-
 				<div class="flex flex-col gap-3">
 					<button onclick={confermaCambioStatoCorso} disabled={isActionLoading} class="w-full bg-[#1B4B6B] text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg disabled:opacity-50 transition-all hover:bg-[#153a54] flex items-center justify-center gap-2">
 						{#if isActionLoading}<Loader2 size={16} class="animate-spin" />{/if}
@@ -414,8 +374,6 @@
 		</div>
 	</div>
 {/if}
-
-<!-- MODALE FEEDBACK (Ora Blu NorLan) -->
 {#if showModalFeedback && selectedCorso}
 	<div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
 		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" in:scale>
@@ -426,7 +384,6 @@
 				</div>
 				<button onclick={() => showModalFeedback = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={28} /></button>
 			</div>
-
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isLoadingFeedback}
 					<div class="py-20 text-center flex flex-col items-center gap-4">
@@ -441,7 +398,6 @@
 						</div>
 					{:else}
 						<div class="space-y-8 mb-10">
-							<!-- Docenza -->
 							<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
 								<div class="flex justify-between items-end mb-4">
 									<div>
@@ -457,8 +413,6 @@
 									<div class="h-full bg-[#1B4B6B] transition-all duration-1000" style="width: {(statsFeedback.mediaDocenza / 5) * 100}%"></div>
 								</div>
 							</div>
-
-							<!-- Contenuti -->
 							<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
 								<div class="flex justify-between items-end mb-4">
 									<div>
@@ -475,14 +429,12 @@
 								</div>
 							</div>
 						</div>
-
 						<div class="flex items-center justify-between mb-4">
 							<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti Anonimi</h3>
 							<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
                                 {statsFeedback.totaleFeedback} / {selectedCorso.numeroIscritti || 0} Risposte
                             </span>
 						</div>
-
 						<div class="space-y-3">
 							{#each statsFeedback.commenti as commento}
 								<div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-xs text-gray-600 italic leading-relaxed">
@@ -493,15 +445,12 @@
 					{/if}
 				{/if}
 			</div>
-
 			<div class="p-8 bg-white border-t border-gray-100 text-center">
 				<button onclick={() => showModalFeedback = false} class="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-black transition-all">Chiudi Analisi</button>
 			</div>
 		</div>
 	</div>
 {/if}
-
-<!-- MODALE MATERIALE (LISTA + UPLOAD) -->
 {#if showModalMateriale && selectedCorsoMateriale}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
 		<div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" in:scale>
@@ -509,10 +458,7 @@
 				<h2 class="text-lg font-extrabold uppercase flex items-center gap-2"><UploadCloud size={20}/> Materiale Didattico</h2>
 				<button onclick={() => showModalMateriale = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
-
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-
-				<!-- LISTA MATERIALI ESISTENTI -->
 				<div class="mb-10">
 					<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Documenti Caricati ({materialiCaricati.length})</h3>
 					{#if isLoadingMateriali}
@@ -542,13 +488,10 @@
 						</div>
 					{/if}
 				</div>
-
-				<!-- AREA NUOVO UPLOAD -->
 				<div class="pt-8 border-t border-gray-200">
 					<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Nuovo Caricamento</h3>
 					<div class="space-y-4">
 						<input bind:value={titoloMateriale} type="text" placeholder="TITOLO DOCUMENTO (ES. SLIDE MODULO 1)" class="w-full p-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
-
 						<div class="border-2 border-dashed border-gray-200 rounded-2xl p-10 text-center bg-white group hover:bg-gray-50 hover:border-[#1B4B6B]/30 transition-all relative cursor-pointer">
 							<input type="file" accept=".pdf,.doc,.docx,.zip,.xls,.xlsx" onchange={(e) => fileMateriale = e.currentTarget.files?.[0] || null} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
 							<div class="flex flex-col items-center gap-3 pointer-events-none">
@@ -564,7 +507,6 @@
 					</div>
 				</div>
 			</div>
-
 			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4 shrink-0">
 				<button onclick={() => showModalMateriale = false} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-100 hover:bg-gray-50 uppercase text-[10px] transition-colors">Chiudi</button>
 				<button onclick={caricaMaterialeDidattico} disabled={isUploadingMateriale || !fileMateriale || !titoloMateriale.trim()} class="flex-1 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-[#153a54] uppercase text-[10px] shadow-lg shadow-blue-900/20 disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
@@ -574,8 +516,6 @@
 		</div>
 	</div>
 {/if}
-
-<!-- MODALE FIRMA REGISTRO -->
 {#if showModalFirma}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
 		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
@@ -618,7 +558,6 @@
 		</div>
 	</div>
 {/if}
-
 <style>
 	:global(body) { background-color: #F9FAFB; }
 	.custom-scrollbar::-webkit-scrollbar { width: 5px; }

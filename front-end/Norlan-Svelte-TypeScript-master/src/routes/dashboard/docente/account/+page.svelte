@@ -13,7 +13,6 @@
 
 	let isLoading = $state(true);
 	let docente = $state<DocenteData | null>(null);
-
 	let isPasswordFormVisible = $state(false);
 	let vecchiaPassword = $state('');
 	let nuovaPassword = $state('');
@@ -54,7 +53,6 @@
 			await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
 			passwordSuccessMessage = 'Password aggiornata con successo!';
 
-			// Reset
 			vecchiaPassword = '';
 			nuovaPassword = '';
 			confermaPassword = '';
@@ -76,7 +74,6 @@
 		<h1 class="text-3xl font-black text-[#1B4B6B] tracking-tight text-uppercase">PROFILO DOCENTE</h1>
 		<p class="text-gray-400 text-sm font-medium mt-1">Gestisci le tue competenze e le credenziali di sicurezza</p>
 	</div>
-
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center py-20 gap-4">
 			<Loader2 class="animate-spin text-[#1B4B6B]" size={40} />
@@ -84,7 +81,6 @@
 		</div>
 	{:else if docente}
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
 			<div class="space-y-8">
 				<div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
 					<div class="w-32 h-32 bg-gray-100 rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden">
@@ -93,7 +89,6 @@
 					<h2 class="mt-6 text-xl font-black text-[#1B4B6B] uppercase tracking-tight text-center">{docente.nome} {docente.cognome}</h2>
 					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Formatore Certificato</p>
 				</div>
-
 				<div class="bg-[#1B4B6B] p-8 rounded-[40px] text-white shadow-xl">
 					<div class="flex items-center gap-3 mb-6">
 						<Award size={20} class="opacity-60" />
@@ -102,14 +97,12 @@
 					<p class="text-lg font-bold leading-tight">{docente.specializzazioneTecnica || 'Non specificata'}</p>
 				</div>
 			</div>
-
 			<div class="lg:col-span-2 space-y-8">
 				<div class="bg-white p-10 rounded-[40px] shadow-sm border border-gray-100">
 					<div class="flex items-center gap-3 mb-10">
 						<IdCard size={20} class="text-[#1B4B6B]" />
 						<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Informazioni Contatto</h3>
 					</div>
-
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 						<div class="space-y-2">
 							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Istituzionale</label>
@@ -118,7 +111,6 @@
 								<input type="email" value={docente.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
 							</div>
 						</div>
-
 						<div class="space-y-2">
 							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Specializzazione Tecnica</label>
 							<div class="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 opacity-60">
@@ -127,7 +119,6 @@
 							</div>
 						</div>
 					</div>
-
 					<div class="mt-12 pt-10 border-t border-gray-50 space-y-4">
 						<button
 								onclick={() => isPasswordFormVisible = !isPasswordFormVisible}
@@ -140,7 +131,6 @@
 								{isPasswordFormVisible ? 'Chiudi' : 'Modifica'}
 							</div>
 						</button>
-
 						{#if isPasswordFormVisible}
 							<div in:fade class="p-8 bg-gray-50 rounded-[30px] border border-gray-100 space-y-6 mt-4">
 								<div class="space-y-4">
@@ -159,14 +149,12 @@
 										</div>
 									</div>
 								</div>
-
 								{#if passwordError}
 									<p class="text-red-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordError}</p>
 								{/if}
 								{#if passwordSuccessMessage}
 									<p class="text-emerald-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordSuccessMessage}</p>
 								{/if}
-
 								<button
 										onclick={handlePasswordChange}
 										disabled={isChangingPassword}

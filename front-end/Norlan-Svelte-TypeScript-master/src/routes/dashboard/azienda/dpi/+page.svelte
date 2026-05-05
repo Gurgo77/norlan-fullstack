@@ -8,7 +8,6 @@
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { AuthService } from '$lib/services/AuthService';
 
-	// --- INTERFACCE LOCALI ---
 	interface DpiRegistro {
 		idAssegnazione?: number;
 		id?: number;
@@ -30,14 +29,11 @@
 		dataScadenzaRevisione: string;
 	}
 
-	// --- STATO REATTIVO (Svelte 5) ---
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroAttivo = $state('TUTTI');
 	let registro = $state<DpiRegistro[]>([]);
-	let dipendentiList = $state<any[]>([]); // Per la tendina di selezione
-
-	// Stati del Modale
+	let dipendentiList = $state<any[]>([]);
 	let showDpiModal = $state(false);
 	let isSavingDpi = $state(false);
 	let formDpi = $state<FormDPI>({
@@ -48,8 +44,6 @@
 		dataConsegna: '',
 		dataScadenzaRevisione: ''
 	});
-
-	// --- LOGICA DI CARICAMENTO ---
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -95,7 +89,6 @@
 		return new Date(dateStr).toLocaleDateString('it-IT');
 	}
 
-	// --- AZIONI MODALE E SALVATAGGIO ---
 	function openNewDpiModal() {
 		formDpi = { idAssegnazione: null, idDipendente: '', tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
 		showDpiModal = true;
@@ -150,8 +143,6 @@
 			isSavingDpi = false;
 		}
 	}
-
-	// --- LOGICA REATTIVA CON ORDINAMENTO ---
 	const filteredRegistro = $derived(
 			registro.filter(d => {
 				const tipoSafe = d.tipo ? d.tipo.toString().toLowerCase() : '';
@@ -162,12 +153,10 @@
 				const matchFiltro = filtroAttivo === 'TUTTI' || d.statoDerivato === filtroAttivo;
 				return matchSearch && matchFiltro;
 			}).sort((a, b) => {
-				// Ordinamento di precedenza: SCADUTO (1), DA_REVISIONARE (2), OK (3)
 				const priorita = { 'SCADUTO': 1, 'DA_REVISIONARE': 2, 'OK': 3 };
 				if (priorita[a.statoDerivato] !== priorita[b.statoDerivato]) {
 					return priorita[a.statoDerivato] - priorita[b.statoDerivato];
 				}
-				// A parità di stato, metti prima quelli con la data di scadenza più imminente
 				const dataA = a.dataScadenzaRevisione ? new Date(a.dataScadenzaRevisione).getTime() : Infinity;
 				const dataB = b.dataScadenzaRevisione ? new Date(b.dataScadenzaRevisione).getTime() : Infinity;
 				return dataA - dataB;
@@ -185,7 +174,6 @@
 			<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Registro DPI</h1>
 			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione assegnazione e ispezione attrezzature NorLan.</p>
 		</div>
-
 		<div class="flex items-center gap-6">
 			<div class="bg-white p-4 rounded-2xl shadow-sm border border-red-50 flex items-center gap-4">
 				<div class="bg-red-50 p-2 rounded-lg text-red-500"><AlertTriangle size={20} /></div>
@@ -194,7 +182,6 @@
 					<p class="text-xs font-black text-red-600 uppercase">{stats.scaduti}</p>
 				</div>
 			</div>
-
 			<button
 					onclick={openNewDpiModal}
 					class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
@@ -204,7 +191,6 @@
 			</button>
 		</div>
 	</div>
-
 	<div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
 		<div class="flex gap-2">
 			{#each ['TUTTI', 'OK', 'DA_REVISIONARE', 'SCADUTO'] as f (f)}
@@ -216,7 +202,6 @@
 				</button>
 			{/each}
 		</div>
-
 		<div class="relative w-full md:w-96">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
 			<input
@@ -227,7 +212,6 @@
 			/>
 		</div>
 	</div>
-
 	<div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
 		<div class="overflow-x-auto">
 			<table class="w-full text-left">
@@ -251,7 +235,6 @@
 
 						<tr class="hover:bg-white hover:shadow-xl hover:shadow-blue-900/5 transition-all group relative">
 							<td class="px-8 py-4 text-center">
-								<!-- Icona HardHat Semaforo -->
 								<div class="h-12 w-12 mx-auto rounded-xl inline-flex items-center justify-center font-black transition-colors {
                              item.statoDerivato === 'OK' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' :
                              item.statoDerivato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white' :
@@ -267,7 +250,6 @@
 							<td class="px-6 py-6 text-xs text-gray-400 font-medium text-center">{formattaData(item.dataConsegna)}</td>
 							<td class="px-6 py-6 text-xs font-black text-[#1B4B6B] text-center">{formattaData(item.dataScadenzaRevisione)}</td>
 							<td class="px-6 py-6 text-center">
-								<!-- Badge Stato -->
 								<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase {item.statoDerivato === 'OK' ? 'bg-green-50 text-green-600 border-green-100' : item.statoDerivato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' : 'bg-red-50 text-red-600 border-red-100'}">
 									{#if item.statoDerivato === 'OK'}<ShieldCheck size={12} />{:else if item.statoDerivato === 'DA_REVISIONARE'}<Clock size={12} />{:else}<AlertTriangle size={12} />{/if}
 									{item.statoDerivato.replace('_', ' ')}
@@ -289,8 +271,6 @@
 		</div>
 	</div>
 </div>
-
-<!-- MODALE INSERIMENTO / AGGIORNAMENTO DPI -->
 {#if showDpiModal}
 	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
 		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
@@ -301,7 +281,6 @@
 				<button onclick={() => (showDpiModal = false)} class="hover:rotate-90 transition-transform"><X size={24}/></button>
 			</div>
 			<div class="p-8 space-y-6">
-
 				<div>
 					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Seleziona Dipendente *</label>
 					<select bind:value={formDpi.idDipendente} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
@@ -311,7 +290,6 @@
 						{/each}
 					</select>
 				</div>
-
 				<div>
 					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia DPI *</label>
 					<select bind:value={formDpi.tipo} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
@@ -323,14 +301,12 @@
 						<option value="ALTRO">Altro</option>
 					</select>
 				</div>
-
 				{#if formDpi.tipo === 'ALTRO'}
 					<div class="space-y-1" transition:slide>
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
 						<input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
 					</div>
 				{/if}
-
 				<div class="grid grid-cols-2 gap-4 mt-4">
 					<div>
 						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
@@ -355,7 +331,6 @@
 		</div>
 	</div>
 {/if}
-
 <style>
 	:global(body) { background-color: #F9FAFB; }
 </style>
