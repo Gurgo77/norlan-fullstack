@@ -6,7 +6,7 @@
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Users, UserPlus, Trash2, Search, Mail, Building2,
-		IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
+		IdCard, Loader2, X, AlertTriangle, ChevronLeft,
 		FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare,
 		AlertCircle, CheckCircle, Clock, RefreshCw, Edit3, Save, Lock
 	} from 'lucide-svelte';
@@ -19,6 +19,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import {AnagraficaService} from "$lib/services/AnagraficaService";
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 
 	interface ServerError {
 		response?: {
@@ -349,22 +350,22 @@
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{#each filteredLavoratori as l (l.idUtente)}
-					<div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
-						<div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
-							<button onclick={(e) => { e.stopPropagation(); preparaEliminazione(l); }} class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
-							<div class="flex items-center gap-4 mb-6">
-								<div class="w-14 h-14 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">{l.nome[0]}{l.cognome[0]}</div>
-								<div>
-									<h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">{l.nome} {l.cognome}</h3>
-									<div class="flex items-center gap-1 text-gray-400 mt-1"><Building2 size={12} class="text-[#1B4B6B]"/><span class="text-[9px] font-bold uppercase truncate max-w-[150px] text-[#1B4B6B]">{l.nomeAzienda}</span></div>
-								</div>
-							</div>
-							<div class="space-y-3 pt-4 border-t border-gray-50"><div class="flex items-center justify-between text-[10px] font-bold uppercase"><span class="text-gray-400 flex items-center gap-1"><IdCard size={12}/> C. Fiscale</span><span class="text-[#1B4B6B] font-mono tracking-wider">{l.codiceFiscale}</span></div></div>
-						</div>
-						<button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-							<div class="flex items-center gap-2"><FileText size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
-							<ChevronRight size={20} class="text-[#1B4B6B]" />
-						</button>
+					<div in:scale>
+						<DipendenteCard
+								idUtente={l.idUtente}
+								nome={l.nome}
+								cognome={l.cognome}
+								codiceFiscale={l.codiceFiscale}
+								azienda={l.nomeAzienda}
+								canContact={true}
+								canEdit={true}
+								canDelete={true}
+								canViewDetails={true}
+								onEdit={() => { selectedDipendente = l; apriModaleModifica(); }}
+								onDelete={() => preparaEliminazione(l)}
+								onContact={() => vaiInChat(l.idUtente)}
+								onViewDetails={() => apriDettaglio(l)}
+						/>
 					</div>
 				{:else}
 					<div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200"><Users size={48} class="mx-auto text-gray-300 mb-4" /><p class="text-gray-400 font-bold uppercase text-xs tracking-widest">Nessun dipendente censito nel sistema</p></div>

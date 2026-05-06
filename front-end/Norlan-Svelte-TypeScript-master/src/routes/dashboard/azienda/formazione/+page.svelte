@@ -13,6 +13,7 @@
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 
 	interface CorsoStato {
 		idCorso: number;
@@ -270,32 +271,21 @@
 			</div>
 		</div>
 
-		<div class="space-y-6">
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each filteredDipendenti as dip (dip.id)}
-				<div class="group flex flex-col xl:flex-row items-center gap-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:border-[#1B4B6B]/20 hover:shadow-xl" in:scale>
-					<div class="flex w-full xl:w-auto items-center gap-6 shrink-0">
-						<div class="flex size-16 items-center justify-center rounded-2xl bg-[#1B4B6B] text-white shadow-lg"><User size={28} /></div>
-						<div class="w-64">
-							<h3 class="text-lg font-black uppercase leading-tight text-[#1B4B6B] truncate">{dip.nomeCompleto}</h3>
-							<p class="text-[10px] font-bold uppercase text-gray-400">{dip.ruolo}</p>
-						</div>
-					</div>
-					<div class="flex flex-1 flex-wrap gap-3">
-						{#each dip.corsi as corso (corso.idCorso)}
-							<div class="flex items-center gap-3 rounded-xl border px-4 py-2 {corso.stato === 'OK' ? 'border-green-100 bg-green-50 text-green-600' : 'border-yellow-100 bg-yellow-50 text-yellow-600'}">
-								<div>
-									<p class="text-[9px] font-black uppercase tracking-tighter max-w-[150px] truncate">{corso.nome}</p>
-									<p class="mt-1 text-[10px] font-bold opacity-80">{corso.data}</p>
-								</div>
-								{#if corso.stato !== 'OK'}
-									<button onclick={() => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.nome)} class="ml-1 p-1 hover:bg-orange-100 rounded-md text-orange-400 hover:text-orange-600 transition-colors"><Trash2 size={14} /></button>
-								{:else}<ShieldCheck size={14} />{/if}
-							</div>
-						{/each}
-					</div>
-					<div class="flex items-center gap-3 w-full xl:w-auto justify-end">
-						<a href="/dashboard/azienda/dipendenti" class="flex items-center gap-2 rounded-2xl border-2 border-[#1B4B6B] bg-white px-4 py-2.5 text-[10px] font-black uppercase text-[#1B4B6B] shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all">Profilo <ArrowRight size={14} /></a>
-					</div>
+				<div in:scale>
+					<DipendenteCard
+							idUtente={dip.id}
+							nome={dip.nomeCompleto}
+							cognome=""
+							ruolo={dip.ruolo}
+							corsi={dip.corsi.map(c => ({ idCorso: c.idCorso, titolo: c.nome, stato: c.stato }))}
+							canContact={false}
+							canEdit={false}
+							canDelete={false}
+							canViewDetails={true}
+							onViewDetails={() => window.location.href = `/dashboard/azienda/dipendenti?id=${dip.id}`}
+					/>
 				</div>
 			{/each}
 		</div>

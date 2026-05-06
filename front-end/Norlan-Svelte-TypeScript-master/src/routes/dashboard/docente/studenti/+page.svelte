@@ -2,13 +2,14 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		Users, Search, Filter, MessageSquare, BookOpen, Loader2, GraduationCap
+		Users, Search, Filter, BookOpen, Loader2, GraduationCap
 	} from 'lucide-svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { StatoCorso } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 
 	interface StudenteDettaglio {
 		idUtente: number;
@@ -78,10 +79,6 @@
 					})
 					.filter(corso => corso.studenti.length > 0)
 	);
-
-	function getIniziale(email: string) {
-		return email ? email.charAt(0).toUpperCase() : 'S';
-	}
 </script>
 
 <div in:fade class="space-y-8 max-w-7xl mx-auto pb-20">
@@ -154,23 +151,17 @@
 					<div class="p-8">
 						<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 							{#each corso.studenti as studente (studente.idUtente)}
-								<div class="flex items-center justify-between p-5 rounded-2xl border border-gray-100 hover:border-[#1B4B6B]/30 hover:shadow-md transition-all bg-white group">
-									<div class="flex items-center gap-4">
-										<div class="w-12 h-12 rounded-xl bg-[#1B4B6B]/10 text-[#1B4B6B] flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-											{getIniziale(studente.emailUtente)}
-										</div>
-										<div>
-											<h4 class="font-bold text-[#1B4B6B] uppercase text-sm truncate max-w-[200px] xl:max-w-[300px]" title={studente.emailUtente}>
-												{studente.emailUtente}
-											</h4>
-											<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">ID: #{studente.idUtente}</p>
-										</div>
-									</div>
-									<a href="/dashboard/docente/messaggi?chatId={studente.idUtente}"
-									   class="flex items-center justify-center gap-2 bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-5 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
-										<MessageSquare size={14} /> Contatta
-									</a>
-								</div>
+								<DipendenteCard
+										idUtente={studente.idUtente}
+										nome={studente.emailUtente}
+										cognome=""
+										ruolo="Studente"
+										canEdit={false}
+										canDelete={false}
+										canContact={true}
+										canViewDetails={false}
+										onContact={() => window.location.href = `/dashboard/docente/messaggi?chatId=${studente.idUtente}`}
+								/>
 							{/each}
 						</div>
 					</div>
