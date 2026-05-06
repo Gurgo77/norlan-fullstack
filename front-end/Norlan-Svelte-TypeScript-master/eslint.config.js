@@ -35,5 +35,12 @@ export default ts.config(
 				svelteConfig
 			}
 		}
+	},
+	{
+		rules: {
+			'@typescript-eslint/no-explicit-any': 'off',
+
+			'svelte/no-navigation-without-resolve': 'off'
+		}
 	}
 );

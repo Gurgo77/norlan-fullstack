@@ -7,7 +7,7 @@
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
         IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Calendar, MessageSquare, AlertCircle, CheckCircle, Clock
+        FileText, ShieldCheck, Download, Calendar, MessageSquare, AlertCircle, CheckCircle, Clock, Edit3
     } from 'lucide-svelte';
 
     import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
@@ -40,11 +40,18 @@
     let showAddModal = $state(false);
     let showDeleteModal = $state(false);
     let isSaving = $state(false);
+    let isEditing = $state(false);
 
     let dipendenteDaEliminare = $state<DipendenteEsteso | null>(null);
 
     let formDipendente = $state({
-        nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: ''
+        idUtente: null as number | null,
+        nome: '',
+        cognome: '',
+        codiceFiscale: '',
+        email: '',
+        idAzienda: '' as string | number,
+        password: ''
     });
 
     let showDeleteDocModal = $state(false);
@@ -82,9 +89,11 @@
     });
 
     const isFormValid = $derived(
-        formDipendente.nome.trim() !== '' && formDipendente.cognome.trim() !== '' &&
-        formDipendente.codiceFiscale.length === 16 && formDipendente.idAzienda !== '' &&
-        formDipendente.password.trim() !== ''
+        formDipendente.nome.trim() !== '' &&
+        formDipendente.cognome.trim() !== '' &&
+        formDipendente.codiceFiscale.length === 16 &&
+        formDipendente.idAzienda !== '' &&
+        (isEditing ? true : formDipendente.password.trim() !== '')
     );
 
     function getStatoScadenza(dataScadenza: string | undefined) {
@@ -185,6 +194,27 @@
         return await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${idUtente}`);
     }
 
+    function apriModaleRegistrazione() {
+        isEditing = false;
+        formDipendente = { idUtente: null, nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: '' };
+        showAddModal = true;
+    }
+
+    function apriModaleModifica() {
+        if (!selectedDipendente) return;
+        isEditing = true;
+        formDipendente = {
+            idUtente: selectedDipendente.idUtente,
+            nome: selectedDipendente.nome,
+            cognome: selectedDipendente.cognome,
+            codiceFiscale: selectedDipendente.codiceFiscale,
+            email: selectedDipendente.email,
+            idAzienda: selectedDipendente.idAzienda || '',
+            password: ''
+        };
+        showAddModal = true;
+    }
+
     async function salvaDipendente() {
         if (!isFormValid) return;
         isSaving = true;
@@ -192,29 +222,42 @@
             const payload = {
                 nome: formDipendente.nome,
                 cognome: formDipendente.cognome,
-                codiceFiscale: formDipendente.codiceFiscale,
+                codiceFiscale: formDipendente.codiceFiscale.toUpperCase(),
                 email: formDipendente.email,
-                passwordHash: formDipendente.password
+                passwordHash: isEditing ? undefined : formDipendente.password
             };
-
-            const nuovo = await LavoratoreService.create(
-                formDipendente.idAzienda,
-                payload as unknown as DipendenteRequest
-            );
 
             const aziendaSelezionata = aziende.find(a => String(a.idUtente) === String(formDipendente.idAzienda));
-            const esteso: DipendenteEsteso = {
-                ...nuovo,
-                nomeAzienda: aziendaSelezionata?.ragioneSociale,
-                idAzienda: formDipendente.idAzienda
-            };
 
-            lavoratori = [esteso, ...lavoratori];
+            if (isEditing && formDipendente.idUtente) {
+                const aggiornato = await LavoratoreService.update(formDipendente.idUtente, payload as any);
+                const esteso: DipendenteEsteso = {
+                    ...aggiornato,
+                    nomeAzienda: aziendaSelezionata?.ragioneSociale || "Azienda non specificata",
+                    idAzienda: formDipendente.idAzienda
+                };
+
+                lavoratori = lavoratori.map(l => l.idUtente === aggiornato.idUtente ? esteso : l);
+                if (selectedDipendente?.idUtente === aggiornato.idUtente) {
+                    selectedDipendente = esteso;
+                }
+            } else {
+                const nuovo = await LavoratoreService.create(
+                    formDipendente.idAzienda as number,
+                    payload as unknown as DipendenteRequest
+                );
+                const esteso: DipendenteEsteso = {
+                    ...nuovo,
+                    nomeAzienda: aziendaSelezionata?.ragioneSociale || "Azienda non specificata",
+                    idAzienda: formDipendente.idAzienda
+                };
+                lavoratori = [esteso, ...lavoratori];
+            }
+
             showAddModal = false;
-            formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', idAzienda: '', password: '' };
         } catch (error) {
-            console.error("Dettaglio dell'errore durante la registrazione:", error);
-            alert("Si è verificato un errore durante la registrazione del dipendente.");
+            console.error("Dettaglio dell'errore:", error);
+            alert("Si è verificato un errore durante l'operazione sul dipendente.");
         } finally {
             isSaving = false;
         }
@@ -337,7 +380,7 @@
                 <p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Anagrafica centralizzata lavoratori NorLan.</p>
             </div>
             <button
-                    onclick={() => (showAddModal = true)}
+                    onclick={apriModaleRegistrazione}
                     class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
             >
                 <UserPlus size={18} /> Nuovo Dipendente
@@ -431,6 +474,9 @@
                     </div>
 
                     <div class="flex items-center gap-3">
+                        <button onclick={apriModaleModifica} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
+                            <Edit3 size={16} /> Modifica Dati
+                        </button>
                         <button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
                             <Mail size={16} /> Manda Mail
                         </button>
@@ -601,7 +647,9 @@
         <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
                 <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><UserPlus size={20}/> Registra Lavoratore</h2>
+                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
+                        {#if isEditing}<Edit3 size={20}/> Modifica Dati Lavoratore{:else}<UserPlus size={20}/> Registra Lavoratore{/if}
+                    </h2>
                     <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform duration-300"><X size={24}/></button>
                 </div>
 
@@ -639,14 +687,21 @@
                     </div>
 
                     <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
-                        <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        <div class="mt-2 flex items-start gap-2">
-                            <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
-                            <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
-                                Nota: Il lavoratore dovrà obbligatoriamente cambiare questa password al suo primo accesso.
-                            </p>
-                        </div>
+                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password di Accesso *</label>
+                        {#if !isEditing}
+                            <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+                            <div class="mt-2 flex items-start gap-2">
+                                <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+                                <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+                                    Nota: Il lavoratore dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+                                </p>
+                            </div>
+                        {:else}
+                            <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                <p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
+                                <p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password.</p>
+                            </div>
+                        {/if}
                     </div>
                 </div>
 
@@ -657,7 +712,8 @@
                             disabled={!isFormValid || isSaving}
                             class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54] transition-colors"
                     >
-                        {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<UserPlus size={14}/>{/if} Registra
+                        {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else if isEditing}<Edit3 size={14}/>{:else}<UserPlus size={14}/>{/if}
+                        {isEditing ? 'Aggiorna Dati' : 'Registra Dipendente'}
                     </button>
                 </div>
             </div>

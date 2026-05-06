@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale, slide } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import {
 		Plus, X, Trash2, Search,
 		Calendar, MapPin, Loader2, User,
 		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users,
-		BarChart, Star, BookOpen, AlertTriangle
+		BarChart, Star, BookOpen
 	} from 'lucide-svelte';
 
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
@@ -17,6 +17,7 @@
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
 	import type { DipendenteDTO } from '$lib/services/LavoratoreService';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface FeedbackStatsDTO {
 		idCorso: number;
@@ -81,7 +82,7 @@
 		if (!selectedCorso || iscrizioniAttuali.length === 0 || dipendenti.length === 0) return [];
 
 		const presenti = iscrizioniAttuali.filter(i => i.presenzaConfermata);
-		const map = new Map<number, { idAzienda: number, ragioneSociale: string, count: number }>();
+		const map = new SvelteMap<number, { idAzienda: number, ragioneSociale: string, count: number }>();
 
 		presenti.forEach(isc => {
 			const dip = dipendenti.find(d => d.idUtente === isc.idUtente);
@@ -90,7 +91,13 @@
 			let idAzienda = null;
 			let nomeAzienda = "Azienda Sconosciuta";
 
-			const dipConAzienda = dip as any;
+			const dipConAzienda = dip as DipendenteDTO & {
+				azienda?: { idUtente?: number, id?: number, ragioneSociale?: string, nome?: string },
+				aziendaId?: number,
+				aziendaRagioneSociale?: string,
+				idAzienda?: number,
+				ragioneSocialeAzienda?: string
+			};
 
 			if (dipConAzienda.azienda && typeof dipConAzienda.azienda === 'object') {
 				idAzienda = dipConAzienda.azienda.idUtente || dipConAzienda.azienda.id;
@@ -140,23 +147,24 @@
 		if (!isFormValid) return;
 		isSaving = true;
 		try {
+			// Formattiamo il payload esattamente come richiede CorsoFormazioneRequest
 			const payload = {
 				titolo: formCorso.titolo!,
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
-				// Invece di idDocente: formCorso.idDocente!, scrivi così:
-				docente: {
-					idUtente: formCorso.idDocente!
-				}
-			};
+				idDocente: formCorso.idDocente!, // Messo diretto, senza l'oggetto nidificato
+				capacitaMassima: 50 // Inseriamo un limite di default visto che è obbligatorio per TypeScript
+			} as CorsoFormazioneRequest;
 
 			const nuovo = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovo];
 
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
-		} catch (error: any) {
-			if (error.response?.status === 409) {
+		} catch (error) {
+			const err = error as { response?: { status?: number } };
+
+			if (err.response?.status === 409) {
 				console.error("Conflitto rilevato durante la creazione del corso: possibile duplicazione o sovrapposizione oraria.");
 				alert("Impossibile creare il corso: i dati inseriti sono in conflitto con un record esistente o il docente è già impegnato.");
 			} else {

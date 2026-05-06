@@ -34,6 +34,9 @@
 	interface DpiEsteso extends AssegnazioneDPIDTO {
 		nomeDipendente: string;
 		idAzienda: number;
+		dataScadenzaRevisione?: string;
+		idAssegnazione?: number;
+		tipo?: string;
 	}
 
 	let isLoading = $state(true);
@@ -73,7 +76,7 @@
 						const dpiEsteso: DpiEsteso = {
 							...dpi,
 							nomeDipendente: `${d.nome} ${d.cognome}`,
-							idAzienda: d.idAzienda || 0
+							idAzienda: (d as DipendenteDTO & { idAzienda?: number }).idAzienda || 0
 						};
 						return dpiEsteso;
 					});
@@ -126,7 +129,7 @@
 			const scadenzeDpi: ScadenzaTabella[] = allDpis.filter(dpi => {
 				return dpi.dataScadenzaRevisione && dpi.dataScadenzaRevisione !== '9999-12-31';
 			}).map(dpi => {
-				const scadMs = new Date(dpi.dataScadenzaRevisione).getTime();
+				const scadMs = new Date(dpi.dataScadenzaRevisione!).getTime();
 				const diff = Math.ceil((scadMs - oggiMs) / (1000 * 3600 * 24));
 				const calc = calcolaStatusEStato(diff);
 
@@ -137,10 +140,10 @@
 					tipo: 'DPI',
 					idAzienda: az ? az.idUtente : 0,
 					azienda: az ? az.ragioneSociale : 'Azienda N.D.',
-					dettaglio: `${dpi.tipo.replace(/_/g, ' ')} (${dpi.nomeDipendente})`,
+					dettaglio: `${dpi.tipo!.replace(/_/g, ' ')} (${dpi.nomeDipendente})`,
 					status: calc.status,
 					testoScadenza: calc.testo,
-					dataScadenza: new Date(dpi.dataScadenzaRevisione).toLocaleDateString('it-IT'),
+					dataScadenza: new Date(dpi.dataScadenzaRevisione!).toLocaleDateString('it-IT'),
 					timestampScadenza: scadMs,
 					linkRedirect: resolveRoute('/dashboard/admin/dpi')
 				};
@@ -280,7 +283,7 @@
 						{#each scadenzeFiltrate as scadenza (scadenza.id)}
 							<tr class="hover:bg-gray-50/50 transition-colors group">
 								<td class="px-6 py-4 font-black text-[#1B4B6B] text-xs uppercase">
-									<a href={`${resolveRoute('/dashboard/admin/aziende')}?id=${scadenza.idAzienda}`} class="hover:text-[#1B4B6B] transition-colors">
+									<a href={resolveRoute('/dashboard/admin/aziende') + "?id=" + scadenza.idAzienda} class="hover:text-[#1B4B6B] transition-colors">
 										{scadenza.azienda}
 									</a>
 								</td>
@@ -321,7 +324,7 @@
 									</div>
 								</td>
 								<td class="px-6 py-4 text-right">
-									<a href={scadenza.linkRedirect} class="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-500 px-4 py-1.5 rounded-xl font-black text-[9px] uppercase hover:border-[#1B4B6B] hover:text-[#1B4B6B] transition-all">
+									<a href={scadenza.tipo === 'DOCUMENTO' ? resolveRoute('/dashboard/admin/scadenziario') : resolveRoute('/dashboard/admin/dpi')} class="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-500 px-4 py-1.5 rounded-xl font-black text-[9px] uppercase hover:border-[#1B4B6B] hover:text-[#1B4B6B] transition-all">
 										Gestisci
 									</a>
 								</td>

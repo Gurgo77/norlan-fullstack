@@ -11,6 +11,8 @@
     import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
+    import { SvelteDate } from 'svelte/reactivity';
+    import {resolveRoute} from "$app/paths";
 
     interface DpiSafe {
         idAssegnazione?: number;
@@ -73,7 +75,7 @@
                         const dpisRaw = await LavoratoreService.getDpiByLavoratore(dip.idUtente);
                         const dpis = dpisRaw as unknown as DpiSafe[];
                         return { ...dip, dpis };
-                    } catch (e) {
+                    } catch {
                         return { ...dip, dpis: [] };
                     }
                 })
@@ -128,9 +130,9 @@
 
     function isScaduto(data: string | undefined) {
         if (!data || data === '9999-12-31') return false;
-        const oggi = new Date();
+        const oggi = new SvelteDate();
         oggi.setHours(0, 0, 0, 0);
-        const scad = new Date(data);
+        const scad = new SvelteDate(data);
         scad.setHours(0, 0, 0, 0);
         return scad < oggi;
     }
@@ -174,7 +176,7 @@
             `Salve, vi segnaliamo che il DPI (${nomeDpiReale}) assegnato al lavoratore ${dipendente.nome} ${dipendente.cognome} risulta scaduto in data ${dataScad}. Vi invitiamo a rinnovare questo dispositivo il prima possibile.`
         );
 
-        await goto(`/dashboard/admin/comunicazioni?chatId=${dipendente.idAzienda}&msg=${testoMessaggio}`);
+        await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${dipendente.idAzienda}&msg=${testoMessaggio}`);
     }
 </script>
 
@@ -267,7 +269,7 @@
                                         </p>
 
                                         <div class="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
-                                            {#each dip.dpis || [] as dpi}
+                                            {#each (dip.dpis || []) as dpi (dpi.id)}
                                                 {@const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ')}
                                                 {@const dataScadenzaReale = dpi.dataScadenzaRevisione || dpi.dataScadenza || ''}
                                                 {@const scaduto = isScaduto(dataScadenzaReale)}

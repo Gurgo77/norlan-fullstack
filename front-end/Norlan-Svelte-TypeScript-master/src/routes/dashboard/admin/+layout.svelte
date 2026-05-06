@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base, resolveRoute } from '$app/paths';
+	import { base } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, Building2, MessageSquare, GraduationCap,
@@ -16,6 +16,7 @@
 	interface SubMenuItem {
 		href: string;
 		label: string;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		icon: any;
 	}
 
@@ -23,8 +24,9 @@
 		href?: string;
 		id?: string;
 		label: string;
-		icon: any;
 		subItems?: SubMenuItem[];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		icon: any;
 	}
 
 	let { children } = $props();
@@ -47,7 +49,7 @@
 		return $page.url.pathname === `${base}${href}`;
 	}
 
-	function isSubMenuActive(subItems: any[]) {
+	function isSubMenuActive(subItems: SubMenuItem[] | undefined) {
 		if (!subItems) return false;
 		return subItems.some((sub) => $page.url.pathname.includes(sub.href));
 	}
@@ -75,17 +77,17 @@
 		const session = AuthService.getSession();
 
 		if (!session) {
-			await goto(resolveRoute('/login'), { replaceState: true });
+			await goto(`${base}/login`, { replaceState: true });
 			return;
 		}
 
 		if (session.richiedeCambioPassword) {
-			await goto(resolveRoute('/dashboard/cambio-obbligatorio'), { replaceState: true });
+			await goto(`${base}/dashboard/cambio-obbligatorio`, { replaceState: true });
 			return;
 		}
 
 		if (session.ruolo !== 'ADMIN') {
-			await goto(resolveRoute(AuthService.getDashboardRouteByRole(session.ruolo)), { replaceState: true });
+			await goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
 			return;
 		}
 
@@ -94,7 +96,8 @@
 			const rawCount = await SistemaService.countNotificheNonLette(session.idUtente);
 
 			if (typeof rawCount === 'object' && rawCount !== null) {
-				notificheCount = Number(Object.values(rawCount)[0] || rawCount.data || 0);
+				const safeCount = rawCount as { data?: string | number };
+				notificheCount = Number(Object.values(rawCount)[0] || safeCount.data || 0);
 			} else {
 				notificheCount = Number(rawCount || 0);
 			}
@@ -154,7 +157,7 @@
 			</div>
 
 			<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-				<a href={resolveRoute('/')} class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
+				<a href="{base}/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
 					<Home size={18} />
 					Home Sito
 				</a>
@@ -180,7 +183,7 @@
 							<div transition:slide class="ml-4 mt-1 mb-2 space-y-1 border-l border-white/10 pl-2">
 								{#each item.subItems as subItem (subItem.href)}
 									<a
-											href={resolveRoute(subItem.href)}
+											href="{base}{subItem.href}"
 											class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group {isActive(subItem.href) ? 'bg-white/10 text-white shadow-sm border-l-2 border-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}"
 									>
 										<subItem.icon size={16} class="shrink-0" />
@@ -192,7 +195,7 @@
 
 					{:else}
 						<a
-								href={resolveRoute(item.href ?? '')}
+								href="{base}{item.href ?? ''}"
 								class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {item.href && isActive(item.href) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 						>
 							<item.icon size={20} class="shrink-0" />

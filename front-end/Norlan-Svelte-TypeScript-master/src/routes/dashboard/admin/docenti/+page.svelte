@@ -5,13 +5,14 @@
     import {
         GraduationCap, Plus, Trash2, Search, Mail, MessageSquare,
         ChevronRight, ChevronLeft, Loader2, X, AlertTriangle, BookOpen,
-        Calendar
+        Calendar, Edit3
     } from 'lucide-svelte';
 
     import type { DocenteData } from '$lib/models/Docente';
     import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
     import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
     import { FormazioneService } from '$lib/services/FormazioneService';
+    import {resolveRoute} from "$app/paths";
 
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
@@ -21,15 +22,18 @@
     let selectedDocente = $state<DocenteData | null>(null);
     let showAddModal = $state(false);
     let isSaving = $state(false);
+    let isEditing = $state(false);
     let showDeleteModal = $state(false);
     let docenteDaEliminare = $state<DocenteData | null>(null);
     let formDocente = $state({
+        idUtente: null as number | null,
         nome: '',
         cognome: '',
         specializzazioneTecnica: '',
         email: '',
         password: ''
     });
+
     const filteredDocenti = $derived(
         docenti.filter(d =>
             d.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,7 +47,7 @@
         formDocente.cognome.trim() !== '' &&
         formDocente.specializzazioneTecnica.trim() !== '' &&
         formDocente.email.trim() !== '' &&
-        formDocente.password.trim() !== ''
+        (isEditing ? true : formDocente.password.trim() !== '')
     );
 
     onMount(async () => {
@@ -78,29 +82,67 @@
 
     function vaiInChat(idUtente: string | number | undefined) {
         if (!idUtente) return;
-        goto(`/dashboard/admin/comunicazioni?chatId=${idUtente}`);
+        goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${idUtente}`);
+    }
+
+    function apriModaleRegistrazione() {
+        isEditing = false;
+        formDocente = { idUtente: null, nome: '', cognome: '', specializzazioneTecnica: '', email: '', password: '' };
+        showAddModal = true;
+    }
+
+    function apriModaleModifica() {
+        if (!selectedDocente) return;
+        isEditing = true;
+        formDocente = {
+            idUtente: selectedDocente.idUtente,
+            nome: selectedDocente.nome,
+            cognome: selectedDocente.cognome,
+            specializzazioneTecnica: selectedDocente.specializzazioneTecnica || '',
+            email: selectedDocente.email,
+            password: ''
+        };
+        showAddModal = true;
     }
 
     async function salvaDocente() {
         if (!isFormValid) return;
         isSaving = true;
         try {
-            const payload = {
-                ruolo: 'DOCENTE',
-                nome: formDocente.nome,
-                cognome: formDocente.cognome,
-                email: formDocente.email.trim(),
-                password: formDocente.password,
-                specializzazione: formDocente.specializzazioneTecnica
-            } as unknown as AuthRequestDTO;
+            if (isEditing && formDocente.idUtente) {
+                const payload = {
+                    nome: formDocente.nome.trim(),
+                    cognome: formDocente.cognome.trim(),
+                    email: formDocente.email.trim(),
+                    specializzazioneTecnica: formDocente.specializzazioneTecnica.trim()
+                };
 
-            await AnagraficaService.registraUtente(payload);
-            const res = await AnagraficaService.getAllDocenti();
-            docenti = res as DocenteData[];
+                const aggiornato = (await AnagraficaService.updateDocente(formDocente.idUtente, payload)) as DocenteData;
+
+                docenti = docenti.map(d => d.idUtente === aggiornato.idUtente ? aggiornato : d);
+
+                if (selectedDocente?.idUtente === aggiornato.idUtente) {
+                    selectedDocente = aggiornato;
+                }
+            } else {
+                const payload = {
+                    ruolo: 'DOCENTE',
+                    nome: formDocente.nome,
+                    cognome: formDocente.cognome,
+                    email: formDocente.email.trim(),
+                    password: formDocente.password,
+                    specializzazione: formDocente.specializzazioneTecnica
+                } as unknown as AuthRequestDTO;
+
+                await AnagraficaService.registraUtente(payload);
+                const res = await AnagraficaService.getAllDocenti();
+                docenti = res as DocenteData[];
+            }
+
             showAddModal = false;
-            formDocente = { nome: '', cognome: '', specializzazioneTecnica: '', email: '', password: '' };
         } catch (error) {
             console.error("Si è verificato un errore durante il salvataggio dell'anagrafica docente:", error);
+            alert("Operazione fallita. Verificare i dati e riprovare.");
         } finally {
             isSaving = false;
         }
@@ -134,7 +176,7 @@
                 <p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione formatori e specialisti NorLan.</p>
             </div>
             <button
-                    onclick={() => (showAddModal = true)}
+                    onclick={apriModaleRegistrazione}
                     class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg transition-all flex items-center gap-3 hover:bg-[#1B4B6B] hover:text-white"
             >
                 <Plus size={18} /> Nuovo Docente
@@ -205,7 +247,10 @@
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <button onclick={() => apreGmail(selectedDocente?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
+                        <button onclick={apriModaleModifica} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
+                            <Edit3 size={16} /> Modifica Dati
+                        </button>
+                        <button onclick={() => apreGmail(selectedDocente?.email || '')} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
                             <Mail size={16} /> Manda Mail
                         </button>
                         <button onclick={() => vaiInChat(selectedDocente?.idUtente)} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
@@ -261,7 +306,13 @@
         <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
                 <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><GraduationCap size={20}/> Registra Docente</h2>
+                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
+                        {#if isEditing}
+                            <Edit3 size={20}/> Modifica Formatore
+                        {:else}
+                            <GraduationCap size={20}/> Registra Docente
+                        {/if}
+                    </h2>
                     <button onclick={() => (showAddModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
                 </div>
                 <div class="p-8 space-y-4">
@@ -286,16 +337,25 @@
                         <input bind:value={formDocente.email} placeholder="docente@norlan.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                     </div>
 
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
-                        <input bind:value={formDocente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        <div class="mt-2 flex items-start gap-2">
-                            <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
-                            <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
-                                Nota: Il docente dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+                    {#if !isEditing}
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
+                            <input bind:value={formDocente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+                            <div class="mt-2 flex items-start gap-2">
+                                <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+                                <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+                                    Nota: Il docente dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+                                </p>
+                            </div>
+                        </div>
+                    {:else}
+                        <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl mt-4">
+                            <p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
+                            <p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">
+                                Per motivi di sicurezza, la password può essere modificata solo dal docente tramite il suo pannello.
                             </p>
                         </div>
-                    </div>
+                    {/if}
                 </div>
                 <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
                     <button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
@@ -304,8 +364,14 @@
                             disabled={!isFormValid || isSaving}
                             class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-[#153a54] disabled:opacity-50 flex items-center gap-2"
                     >
-                        {#if isSaving}<Loader2 size={14} class="animate-spin"/>{/if}
-                        Registra Docente
+                        {#if isSaving}
+                            <Loader2 size={14} class="animate-spin"/>
+                        {:else if isEditing}
+                            <Edit3 size={14}/>
+                        {:else}
+                            <GraduationCap size={14}/>
+                        {/if}
+                        {isEditing ? 'Aggiorna Dati' : 'Registra Docente'}
                     </button>
                 </div>
             </div>
@@ -314,7 +380,6 @@
 
     {#if showDeleteModal}
         <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-            <!-- Modificata larghezza a max-w-sm per renderlo più piccolo -->
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" in:scale>
                 <div class="p-8 text-center">
                     <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>

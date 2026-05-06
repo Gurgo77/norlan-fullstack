@@ -18,6 +18,7 @@
 		nomeVisualizzato: string;
 		sottotitolo: string;
 		ruolo: string;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		icona: any;
 		idAziendaRiferimento?: number;
 	}
@@ -38,12 +39,14 @@
 	let newMessage: string = $state('');
 	let isLoading: boolean = $state(true);
 	let searchQuery: string = $state('');
+
 	const filteredDocenti = $derived(
 			docentiRubrica.filter(d =>
 					d.nomeVisualizzato.toLowerCase().includes(searchQuery.toLowerCase()) ||
 					d.sottotitolo.toLowerCase().includes(searchQuery.toLowerCase())
 			)
 	);
+
 	const filteredGruppiAziende = $derived(
 			gruppiAziende.map(gruppo => {
 				const query = searchQuery.toLowerCase();
@@ -90,7 +93,8 @@
 
 			gruppiAziende = aziende.map(a => {
 				const dipendentiAssociati = dipendenti.filter(dip => {
-					const idAz = dip.idAzienda || (dip as any).azienda?.idUtente || (dip as any).azienda_id;
+					const dipEsteso = dip as DipendenteData & { azienda?: { idUtente: number }, azienda_id?: number };
+					const idAz = dipEsteso.idAzienda || dipEsteso.azienda?.idUtente || dipEsteso.azienda_id;
 					return String(idAz) === String(a.idUtente);
 				});
 
@@ -113,7 +117,6 @@
 					espansa: false
 				};
 			});
-
 			const urlParams = new URLSearchParams(window.location.search);
 			const chatIdDaUrl = urlParams.get('chatId');
 			const msgDaUrl = urlParams.get('msg');

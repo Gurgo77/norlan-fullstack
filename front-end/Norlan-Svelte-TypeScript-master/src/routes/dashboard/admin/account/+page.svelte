@@ -60,8 +60,9 @@
                 isPasswordFormVisible = false;
                 passwordSuccessMessage = '';
             }, 2500);
-        } catch (error: any) {
-            passwordError = error.response?.data || 'Errore di sicurezza. Verifica la password attuale.';
+        } catch (error) {
+            const err = error as { response?: { data?: string } };
+            passwordError = err.response?.data || 'Errore di sicurezza. Verifica la password attuale.';
         } finally {
             isChangingPassword = false;
         }

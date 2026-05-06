@@ -7,7 +7,7 @@
 		Building2, Plus, Trash2, ShieldCheck, ChevronRight, ChevronLeft,
 		Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin,
 		FileText, Download, Calendar, X, AlertTriangle, Upload, UserPlus,
-		Mail, MessageSquare, IdCard
+		Mail, MessageSquare, IdCard, Edit3
 	} from 'lucide-svelte';
 
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
@@ -27,6 +27,7 @@
 	let dynamicHasDipendenti = $state(false);
 	let showModal = $state(false);
 	let isSaving = $state(false);
+	let isEditing = $state(false);
 
 	let showUploadModal = $state(false);
 	let isUploading = $state(false);
@@ -43,12 +44,30 @@
 	let showDeleteDipModal = $state(false);
 	let dipDaEliminare = $state<DipendenteDTO | null>(null);
 
-	let formAzienda = $state({ email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false });
+	let formAzienda = $state({
+		idUtente: null as number | null,
+		email: '',
+		password: '',
+		ragioneSociale: '',
+		partitaIva: '',
+		sedeLegale: '',
+		pec: '',
+		telefono: '',
+		cellulare: '',
+		referenteAziendale: '',
+		hasDipendenti: false
+	});
+
 	let showDeleteModal = $state(false);
 	let aziendaDaEliminare = $state<Azienda | null>(null);
 	let confermaTesto = $state('');
 
-	const isFormValid = $derived(formAzienda.ragioneSociale.trim() !== '' && formAzienda.partitaIva.length === 11 && formAzienda.email.trim() !== '' && formAzienda.password.trim() !== '');
+	const isFormValid = $derived(
+			formAzienda.ragioneSociale.trim() !== '' &&
+			formAzienda.partitaIva.length === 11 &&
+			formAzienda.email.trim() !== '' &&
+			(isEditing ? true : formAzienda.password.trim() !== '')
+	);
 
 	const isDipendenteValid = $derived(
 			formDipendente.nome.trim() !== '' &&
@@ -202,10 +221,7 @@
 			idDocumentoDaAggiornare = null;
 		} catch (error) {
 			console.error("Errore riscontrato durante il caricamento del documento:", error);
-			const err = error as { response?: { data?: Record<string, unknown> | string }, message?: string };
-			const data = err.response?.data;
-			const messaggioServer = (typeof data === 'string' ? data : data?.message) || err.message || "Errore sconosciuto";
-			alert("Caricamento fallito. Risposta del server: " + JSON.stringify(messaggioServer));
+			alert("Caricamento fallito. Risposta del server non valida.");
 		} finally {
 			isUploading = false;
 		}
@@ -223,17 +239,81 @@
 		} catch { alert("Errore durante il download del documento."); }
 	}
 
-	async function salvaNuovaAzienda() {
-		if (!isFormValid) return;
+	function apriModaleRegistrazione() {
+		isEditing = false;
+		formAzienda = { idUtente: null, email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
+		showModal = true;
+	}
+
+	function apriModaleModifica() {
+		if (!selectedAzienda) return;
+		isEditing = true;
+		formAzienda = {
+			idUtente: selectedAzienda.idUtente,
+			email: selectedAzienda.email,
+			password: '',
+			ragioneSociale: selectedAzienda.ragioneSociale,
+			partitaIva: selectedAzienda.partitaIva,
+			sedeLegale: selectedAzienda.sedeLegale || '',
+			pec: selectedAzienda.pec || '',
+			telefono: selectedAzienda.telefono || '',
+			cellulare: selectedAzienda.cellulare || '',
+			referenteAziendale: selectedAzienda.referenteAziendale || '',
+			hasDipendenti: dynamicHasDipendenti
+		};
+		showModal = true;
+	}
+
+	async function salvaAzienda() {
+		if (!isFormValid || isSaving) return;
 		isSaving = true;
 		try {
-			const payload: AuthRequestDTO & { sedeLegale?: string; pec?: string; telefono?: string; cellulare?: string; referenteAziendale?: string; hasDipendenti?: boolean; } = { ...formAzienda, ruolo: 'AZIENDA' };
-			await AnagraficaService.registraUtente(payload);
-			const res = await AnagraficaService.getAllAziende();
-			aziende = (res as AziendaData[]).map(item => new Azienda(item));
+			if (isEditing && formAzienda.idUtente) {
+
+				// Payload rigoroso basato perfettamente sul DTO backend
+				const payload = {
+					idUtente: Number(formAzienda.idUtente),
+					email: formAzienda.email.trim(),
+					ruolo: 'AZIENDA',
+					ragioneSociale: formAzienda.ragioneSociale.trim(),
+					partitaIva: formAzienda.partitaIva.trim(),
+					etichettaDisplay: `${formAzienda.ragioneSociale} (${formAzienda.partitaIva})`,
+					hasDipendenti: formAzienda.hasDipendenti,
+					sedeLegale: formAzienda.sedeLegale.trim(),
+					pec: formAzienda.pec.trim(),
+					telefono: formAzienda.telefono.trim(),
+					cellulare: formAzienda.cellulare.trim(),
+					referenteAziendale: formAzienda.referenteAziendale.trim()
+				};
+
+				const aggiornato = await AnagraficaService.updateAzienda(formAzienda.idUtente, payload as any);
+				const hasDip = await AnagraficaService.hasDipendenti(formAzienda.idUtente);
+				const az = new Azienda({...aggiornato, hasDipendenti: hasDip});
+
+				aziende = aziende.map(a => a.idUtente === az.idUtente ? az : a);
+				if (selectedAzienda?.idUtente === az.idUtente) {
+					selectedAzienda = az;
+				}
+			} else {
+				const payload: AuthRequestDTO & { sedeLegale?: string; pec?: string; telefono?: string; cellulare?: string; referenteAziendale?: string; hasDipendenti?: boolean; } = {
+					...formAzienda,
+					ruolo: 'AZIENDA'
+				};
+				await AnagraficaService.registraUtente(payload);
+				const res = await AnagraficaService.getAllAziende();
+				aziende = (res as AziendaData[]).map(item => new Azienda(item));
+				await Promise.all(aziende.map(async (a, i) => {
+					aziende[i].hasDipendenti = await AnagraficaService.hasDipendenti(a.idUtente);
+				}));
+			}
 			showModal = false;
-			formAzienda = { email: '', password: '', ragioneSociale: '', partitaIva: '', sedeLegale: '', pec: '', telefono: '', cellulare: '', referenteAziendale: '', hasDipendenti: false };
-		} catch { alert("Errore durante la creazione dell'azienda."); } finally { isSaving = false; }
+		} catch (error: any) {
+			console.error("Errore durante il salvataggio:", error);
+			const message = error.response?.data || "Verificare i dati inseriti (es. partita IVA o Email già presenti).";
+			alert(`Impossibile salvare: ${message}`);
+		} finally {
+			isSaving = false;
+		}
 	}
 
 	function preparaEliminazione(a: Azienda | null) { if (!a) return; aziendaDaEliminare = a; confermaTesto = ''; showDeleteModal = true; }
@@ -256,7 +336,7 @@
 				<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafiche Aziende</h1>
 				<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione centralizzata NorLan.</p>
 			</div>
-			<button onclick={() => (showModal = true)} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
+			<button onclick={apriModaleRegistrazione} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
 				<Plus size={18} /> Nuova Azienda
 			</button>
 		</div>
@@ -312,7 +392,10 @@
 					</div>
 
 					<div class="flex items-center gap-3">
-						<button onclick={() => apreGmail(selectedAzienda?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100">
+						<button onclick={apriModaleModifica} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100">
+							<Edit3 size={16} /> Modifica Dati
+						</button>
+						<button onclick={() => apreGmail(selectedAzienda?.email || '')} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30">
 							<Mail size={16} /> Manda Mail
 						</button>
 						<button onclick={() => vaiInChat(selectedAzienda?.idUtente || '')} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30">
@@ -547,7 +630,13 @@
 		<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
 			<div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
 				<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><Building2 size={20}/> Nuova Anagrafica Aziendale</h2>
+					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
+						{#if isEditing}
+							<Edit3 size={20}/> Modifica Dati Azienda
+						{:else}
+							<Building2 size={20}/> Nuova Anagrafica Aziendale
+						{/if}
+					</h2>
 					<button onclick={() => (showModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
 				</div>
 				<div class="p-8 max-h-[80vh] overflow-y-auto">
@@ -573,7 +662,19 @@
 						</div>
 						<div class="space-y-4">
 							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Email Accesso *</label><input bind:value={formAzienda.email} type="email" placeholder="admin@azienda.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
-							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label><input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
+
+							{#if !isEditing}
+								<div>
+									<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Password *</label>
+									<input bind:value={formAzienda.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" />
+								</div>
+							{:else}
+								<div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+									<p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
+									<p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">Per motivi di sicurezza, la password può essere modificata solo dal cliente tramite l'apposita procedura.</p>
+								</div>
+							{/if}
+
 							<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Referente Aziendale</label><input bind:value={formAzienda.referenteAziendale} placeholder="Nome e Cognome" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 							<div class="grid grid-cols-2 gap-3">
 								<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Telefono</label><input bind:value={formAzienda.telefono} placeholder="Fisso" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
@@ -584,8 +685,15 @@
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t">
 					<button onclick={() => (showModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-					<button onclick={salvaNuovaAzienda} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg flex items-center gap-2 hover:bg-[#153a54]">
-						{#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else}<Plus size={14}/>{/if} Salva Azienda
+					<button onclick={salvaAzienda} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg flex items-center gap-2 hover:bg-[#153a54]">
+						{#if isSaving}
+							<Loader2 size={14} class="animate-spin"/>
+						{:else if isEditing}
+							<Edit3 size={14}/>
+						{:else}
+							<Plus size={14}/>
+						{/if}
+						{isEditing ? 'Aggiorna Dati' : 'Salva Azienda'}
 					</button>
 				</div>
 			</div>

@@ -7,26 +7,16 @@
 	} from 'lucide-svelte';
 
 	import { Documento } from '$lib/models/Documento';
-	import { Azienda, type AziendaData } from '$lib/models/Azienda';
 	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
 	import { DocumentoService } from '$lib/services/DocumentoService';
-	import { AnagraficaService } from '$lib/services/AnagraficaService';
 
 	let documenti = $state<Documento[]>([]);
-	let aziende = $state<Azienda[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
 	onMount(async () => {
 		try {
-			const [resAziende, resDocumenti] = await Promise.all([
-				AnagraficaService.getAllAziende(),
-				DocumentoService.getAllDocumenti()
-			]);
-			const aziendeRaw = resAziende as AziendaData[];
-			aziende = aziendeRaw.map(a => new Azienda(a));
-			documenti = resDocumenti;
-
+			documenti = await DocumentoService.getAllDocumenti();
 		} catch (error) {
 			console.error("Errore durante il caricamento dei dati dello scadenziario:", error);
 		} finally {
