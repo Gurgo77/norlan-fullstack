@@ -4,7 +4,7 @@
 	import {
 		Users, Search, Filter, MessageSquare, BookOpen, Loader2, GraduationCap
 	} from 'lucide-svelte';
-
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { StatoCorso } from '$lib/models/Enums';
@@ -37,8 +37,8 @@
 					(c.stato === StatoCorso.PROGRAMMATO || c.stato === StatoCorso.IN_SVOLGIMENTO)
 			);
 
-			const mappaCorsi = new Map<number, CorsoRaggruppato>();
-			const setStudentiUnici = new Set<number>();
+			let mappaCorsi = new SvelteMap<number, CorsoRaggruppato>();
+			let setStudentiUnici = new SvelteSet<number>();
 
 			for (const corso of mieiCorsiAttivi) {
 				const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);

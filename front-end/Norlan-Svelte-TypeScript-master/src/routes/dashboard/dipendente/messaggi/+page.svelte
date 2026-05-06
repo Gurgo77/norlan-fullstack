@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import {
@@ -26,8 +26,9 @@
 
 	interface AziendaRaw { ragioneSociale?: string; }
 	interface DocenteRaw { nome?: string; cognome?: string; titolo?: string; }
+	interface AdminRaw { idUtente: number; nome?: string; }
 
-	interface DipendenteBackend extends DipendenteData {
+	interface DipendenteBackend extends Omit<DipendenteData, 'idAzienda'> {
 		idAzienda?: number;
 		azienda?: { idUtente: number };
 		azienda_id?: number;
@@ -52,28 +53,25 @@
 		if (!session || !token) return;
 
 		try {
-			utente = (await LavoratoreService.getById(session.idUtente)) as unknown as DipendenteData;
+			const resUtente = await LavoratoreService.getById(session.idUtente);
+			utente = resUtente as unknown as DipendenteData;
+			const dipBackend = resUtente as unknown as DipendenteBackend;
+
 			const rubrica: ContattoChat[] = [];
 
 			try {
-				const adm = await AnagraficaService.getAdminById(1);
+				const adm = await AnagraficaService.getAdminById(1) as AdminRaw;
 				if (adm) {
-					const cronologiaAdmin = await ChatService.getCronologia(session.idUtente, adm.idUtente);
-
-					if (cronologiaAdmin && cronologiaAdmin.length > 0) {
-						rubrica.push({
-							idUtente: adm.idUtente,
-							nome: "Assistenza NorLan",
-							ruolo: 'ADMIN',
-							sottotitolo: 'Supporto Tecnico e Amministrativo'
-						});
-					}
+					rubrica.push({
+						idUtente: adm.idUtente,
+						nome: "Assistenza NorLan",
+						ruolo: 'ADMIN',
+						sottotitolo: 'Supporto Tecnico e Amministrativo'
+					});
 				}
-			} catch(e) { console.warn(e); }
+			} catch { console.warn("Admin non disponibile"); }
 
-			const dipendenteBackend = utente as DipendenteBackend;
-			const idAzienda = dipendenteBackend.idAzienda || dipendenteBackend.azienda?.idUtente || dipendenteBackend.azienda_id;
-
+			const idAzienda = dipBackend.idAzienda || dipBackend.azienda?.idUtente || dipBackend.azienda_id;
 			if (idAzienda) {
 				try {
 					const aziendaData = await AnagraficaService.getAziendaById(idAzienda) as AziendaRaw;
@@ -83,7 +81,7 @@
 						ruolo: 'AZIENDA',
 						sottotitolo: 'Datore di Lavoro'
 					});
-				} catch(e) { console.warn(e); }
+				} catch { console.warn("Dati azienda non trovati"); }
 			}
 
 			const iscrizioni = await FormazioneService.getIscrizioniUtente(session.idUtente);
@@ -96,7 +94,7 @@
 						mapDocenti.set(corso.idDocente, { email: corso.emailDocente, corsi: new SvelteSet<string>() });
 					}
 					mapDocenti.get(corso.idDocente)!.corsi.add(corso.titolo);
-				} catch(e) { console.warn(e); }
+				} catch { /* Salta corso se errore */ }
 			}
 
 			for (const [idDocente, data] of mapDocenti.entries()) {
@@ -106,7 +104,7 @@
 					if (docenteData && docenteData.nome && docenteData.cognome) {
 						nomeDocenteVisivo = `${docenteData.titolo || 'Docente'} ${docenteData.nome} ${docenteData.cognome}`;
 					}
-				} catch(e) { console.warn(e); }
+				} catch { /* Fallback alla mail */ }
 
 				rubrica.push({
 					idUtente: idDocente,
@@ -126,12 +124,12 @@
 							scrollChat();
 						}
 					},
-					(err: string) => console.error(err)
+					(err: string) => console.error("Socket Error:", err)
 			);
 			chatService.connect(token, session.idUtente);
 
 		} catch (error) {
-			console.error(error);
+			console.error("Errore critico onMount chat:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -139,7 +137,7 @@
 
 	onDestroy(() => { if (chatService) chatService.disconnect(); });
 
-	const contattiFiltrati = $derived(
+	let contattiFiltrati = $derived(
 			contatti.filter(c =>
 					c.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
 					c.ruolo.toLowerCase().includes(searchQuery.toLowerCase())
@@ -169,11 +167,17 @@
 		scrollChat();
 	}
 
-	function scrollChat() { setTimeout(() => { if (chatScrollContainer) chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight; }, 50); }
+	async function scrollChat() {
+		await tick();
+		if (chatScrollContainer) {
+			chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight;
+		}
+	}
 </script>
 
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
+	<!-- SIDEBAR -->
 	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
 		<div class="p-8 border-b border-gray-100 bg-white">
 			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
@@ -224,6 +228,7 @@
 		</div>
 	</div>
 
+	<!-- AREA CHAT -->
 	<div class="flex-1 flex flex-col bg-white">
 		{#if contattoSelezionato}
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">

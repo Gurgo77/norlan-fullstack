@@ -16,7 +16,6 @@
 	interface SubMenuItem {
 		href: string;
 		label: string;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		icon: any;
 	}
 
@@ -25,7 +24,6 @@
 		id?: string;
 		label: string;
 		subItems?: SubMenuItem[];
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		icon: any;
 	}
 

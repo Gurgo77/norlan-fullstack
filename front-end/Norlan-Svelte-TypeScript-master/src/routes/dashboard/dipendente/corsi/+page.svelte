@@ -147,7 +147,7 @@
 		isSubmittingFeedback = true;
 		try {
 			const payload = {
-				idUtente: currentUserId, // Prendo l'ID salvato globalmente, non cerco di estrarlo dall'iscrizione
+				idUtente: currentUserId,
 				idCorso: selectedCorsoPerFeedback.idCorso,
 				ratingDocenza: ratingDocenza,
 				ratingContenuti: ratingContenuti,

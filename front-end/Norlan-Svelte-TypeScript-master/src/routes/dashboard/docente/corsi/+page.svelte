@@ -67,7 +67,7 @@
 				try {
 					const iscritti = await FormazioneService.getIscrizioniByCorso(corsi[i].idCorso);
 					corsi[i].numeroIscritti = iscritti.length;
-				} catch (e) {
+				} catch{
 					console.warn("Errore caricamento iscritti per corso", corsi[i].idCorso);
 				} finally {
 					corsi[i].isLoadingIscritti = false;
@@ -113,7 +113,7 @@
 		statsFeedback = null;
 		try {
 			statsFeedback = await FeedbackService.getStatisticheCorso(corso.idCorso);
-		} catch (error) {
+		} catch{
 			triggerBanner("Errore recupero feedback", 'ERR');
 			showModalFeedback = false;
 		} finally {
@@ -129,14 +129,20 @@
 
 	async function confermaCambioStatoCorso() {
 		if (!corsoDaCambiareStato || !nuovoStatoPrevisto) return;
+
 		isActionLoading = true;
 		try {
 			await FormazioneService.updateStatoCorso(corsoDaCambiareStato.idCorso, nuovoStatoPrevisto);
-			corsi = corsi.map(c => c.idCorso === corsoDaCambiareStato!.idCorso ? { ...c, stato: nuovoStatoPrevisto } : c);
+			corsi = corsi.map(c =>
+					c.idCorso === corsoDaCambiareStato?.idCorso
+							? { ...c, stato: nuovoStatoPrevisto as StatoCorso }
+							: c
+			);
+
 			showCambioStatoModal = false;
 			triggerBanner("Stato corso aggiornato!");
-		} catch (error: any) {
-			triggerBanner("Errore cambio stato", 'ERR');
+		} catch {
+			triggerBanner("Errore durante il cambio stato", 'ERR');
 		} finally {
 			isActionLoading = false;
 		}

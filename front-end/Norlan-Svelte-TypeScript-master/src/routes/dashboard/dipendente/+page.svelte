@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { base, resolveRoute } from '$app/paths';
+	import { resolveRoute } from '$app/paths';
 	import {
 		HardHat, Calendar, FileBadge, Download,
 		MessageSquare, Clock, AlertTriangle, CheckCircle2,
@@ -177,9 +177,24 @@
 	}
 
 	function inviaMessaggioChat() {
-		if (!chatMessage.trim() || !chatService) return;
-		chatService.sendMessage({ idMittente: currentUser!.idUtente, idDestinatario: STAFF_ID, testo: chatMessage });
-		const msgMock = new Messaggio({ idMessaggio: Date.now(), idMittente: currentUser!.idUtente, nomeMittente: utente?.nome, idDestinatario: STAFF_ID, testo: chatMessage, timestampInvio: new Date().toISOString(), letto: false });
+		if (!chatMessage.trim() || !chatService || !currentUser || !utente) return;
+
+		chatService.sendMessage({
+			idMittente: currentUser.idUtente,
+			idDestinatario: STAFF_ID,
+			testo: chatMessage
+		});
+
+		const msgMock = new Messaggio({
+			idMessaggio: Date.now(),
+			idMittente: currentUser.idUtente,
+			nomeMittente: utente.nome ?? 'Lavoratore',
+			idDestinatario: STAFF_ID,
+			testo: chatMessage,
+			timestampInvio: new Date().toISOString(),
+			letto: false
+		});
+
 		messaggiChat = [...messaggiChat, msgMock];
 		chatMessage = '';
 		scrollChat();

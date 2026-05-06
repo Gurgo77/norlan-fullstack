@@ -7,7 +7,7 @@
 		Building2, Plus, Trash2, ShieldCheck, ChevronRight, ChevronLeft,
 		Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin,
 		FileText, Download, Calendar, X, AlertTriangle, Upload, UserPlus,
-		Mail, MessageSquare, IdCard, Edit3
+		Mail, MessageSquare, Edit3
 	} from 'lucide-svelte';
 
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
@@ -270,7 +270,6 @@
 		try {
 			if (isEditing && formAzienda.idUtente) {
 
-				// Payload rigoroso basato perfettamente sul DTO backend
 				const payload = {
 					idUtente: Number(formAzienda.idUtente),
 					email: formAzienda.email.trim(),
@@ -286,7 +285,7 @@
 					referenteAziendale: formAzienda.referenteAziendale.trim()
 				};
 
-				const aggiornato = await AnagraficaService.updateAzienda(formAzienda.idUtente, payload as any);
+				const aggiornato = (await AnagraficaService.updateAzienda(formAzienda.idUtente, payload as any)) as AziendaData;
 				const hasDip = await AnagraficaService.hasDipendenti(formAzienda.idUtente);
 				const az = new Azienda({...aggiornato, hasDipendenti: hasDip});
 

@@ -6,7 +6,7 @@
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, MessageSquare, GraduationCap,
-		FileText, LogOut, Home, Bell, HardHat, Users, User, Loader2, X
+		FileText, LogOut, Home, Bell, HardHat, Users, User, Loader2
 	} from 'lucide-svelte';
 
 	import { AuthService } from '$lib/services/AuthService';
@@ -50,7 +50,7 @@
 		}
 
 		if (session.ruolo !== 'AZIENDA') {
-			goto(resolveRoute(AuthService.getDashboardRouteByRole(session.ruolo)), { replaceState: true });
+			goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
 			return;
 		}
 

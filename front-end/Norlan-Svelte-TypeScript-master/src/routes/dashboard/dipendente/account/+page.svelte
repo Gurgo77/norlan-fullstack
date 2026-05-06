@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import {
 		User, Mail, Building2, IdCard, Lock,
-		Save, ShieldCheck, Loader2, Briefcase
+		Save, Loader2, Briefcase
 	} from 'lucide-svelte';
 
 	import type { DipendenteData } from '$lib/models/Dipendente';

@@ -47,7 +47,7 @@
 		}
 
 		if (session.ruolo !== 'DIPENDENTE' && session.ruolo !== 'LAVORATORE') {
-			goto(resolveRoute(AuthService.getDashboardRouteByRole(session.ruolo)), { replaceState: true });
+			goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
 			return;
 		}
 
@@ -59,7 +59,6 @@
 			]);
 
 			notificheCount = notifiche;
-			// Definizione dell'interfaccia direttamente nel cast per evitare warning su "any"
 			nomeAzienda = (dipendenteData as { ragioneSocialeAzienda?: string }).ragioneSocialeAzienda || 'Azienda Non Assegnata';
 		} catch (error) {
 			console.error("Errore nel recupero dati layout:", error);

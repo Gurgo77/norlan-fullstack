@@ -3,7 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		HardHat, ShieldCheck, ShieldAlert, ShieldOff,
-		Search, Loader2, Info, RefreshCw, FileText
+		Search, Loader2, RefreshCw
 	} from 'lucide-svelte';
 
 	import { AuthService } from '$lib/services/AuthService';

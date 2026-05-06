@@ -147,13 +147,12 @@
 		if (!isFormValid) return;
 		isSaving = true;
 		try {
-			// Formattiamo il payload esattamente come richiede CorsoFormazioneRequest
 			const payload = {
 				titolo: formCorso.titolo!,
 				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
 				luogoFisico: formCorso.luogoFisico!,
-				idDocente: formCorso.idDocente!, // Messo diretto, senza l'oggetto nidificato
-				capacitaMassima: 50 // Inseriamo un limite di default visto che è obbligatorio per TypeScript
+				idDocente: formCorso.idDocente!,
+				capacitaMassima: 50
 			} as CorsoFormazioneRequest;
 
 			const nuovo = await FormazioneService.createCorso(payload);

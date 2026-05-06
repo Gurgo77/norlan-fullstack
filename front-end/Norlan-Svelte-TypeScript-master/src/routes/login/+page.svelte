@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolveRoute } from '$app/paths';
+	import {base, resolveRoute} from '$app/paths';
 	import { fade, slide } from 'svelte/transition';
 	import { Mail, Lock, Loader2, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
@@ -14,10 +14,10 @@
 
 	let showPassword = $state(false);
 
-	onMount(() => {
+	onMount(async () => {
 		const session = AuthService.getSession();
 		if (session) {
-			goto(resolveRoute(AuthService.getDashboardRouteByRole(session.ruolo)), { replaceState: true });
+			goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
 		}
 	});
 

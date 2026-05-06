@@ -18,7 +18,6 @@
 		nomeVisualizzato: string;
 		sottotitolo: string;
 		ruolo: string;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		icona: any;
 		idAziendaRiferimento?: number;
 	}

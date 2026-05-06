@@ -3,7 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		FileBadge, Download, Search, Loader2,
-		FileText, Calendar
+		FileText, Calendar, ShieldAlert, X
 	} from 'lucide-svelte';
 
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
@@ -13,6 +13,7 @@
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
+	let downloadError = $state('');
 
 	let utente = $state<DipendenteDTO | null>(null);
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
@@ -38,6 +39,7 @@
 
 	async function scaricaAttestato(idCorso: number) {
 		if (!utente) return;
+		downloadError = '';
 
 		try {
 			const blob = await FormazioneService.downloadAttestato(idCorso, utente.idUtente);
@@ -57,11 +59,13 @@
 
 		} catch (e) {
 			console.error("Errore nel download dell'attestato:", e);
-			alert("Impossibile scaricare il file. Verifica che il documento sia effettivamente presente sul server.");
+			downloadError = "Impossibile scaricare il file. Verifica che il documento sia presente o riprova più tardi.";
+
+			setTimeout(() => { downloadError = ''; }, 6000);
 		}
 	}
 
-	attestatiDisponibili = $derived(
+	let attestatiDisponibili = $derived(
 			iscrizioni.filter(i =>
 					i.presenzaConfermata === true &&
 					i.idDocumento !== undefined &&
@@ -88,14 +92,27 @@
 		</div>
 	</div>
 
-	<div class="relative group max-w-md">
-		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
-		<input
-				bind:value={searchQuery}
-				type="text"
-				placeholder="CERCA PER TITOLO CORSO..."
-				class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
-		/>
+	<div class="flex flex-col gap-4">
+		<div class="relative group max-w-md">
+			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
+			<input
+					bind:value={searchQuery}
+					type="text"
+					placeholder="CERCA PER TITOLO CORSO..."
+					class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+			/>
+		</div>
+
+		<!-- BANNER DI ERRORE COERENTE -->
+		{#if downloadError}
+			<div in:scale out:fade class="max-w-md bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-4 text-red-600 shadow-sm">
+				<ShieldAlert size={20} class="shrink-0" />
+				<p class="text-[10px] font-black uppercase tracking-widest flex-1">{downloadError}</p>
+				<button onclick={() => downloadError = ''} class="text-red-400 hover:text-red-600 transition-colors">
+					<X size={18} />
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	{#if isLoading}
