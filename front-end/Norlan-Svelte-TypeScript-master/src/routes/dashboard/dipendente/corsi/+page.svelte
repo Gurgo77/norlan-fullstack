@@ -1,24 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		BookOpen,
-		PlayCircle,
-		Loader2,
-		Search,
-		Calendar,
-		Download,
-		MessageSquare,
-		X,
-		Send,
-		CheckCircle2,
-		AlertTriangle
-	} from 'lucide-svelte';
-
+	import { BookOpen, PlayCircle, Loader2, Search, Calendar, Download, MessageSquare, Send, CheckCircle2, X } from 'lucide-svelte';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface MaterialeDidatticoDTO {
 		idMateriale: number;
@@ -52,7 +40,6 @@
 
 		try {
 			const iscrizioniBase = await FormazioneService.getIscrizioniUtente(session.idUtente);
-
 			iscrizioni = iscrizioniBase.map((isc: IscrizioneCorso) => ({
 				...isc,
 				materiali: [],
@@ -77,7 +64,6 @@
 					iscrizioni[i].isLoadingMateriali = false;
 				}
 			}
-
 		} catch (error) {
 			console.error('Errore nel recupero dei corsi:', error);
 		} finally {
@@ -94,22 +80,13 @@
 	);
 
 	const corsiDaRecensire = $derived(
-			iscrizioni.filter(i =>
-					(i.statoCorso === 'CONCLUSO' || i.statoCorso === 'ATTESA_FIRMA_DOCENTE' || i.statoCorso === 'VALIDATO' || i.statoCorso === 'CERTIFICATO') &&
-					i.presenzaConfermata === true &&
-					!i.feedbackInviatoLocalmente
-			)
+			iscrizioni.filter(i => (i.statoCorso === 'CONCLUSO' || i.statoCorso === 'ATTESA_FIRMA_DOCENTE' || i.statoCorso === 'VALIDATO' || i.statoCorso === 'CERTIFICATO') && i.presenzaConfermata === true && !i.feedbackInviatoLocalmente)
 	);
 
 	function formatData(isoString: string) {
 		if (!isoString) return 'Data non definita';
 		return new Date(isoString)
-				.toLocaleDateString('it-IT', {
-					day: '2-digit',
-					month: 'long',
-					hour: '2-digit',
-					minute: '2-digit'
-				})
+				.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })
 				.toUpperCase();
 	}
 
@@ -153,22 +130,18 @@
 				ratingContenuti: ratingContenuti,
 				commento: commentoFeedback.trim() === '' ? undefined : commentoFeedback.trim()
 			};
-
 			await FeedbackService.inviaFeedback(payload as any);
 
 			const index = iscrizioni.findIndex(i => i.idCorso === selectedCorsoPerFeedback!.idCorso);
 			if (index !== -1) {
 				iscrizioni[index].feedbackInviatoLocalmente = true;
+				feedbackSuccess = true;
+				setTimeout(() => {
+					showModalFeedback = false;
+				}, 2000);
 			}
-
-			feedbackSuccess = true;
-			setTimeout(() => {
-				showModalFeedback = false;
-			}, 2000);
-
 		} catch (error: any) {
 			console.error("Errore invio feedback:", error);
-
 			const errorData = error.response?.data;
 			const errorMsg = typeof errorData === 'string' ? errorData : "Si è verificato un errore durante l'invio del feedback.";
 			alert(errorMsg);
@@ -195,71 +168,45 @@
 	</div>
 
 	{#if corsiDaRecensire.length > 0}
-		<div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden"
-			 in:scale>
-			<div class="absolute -right-4 -top-4 opacity-10">
-				<MessageSquare size={120}/>
-			</div>
-			<div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-				<div>
-					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2 mb-1">
-						<AlertTriangle size={20} class="text-yellow-300"/>
-						Valutazione Corsi Conclusi
-					</h2>
-					<p class="text-[10px] font-bold uppercase tracking-widest opacity-80">
-						Hai {corsiDaRecensire.length} cors{corsiDaRecensire.length > 1 ? 'i' : 'o'} in attesa del tuo
-						feedback qualitativo.
-					</p>
-				</div>
-				<div class="flex flex-col gap-3 w-full md:w-auto">
-					{#each corsiDaRecensire as corsoRec (corsoRec.idCorso)}
-						<button
-								onclick={() => apriModaleFeedback(corsoRec)}
-								class="bg-white text-purple-700 px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-sm hover:scale-105 transition-transform flex items-center justify-between gap-4"
-						>
-							<span class="truncate max-w-[200px]">{corsoRec.titoloCorso}</span>
-							<span class="bg-purple-100 px-2 py-1 rounded">Valuta Ora</span>
-						</button>
-					{/each}
-				</div>
-			</div>
+		<div class="space-y-3" in:fade>
+			{#each corsiDaRecensire as corsoRec (corsoRec.idCorso)}
+				<button onclick={() => apriModaleFeedback(corsoRec)} class="w-full text-left transition-transform active:scale-[0.99]">
+					<AlertCard
+							titolo="Feedback Richiesto"
+							sottotitolo={corsoRec.titoloCorso}
+							variante="warning"
+							icona={MessageSquare}
+							stato="Pendente"
+							data="Valuta ora il corso concluso"
+					/>
+				</button>
+			{/each}
 		</div>
 	{/if}
 
 	<div class="group relative w-full">
-		<Search
-				class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]"
-				size={20}
-		/>
-		<input
-				bind:value={searchQuery}
-				type="text"
-				placeholder="CERCA CORSO IN PROGRAMMA..."
-				class="w-full rounded-[1.5rem] border border-gray-100 bg-white py-4 pl-12 pr-6 text-xs font-bold uppercase shadow-sm outline-none transition-all focus:ring-4 focus:ring-[#1B4B6B]/5"
-		/>
+		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={20} />
+		<input bind:value={searchQuery} type="text" placeholder="CERCA CORSO IN PROGRAMMA..." class="w-full rounded-[1.5rem] border border-gray-100 bg-white py-4 pl-12 pr-6 text-xs font-bold uppercase shadow-sm outline-none transition-all focus:ring-4 focus:ring-[#1B4B6B]/5" />
 	</div>
 
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center gap-4 py-32">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]"/>
 			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">
-             Sincronizzazione registro corsi...
-          </span>
+                Sincronizzazione registro corsi...
+            </span>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 			{#each iscrizioniAttive as iscrizione (iscrizione.idCorso)}
-				<div
-						in:scale={{ duration: 300 }}
-						class="group flex flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl md:flex-row"
-				>
+				<div in:scale={{ duration: 300 }} class="group flex flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl md:flex-row">
 					<div class="flex w-full flex-col items-center justify-center border-b border-gray-50 bg-gray-50/30 p-6 md:w-32 md:border-b-0 md:border-r">
 						<div class="mb-2 rounded-2xl bg-[#1B4B6B] p-4 text-white shadow-lg">
 							<BookOpen size={28}/>
 						</div>
 						<span class="text-center text-[8px] font-black uppercase tracking-widest text-[#1B4B6B]">
-                      {iscrizione.statoCorso === 'IN_SVOLGIMENTO' ? 'IN CORSO' : 'IN ARRIVO'}
-                   </span>
+                            {iscrizione.statoCorso === 'IN_SVOLGIMENTO' ? 'IN CORSO' : 'IN ARRIVO'}
+                        </span>
 					</div>
 
 					<div class="flex flex-1 flex-col justify-between p-8">
@@ -276,18 +223,13 @@
 
 							{#if iscrizione.isLoadingMateriali}
 								<div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
-									<Loader2 size={12} class="animate-spin"/>
-									Controllo materiali...
+									<Loader2 size={12} class="animate-spin"/> Controllo materiali...
 								</div>
 							{:else if iscrizione.materiali.length > 0}
 								<div class="space-y-2 mt-4 pt-4 border-t border-gray-100">
-									<p class="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2">
-										Materiali Didattici</p>
+									<p class="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2"> Materiali Didattici</p>
 									{#each iscrizione.materiali as mat}
-										<button
-												onclick={() => scaricaMateriale(mat.idMateriale, mat.titoloDocumento)}
-												class="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-[#1B4B6B] hover:bg-blue-50 transition-colors group/mat"
-										>
+										<button onclick={() => scaricaMateriale(mat.idMateriale, mat.titoloDocumento)} class="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-[#1B4B6B] hover:bg-blue-50 transition-colors group/mat">
 											<div class="flex items-center gap-2 overflow-hidden">
 												<PlayCircle size={14} class="text-[#1B4B6B] shrink-0"/>
 												<span class="text-[10px] font-bold text-[#1B4B6B] uppercase truncate">{mat.titoloDocumento}</span>
@@ -322,95 +264,64 @@
 </div>
 
 {#if showModalFeedback && selectedCorsoPerFeedback}
-	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
-		 transition:fade>
+	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"  transition:fade>
 		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative" in:scale>
 			{#if feedbackSuccess}
-				<div class="absolute inset-0 z-20 bg-white flex flex-col items-center justify-center p-8 text-center"
-					 in:fade>
+				<div class="absolute inset-0 z-20 bg-white flex flex-col items-center justify-center p-8 text-center"  in:fade>
 					<CheckCircle2 size={80} class="text-green-500 mb-4"/>
 					<h2 class="text-2xl font-black text-[#1B4B6B] uppercase">Grazie!</h2>
-					<p class="text-xs font-bold text-gray-500 uppercase mt-2">Il tuo feedback è stato salvato nei nostri
-						sistemi.</p>
+					<p class="text-xs font-bold text-gray-500 uppercase mt-2">Il tuo feedback è stato salvato nei nostri sistemi.</p>
 				</div>
 			{/if}
-
 			<div class="bg-purple-600 p-6 text-white flex justify-between items-center">
 				<h2 class="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
-					<MessageSquare size={20}/>
-					Valutazione Qualitativa
+					<MessageSquare size={20}/> Valutazione Qualitativa
 				</h2>
 				<button onclick={() => showModalFeedback = false} class="hover:text-purple-300 transition-colors">
 					<X size={24}/>
 				</button>
 			</div>
-
 			<div class="p-8 space-y-6">
 				<div>
 					<p class="text-[10px] font-black uppercase text-purple-600 tracking-widest mb-1">Corso Terminato</p>
 					<h3 class="text-[#1B4B6B] font-extrabold text-sm uppercase leading-tight">{selectedCorsoPerFeedback.titoloCorso}</h3>
 				</div>
-
 				<div class="space-y-2">
-					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Preparazione
-						Docente *</label>
+					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Preparazione Docente *</label>
 					<div class="flex gap-2 justify-between px-4">
 						{#each [1, 2, 3, 4, 5] as star}
-							<button
-									type="button"
-									onclick={() => ratingDocenza = star}
-									class="text-4xl focus:outline-none transition-colors {ratingDocenza >= star ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-200'}"
-							>
+							<button type="button" onclick={() => ratingDocenza = star} class="text-4xl focus:outline-none transition-colors {ratingDocenza >= star ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-200'}">
 								★
 							</button>
 						{/each}
 					</div>
 				</div>
-
 				<div class="space-y-2 border-t border-gray-50 pt-4">
-					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Qualità dei
-						Contenuti *</label>
+					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Qualità dei Contenuti *</label>
 					<div class="flex gap-2 justify-between px-4">
 						{#each [1, 2, 3, 4, 5] as star}
-							<button
-									type="button"
-									onclick={() => ratingContenuti = star}
-									class="text-4xl focus:outline-none transition-colors {ratingContenuti >= star ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-200'}"
-							>
+							<button type="button" onclick={() => ratingContenuti = star} class="text-4xl focus:outline-none transition-colors {ratingContenuti >= star ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-200'}">
 								★
 							</button>
 						{/each}
 					</div>
 				</div>
-
 				<div class="space-y-1 border-t border-gray-50 pt-4">
-					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Note o
-						Suggerimenti (Opzionale)</label>
-					<textarea
-							bind:value={commentoFeedback}
-							rows="3"
-							maxlength="1000"
-							placeholder="Lascia un commento..."
-							class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-600 outline-none resize-none"
-					></textarea>
+					<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Note o Suggerimenti (Opzionale)</label>
+					<textarea bind:value={commentoFeedback} rows="3" maxlength="1000" placeholder="Lascia un commento..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-600 outline-none resize-none"></textarea>
 				</div>
 			</div>
-
 			<div class="p-6 bg-gray-50 flex justify-between items-center border-t border-gray-100">
-				<button onclick={() => showModalFeedback = false}
-						class="text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+				<button onclick={() => showModalFeedback = false} class="text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
 					Annulla
 				</button>
-				<button
-						onclick={submitFeedback}
-						disabled={isSubmittingFeedback || ratingDocenza === 0 || ratingContenuti === 0}
-						class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 disabled:grayscale flex items-center gap-2 hover:bg-purple-700 transition-all"
-				>
+				<button onclick={submitFeedback} disabled={isSubmittingFeedback || ratingDocenza === 0 || ratingContenuti === 0} class="bg-purple-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 disabled:grayscale flex items-center gap-2 hover:bg-purple-700 transition-all">
 					{#if isSubmittingFeedback}
 						<Loader2 size={14} class="animate-spin"/>
 					{:else}
 						<Send size={14}/>
-					{/if} Invia Valutazione
+					{/if}
+					Invia Valutazione
 				</button>
 			</div>
 		</div>
@@ -418,7 +329,5 @@
 {/if}
 
 <style>
-	:global(body) {
-		background-color: #f9fafb;
-	}
+	:global(body) { background-color: #f9fafb; }
 </style>

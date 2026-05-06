@@ -3,13 +3,14 @@
 	import { fade } from 'svelte/transition';
 	import {
 		FileText, Trash2, Search,
-		AlertCircle, CheckCircle, Clock, Building2, Download, ShieldAlert, FileCheck
+		AlertCircle, CheckCircle, Clock, Download, ShieldAlert, FileCheck
 	} from 'lucide-svelte';
 
 	import { Documento } from '$lib/models/Documento';
 	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
@@ -123,63 +124,35 @@
 				/>
 			</div>
 		</div>
-		<div class="overflow-x-auto">
-			<table class="w-full text-left">
-				<thead class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-				<tr>
-					<th class="px-6 py-4">Azienda</th>
-					<th class="px-6 py-4">Documento</th>
-					<th class="px-6 py-4">Stato Scadenza</th>
-					<th class="px-6 py-4">Fase</th>
-					<th class="px-8 py-5 text-right">Azioni</th>
-				</tr>
-				</thead>
-				<tbody class="divide-y divide-gray-50">
-				{#if isLoading}
-					<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">Caricamento database NorLan...</td></tr>
-				{:else if filteredDocumenti.length === 0}
-					<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase text-xs">Tutti i documenti aziendali sono attualmente in regola.</td></tr>
-				{:else}
-					{#each filteredDocumenti as doc (doc.idDocumento)}
-						{@const stato = getStatoScadenza(doc.dataScadenza)}
-						{@const IconaStato = stato.IconaDef}
-						<tr class="hover:bg-white hover:shadow-lg transition-all group relative">
-							<td class="px-6 py-4">
-								<div class="flex items-center gap-3">
-									<div class="bg-gray-100 p-2 rounded-lg text-[#1B4B6B]"><Building2 size={16} /></div>
-									<span class="font-extrabold text-[#1B4B6B] text-xs uppercase">{doc.ragioneSocialeAzienda}</span>
-								</div>
-							</td>
-							<td class="px-6 py-4">
-								<div class="flex items-center gap-2 font-black text-[#1B4B6B] text-xs uppercase"><FileCheck size={14} class="text-blue-500" />{doc.tipologia.replace('_', ' ')}</div>
-								<p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{doc.modulo}</p>
-							</td>
-							<td class="px-6 py-4">
-								<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border {stato.border} {stato.bg} {stato.colore}">
-									<IconaStato size={14} />
-									<span class="text-[10px] font-black uppercase tracking-wider">{stato.label}</span>
-								</div>
-							</td>
-							<td class="px-6 py-4">
-                        <span class="text-[9px] font-black px-2 py-1 rounded bg-gray-100 text-gray-500 uppercase tracking-widest">
-                            {doc.stato.replace(/_/g, ' ')}
-                        </span>
-							</td>
-							<td class="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-								<div class="flex items-center justify-end gap-2">
-									<button onclick={() => handleDownload(doc.idDocumento, `${doc.ragioneSocialeAzienda}_${doc.tipologia}`)} class="p-2 text-[#1B4B6B] hover:bg-blue-50 rounded-lg"><Download size={16} /></button>
-									<button onclick={() => eliminaDocumento(doc.idDocumento)} class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
-								</div>
-							</td>
-						</tr>
-					{/each}
-				{/if}
-				</tbody>
-			</table>
+
+		<div class="p-6 space-y-4">
+			{#if isLoading}
+				<div class="py-12 text-center text-gray-400 font-bold uppercase text-xs">Caricamento database NorLan...</div>
+			{:else if filteredDocumenti.length === 0}
+				<div class="py-12 text-center text-gray-400 font-bold uppercase text-xs">Tutti i documenti aziendali sono attualmente in regola.</div>
+			{:else}
+				{#each filteredDocumenti as doc (doc.idDocumento)}
+					{@const statoInfo = getStatoScadenza(doc.dataScadenza)}
+					<div class="group relative">
+						<AlertCard
+								titolo={doc.ragioneSocialeAzienda}
+								sottotitolo="{doc.tipologia.replace(/_/g, ' ')} - {doc.modulo}"
+								variante={statoInfo.label === 'Scaduto' ? 'danger' : 'warning'}
+								icona={FileCheck}
+								stato={doc.stato.replace(/_/g, ' ')}
+								data="Scadenza: {new Date(doc.dataScadenza).toLocaleDateString('it-IT')}"
+						/>
+						<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-gray-100">
+							<button onclick={() => handleDownload(doc.idDocumento, `${doc.ragioneSocialeAzienda}_${doc.tipologia}`)} class="p-2 text-[#1B4B6B] hover:bg-blue-50 rounded-lg transition-colors"><Download size={16} /></button>
+							<button onclick={() => eliminaDocumento(doc.idDocumento)} class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+						</div>
+					</div>
+				{/each}
+			{/if}
 		</div>
 	</div>
 </div>
 
 <style>
-	tr:hover { background-color: white !important; }
+	:global(body) { background-color: #F9FAFB; }
 </style>

@@ -19,6 +19,7 @@
 	import type { DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { SvelteMap } from 'svelte/reactivity';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface FeedbackStatsDTO {
 		idCorso: number;
@@ -165,8 +166,8 @@
 			const err = error as { response?: { status?: number } };
 
 			if (err.response?.status === 409) {
-				console.error("Conflitto rilevato durante la creazione del corso: possibile duplicazione o sovrapposizione oraria.");
-				alert("Impossibile creare il corso: i dati inseriti sono in conflitto con un record esistente o il docente è già impegnato.");
+				console.error("Conflitto rilevato durante la creazione del corso.");
+				alert("Impossibile creare il corso: i dati inseriti sono in conflitto.");
 			} else {
 				console.error("Errore durante la programmazione del corso:", error);
 				alert("Si è verificato un errore durante la programmazione del corso.");
@@ -189,7 +190,7 @@
 			showModalElimina = false;
 			idCorsoDaEliminare = null;
 		} catch (error) {
-			console.error("Errore durante la rimozione del corso dal sistema:", error);
+			console.error("Errore durante la rimozione del corso:", error);
 			alert("Si è verificato un errore durante l'eliminazione.");
 		}
 	}
@@ -273,7 +274,7 @@
 			}));
 
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
-			alert("Attestati distribuiti correttamente. Le aziende riceveranno una notifica.");
+			alert("Attestati distribuiti correttamente.");
 
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
 
@@ -359,18 +360,16 @@
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiConclusi as corso (corso.idCorso)}
-						<div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden" in:scale>
-							<div class="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-start">
-                                <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border {corso.stato === StatoCorso.VALIDATO ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-amber-200 text-amber-700 bg-amber-50'}">
-                                    {corso.stato ? corso.stato.replace('_', ' ') : 'SCONOSCIUTO'}
-                                </span>
-								<span class="text-[10px] font-bold text-gray-400 uppercase">ID: #{corso.idCorso}</span>
-							</div>
-							<div class="p-5 flex-1 flex flex-col gap-3">
-								<h3 class="font-extrabold text-[#1B4B6B] uppercase leading-tight">{corso.titolo || 'Nessun Titolo'}</h3>
-								<p class="text-xs font-bold text-gray-500 uppercase">{formattaData(corso.dataOrario)}</p>
-							</div>
-							<div class="p-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-2">
+						<div class="flex flex-col gap-3" in:scale>
+							<AlertCard
+									titolo={corso.titolo || 'Nessun Titolo'}
+									sottotitolo="ID: #{corso.idCorso}"
+									variante={corso.stato === StatoCorso.VALIDATO ? 'success' : 'warning'}
+									icona={corso.stato === StatoCorso.VALIDATO ? CheckCircle2 : (corso.stato === StatoCorso.ATTESA_FIRMA_DOCENTE ? Clock : CheckSquare)}
+									stato={corso.stato ? corso.stato.replace('_', ' ') : 'SCONOSCIUTO'}
+									data={formattaData(corso.dataOrario)}
+							/>
+							<div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2">
 								{#if corso.stato === StatoCorso.CONCLUSO}
 									<button onclick={() => apriValidazione(corso)} class="w-full py-2.5 bg-[#1B4B6B] text-white rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/20">
 										<CheckSquare size={14} /> Valida Presenze
@@ -385,7 +384,7 @@
 									</button>
 								{/if}
 
-								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-colors shadow-sm">
+								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-all shadow-sm">
 									<BarChart size={14} /> Metriche Feedback
 								</button>
 							</div>
@@ -444,13 +443,13 @@
 		</div>
 
 		<div class="mb-14">
-			<div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-3 opacity-60 hover:opacity-100 transition-opacity">
+			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3 opacity-60 hover:opacity-100 transition-opacity">
 				<div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg"><BookOpen size={20}/></div>
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
 			</div>
 
 			{#if corsiArchiviati.length === 0}
-				<p class="text-[10px] font-bold text-gray-300 uppercase italic">Nessun corso archiviato corrisponde alla ricerca.</p>
+				<p class="text-[10px] font-bold text-gray-300 uppercase italic">Nessun corso archiviato.</p>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 					{#each corsiArchiviati as corso (corso.idCorso)}
@@ -523,7 +522,7 @@
 				{#if isActionLoading}
 					<div class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} /></div>
 				{:else}
-					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i dipendenti che hanno effettivamente partecipato al corso.</p>
+					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i partecipanti.</p>
 					<div class="space-y-2">
 						{#each iscrizioniAttuali as isc (isc.idUtente)}
 							<label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-[#1B4B6B] transition-colors">
@@ -533,7 +532,7 @@
 										<p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{isc.emailUtente}</p>
 									</div>
 								</div>
-								<span class="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 bg-gray-100 rounded">Dipendente #{isc.idUtente}</span>
+								<span class="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 bg-gray-100 rounded">ID #{isc.idUtente}</span>
 							</label>
 						{/each}
 					</div>
@@ -559,11 +558,11 @@
 				{#if isActionLoading && aziendeCoinvolte.length === 0}
 					<div class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-emerald-600" size={32} /></div>
 				{:else}
-					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda. Il sistema provvederà a inoltrarlo automaticamente e a collegarlo al profilo di tutti i dipendenti iscritti dell'azienda.</p>
+					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda.</p>
 
 					{#if aziendeCoinvolte.length === 0}
 						<div class="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
-							<p class="text-amber-700 font-bold uppercase text-xs">Attenzione: Non è stata rilevata nessuna azienda valida per i dipendenti presenti. Impossibile procedere con la distribuzione.</p>
+							<p class="text-amber-700 font-bold uppercase text-xs">Attenzione: Nessuna azienda valida rilevata.</p>
 						</div>
 					{/if}
 
@@ -575,7 +574,7 @@
 									<div>
 										<h3 class="text-sm font-extrabold text-[#1B4B6B] uppercase">{azienda.ragioneSociale}</h3>
 										<p class="text-[10px] font-bold text-emerald-600 flex items-center gap-1.5 mt-1 uppercase">
-											<Users size={12} /> Copre {azienda.count} dipendente/i validato/i
+											<Users size={12} /> {azienda.count} dipendente/i
 										</p>
 									</div>
 								</div>
@@ -618,44 +617,34 @@
 				{#if isLoadingFeedback}
 					<div class="py-20 text-center flex flex-col items-center gap-4">
 						<Loader2 class="animate-spin text-[#1B4B6B]" size={48} />
-						<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Elaborazione metriche in corso...</span>
+						<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Analisi in corso...</span>
 					</div>
 				{:else if statsFeedback}
 					{#if statsFeedback.totaleFeedback === 0}
 						<div class="py-20 text-center border-2 border-dashed border-gray-200 rounded-3xl bg-white">
 							<Star size={48} class="mx-auto text-gray-200 mb-4" />
-							<p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Nessun dipendente ha ancora rilasciato feedback.</p>
+							<p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Nessun feedback rilasciato.</p>
 						</div>
 					{:else}
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
 							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
-								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Media Docenza</p>
+								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Docenza</p>
 								<div class="flex items-baseline justify-center gap-1">
 									<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
 									<span class="text-xl font-bold text-gray-300">/5</span>
 								</div>
-								<div class="flex justify-center gap-1 mt-4">
-									{#each [1,2,3,4,5] as s (s)}
-										<Star size={16} fill={statsFeedback.mediaDocenza >= s ? "#EAB308" : "none"} class={statsFeedback.mediaDocenza >= s ? "text-yellow-400" : "text-gray-200"} />
-									{/each}
-								</div>
 							</div>
 							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
-								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Media Contenuti</p>
+								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Contenuti</p>
 								<div class="flex items-baseline justify-center gap-1">
 									<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaContenuti.toFixed(1)}</span>
 									<span class="text-xl font-bold text-gray-300">/5</span>
-								</div>
-								<div class="flex justify-center gap-1 mt-4">
-									{#each [1,2,3,4,5] as s (s)}
-										<Star size={16} fill={statsFeedback.mediaContenuti >= s ? "#EAB308" : "none"} class={statsFeedback.mediaContenuti >= s ? "text-yellow-400" : "text-gray-200"} />
-									{/each}
 								</div>
 							</div>
 						</div>
 
 						<div class="flex items-center justify-between mb-6">
-							<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti dei Partecipanti</h3>
+							<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti</h3>
 							<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
                                 {statsFeedback.totaleFeedback} Risposte
                             </span>
@@ -668,9 +657,6 @@
 									<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
 								</div>
 							{/each}
-							{#if statsFeedback.commenti.length === 0}
-								<p class="text-[10px] font-bold text-gray-300 uppercase text-center py-6">Nessun commento testuale rilasciato.</p>
-							{/if}
 						</div>
 					{/if}
 				{/if}
@@ -691,10 +677,10 @@
 			<div class="p-8 text-center">
 				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
 				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il corso?</h2>
-				<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva e rimuoverà tutte le iscrizioni associate.</p>
+				<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva.</p>
 				<div class="flex flex-col gap-3">
 					<button onclick={confermaEliminaCorso} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Sì, elimina definitivamente</button>
-					<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla l'operazione</button>
+					<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla</button>
 				</div>
 			</div>
 		</div>

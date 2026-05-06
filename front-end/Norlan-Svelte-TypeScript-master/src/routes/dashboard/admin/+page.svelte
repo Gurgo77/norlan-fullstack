@@ -18,6 +18,7 @@
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import type { Documento } from '$lib/models/Documento';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface ScadenzaTabella {
 		id: string;
@@ -225,77 +226,23 @@
 					</div>
 				</div>
 
-				<div class="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto custom-scrollbar-data">
-					<table class="w-full text-left">
-						<thead class="bg-white text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 sticky top-0 z-10">
-						<tr>
-							<th class="px-6 py-4">Azienda</th>
-							<th class="px-6 py-4">Dettaglio Pratica</th>
-							<th class="px-6 py-4 text-center">Stato</th>
-							<th class="px-6 py-4 text-right">Azione</th>
-						</tr>
-						</thead>
-						<tbody class="divide-y divide-gray-50">
-						{#each scadenzeFiltrate as scadenza (scadenza.id)}
-							<tr class="hover:bg-gray-50/50 transition-colors group">
-								<td class="px-6 py-4 font-black text-[#1B4B6B] text-xs uppercase">
-									<a href={resolveRoute('/dashboard/admin/aziende') + "?id=" + scadenza.idAzienda} class="hover:text-[#1B4B6B] transition-colors">
-										{scadenza.azienda}
-									</a>
-								</td>
-								<td class="px-6 py-4">
-									<div class="flex items-center gap-2">
-										<div class="p-1.5 rounded-lg bg-[#1B4B6B]/10 text-[#1B4B6B]">
-											{#if scadenza.tipo === 'DOCUMENTO'}
-												<FileText size={14} />
-											{:else}
-												<HardHat size={14} />
-											{/if}
-										</div>
-										<div>
-											<p class="font-bold text-[#1B4B6B] text-[11px] uppercase tracking-tight">{scadenza.dettaglio}</p>
-											<div class="flex items-center gap-1.5 mt-0.5">
-												<div class="w-2 h-2 rounded-full {
-                                          scadenza.status === 'red' ? 'bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]' :
-                                          scadenza.status === 'yellow' ? 'bg-yellow-400' :
-                                          'bg-green-500'
-                                      }"></div>
-												<p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">{scadenza.tipo}</p>
-											</div>
-										</div>
-									</div>
-								</td>
-								<td class="px-6 py-4 text-center">
-									<div class="flex flex-col items-center gap-1">
-                                <span class="text-[10px] font-black uppercase px-2.5 py-1.5 rounded-md w-fit {
-                                    scadenza.status === 'red' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                    scadenza.status === 'yellow' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
-                                    'bg-green-50 text-green-600 border border-green-100'
-                                }">
-                                   {scadenza.testoScadenza}
-                                </span>
-										{#if scadenza.status !== 'green'}
-											<span class="text-[9px] font-bold text-gray-400">il {scadenza.dataScadenza}</span>
-										{/if}
-									</div>
-								</td>
-								<td class="px-6 py-4 text-right">
-									<a href={scadenza.tipo === 'DOCUMENTO' ? resolveRoute('/dashboard/admin/scadenziario') : resolveRoute('/dashboard/admin/dpi')} class="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-500 px-4 py-1.5 rounded-xl font-black text-[9px] uppercase hover:border-[#1B4B6B] hover:text-[#1B4B6B] transition-all">
-										Gestisci
-									</a>
-								</td>
-							</tr>
-						{/each}
-						{#if scadenzeFiltrate.length === 0}
-							<tr>
-								<td colspan="4" class="px-6 py-16 text-center">
-									<CheckCircle2 size={32} class="mx-auto text-gray-200 mb-3" />
-									<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Nessuna documentazione registrata.</p>
-								</td>
-							</tr>
-						{/if}
-						</tbody>
-					</table>
+				<div class="p-6 space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar-data">
+					{#each scadenzeFiltrate as scadenza (scadenza.id)}
+						<AlertCard
+								titolo={scadenza.azienda}
+								sottotitolo={scadenza.dettaglio}
+								variante={scadenza.status === 'red' ? 'danger' : scadenza.status === 'yellow' ? 'warning' : 'success'}
+								icona={scadenza.tipo === 'DOCUMENTO' ? FileText : HardHat}
+								stato={scadenza.testoScadenza}
+								data={scadenza.status !== 'green' ? scadenza.dataScadenza : ''}
+								href={scadenza.linkRedirect}
+						/>
+					{:else}
+						<div class="py-16 text-center">
+							<CheckCircle2 size={32} class="mx-auto text-gray-200 mb-3" />
+							<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Nessuna documentazione registrata.</p>
+						</div>
+					{/each}
 				</div>
 			</div>
 			<div class="space-y-6">

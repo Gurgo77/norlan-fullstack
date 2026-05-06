@@ -8,7 +8,7 @@
 		Users, UserPlus, Trash2, Search, Mail, Building2,
 		IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
 		FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare,
-		AlertCircle, CheckCircle, Clock, RefreshCw, Edit3, Save
+		AlertCircle, CheckCircle, Clock, RefreshCw, Edit3, Save, Lock
 	} from 'lucide-svelte';
 
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
@@ -18,6 +18,7 @@
 	import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import {AnagraficaService} from "$lib/services/AnagraficaService";
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface ServerError {
 		response?: {
@@ -471,16 +472,18 @@
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Password di Accesso *</label>
 							<input bind:value={formDipendente.passwordHash} type="text" placeholder="Password temporanea" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 						{:else}
-							<div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-								<p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
-								<p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password.</p>
-							</div>
+							<AlertCard
+									titolo="Nota di Sicurezza"
+									sottotitolo="Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password."
+									variante="info"
+									icona={Lock}
+							/>
 						{/if}
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
 					<button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-					<button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors">
+					<button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all">
 						{#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else if isEditing}<Save size={14}/>{:else}<UserPlus size={14}/>{/if}
 						{isEditing ? 'Aggiorna Dati' : 'Registra Dipendente'}
 					</button>

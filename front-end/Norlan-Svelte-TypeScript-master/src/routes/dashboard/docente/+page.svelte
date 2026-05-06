@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
 	import { SvelteDate } from 'svelte/reactivity';
 	import {
@@ -14,6 +14,7 @@
 	import { StatoCorso } from '$lib/models/Enums';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface DashboardStats {
 		corsiInCorso: number;
@@ -200,15 +201,13 @@
 						<p class="text-[9px] font-black uppercase tracking-widest text-red-500 mb-4 border-b border-red-50 pb-2">Registri da chiudere</p>
 						<div class="space-y-3 mb-6">
 							{#each corsiDaValidare as corso}
-								<a href="{resolveRoute('/dashboard/docente/corsi')}" class="block bg-red-50 p-4 rounded-2xl border border-red-100 hover:bg-red-100 transition-colors group">
-									<div class="flex items-start gap-3">
-										<div class="p-2 bg-white rounded-lg text-red-500 shrink-0 shadow-sm"><CheckSquare size={16} /></div>
-										<div>
-											<p class="text-xs font-black text-red-700 uppercase leading-tight">{corso.titolo}</p>
-											<p class="text-[9px] font-bold text-red-500 uppercase mt-1">Conferma le presenze per finire</p>
-										</div>
-									</div>
-								</a>
+								<AlertCard
+										titolo={corso.titolo}
+										sottotitolo="Conferma le presenze per finire"
+										variante="danger"
+										icona={CheckSquare}
+										href={resolveRoute('/dashboard/docente/corsi')}
+								/>
 							{/each}
 						</div>
 					{:else}

@@ -10,6 +10,7 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -85,9 +86,9 @@
 
 	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
 		<div>
-			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei Attestati</h1>
+			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei Attestati[cite: 1]</h1>
 			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-				Dipendente: <span class="text-[#1B4B6B]">{utente?.nome || '...'} {utente?.cognome || ''}</span>
+				Dipendente: <span class="text-[#1B4B6B]">{utente?.nome || '...'} {utente?.cognome || ''}</span>[cite: 1]
 			</p>
 		</div>
 	</div>
@@ -103,14 +104,14 @@
 			/>
 		</div>
 
-		<!-- BANNER DI ERRORE COERENTE -->
 		{#if downloadError}
-			<div in:scale out:fade class="max-w-md bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-4 text-red-600 shadow-sm">
-				<ShieldAlert size={20} class="shrink-0" />
-				<p class="text-[10px] font-black uppercase tracking-widest flex-1">{downloadError}</p>
-				<button onclick={() => downloadError = ''} class="text-red-400 hover:text-red-600 transition-colors">
-					<X size={18} />
-				</button>
+			<div in:scale out:fade class="max-w-md">
+				<AlertCard
+						titolo="Errore Download"
+						sottotitolo={downloadError}
+						variante="danger"
+						icona={ShieldAlert}
+				/>
 			</div>
 		{/if}
 	</div>
@@ -118,7 +119,7 @@
 	{#if isLoading}
 		<div class="py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Apertura archivio...</span>
+			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Apertura archivio...[cite: 1]</span>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-4">
@@ -134,14 +135,14 @@
 
 						<div class="min-w-0">
 							<div class="flex items-center gap-2 mb-1">
-								<span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">Certificato Convalidato</span>
+								<span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">Certificato Convalidato[cite: 1]</span>
 							</div>
 							<h3 class="text-base font-black text-[#1B4B6B] uppercase truncate group-hover:text-blue-700 transition-colors">
-								{iscrizione.titoloCorso}
+								{iscrizione.titoloCorso}[cite: 1]
 							</h3>
 							<div class="flex items-center gap-4 mt-2">
 								<div class="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase">
-									<Calendar size={12} /> Conseguito il: {formattaData(iscrizione.dataOrarioCorso)}
+									<Calendar size={12} /> Conseguito il: {formattaData(iscrizione.dataOrarioCorso)}[cite: 1]
 								</div>
 							</div>
 						</div>
@@ -152,7 +153,7 @@
 								onclick={() => scaricaAttestato(iscrizione.idCorso)}
 								class="flex-[2] md:flex-none bg-[#1B4B6B] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 cursor-pointer"
 						>
-							<Download size={18} /> Scarica Attestato
+							<Download size={18} /> Scarica Attestato[cite: 1]
 						</button>
 					</div>
 				</div>
@@ -161,8 +162,8 @@
 			{#if attestatiDisponibili.length === 0}
 				<div class="py-32 text-center bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200">
 					<FileText size={48} class="mx-auto text-gray-200 mb-4" />
-					<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun attestato</h3>
-					<p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Completa i corsi e attendi la validazione aziendale per sbloccare i certificati</p>
+					<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun attestato[cite: 1]</h3>
+					<p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Completa i corsi e attendi la validazione aziendale per sbloccare i certificati[cite: 1]</p>
 				</div>
 			{/if}
 		</div>

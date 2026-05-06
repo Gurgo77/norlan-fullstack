@@ -4,8 +4,8 @@
 	import { resolveRoute } from '$app/paths';
 	import {
 		HardHat, Calendar, FileBadge, Download,
-		MessageSquare, Clock, AlertTriangle, CheckCircle2,
-		X, Send, Loader2, User, ShieldCheck, LayoutDashboard
+		MessageSquare, AlertTriangle, CheckCircle2,
+		X, Send, Loader2, User, ShieldCheck, LayoutDashboard, BookOpen
 	} from 'lucide-svelte';
 
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
@@ -14,6 +14,7 @@
 	import { ChatService } from '$lib/services/ChatService';
 	import { Messaggio } from '$lib/models/Messaggio';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface Impegno {
 		id: number;
@@ -202,7 +203,7 @@
 	}
 </script>
 
-<div in:fade class="max-w-7xl mx-auto space-y-8 pb-20">
+<div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
 	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -245,15 +246,16 @@
 					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
 						<Calendar size={20} class="text-blue-500" /> Prossime Scadenze Corsi
 					</h3>
-					<div class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-2">
+					<div class="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar-data pr-2">
 						{#each impegni as imp}
-							<div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100">
-								<div class="flex items-center gap-4">
-									<Clock size={16} class="text-blue-500 shrink-0" />
-									<span class="text-xs font-bold text-[#1B4B6B] uppercase">{imp.titolo}</span>
-								</div>
-								<span class="text-[10px] font-black text-gray-400 whitespace-nowrap shrink-0 ml-4">{imp.data}</span>
-							</div>
+							<AlertCard
+									titolo={imp.titolo}
+									sottotitolo="Attività formativa obbligatoria"
+									variante="info"
+									icona={BookOpen}
+									data={imp.data}
+									href={resolveRoute('/dashboard/dipendente/corsi')}
+							/>
 						{/each}
 						{#if impegni.length === 0}
 							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessuna lezione programmata</div>
@@ -268,17 +270,17 @@
 						</h3>
 						<a href="{resolveRoute('/dashboard/dipendente/dpi')}" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a>
 					</div>
-					<div class="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-4">
+					<div class="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar-data pr-4">
 						{#each dotazioniDPI as dpi}
-							<div class="flex items-center justify-between group">
-								<div>
-									<p class="text-xs font-black text-[#1B4B6B] uppercase">{dpi.nome}</p>
-									<p class="text-[9px] font-bold text-gray-400">REV: {dpi.revisione}</p>
-								</div>
-								<div class="h-2 w-24 bg-gray-100 rounded-full overflow-hidden shrink-0 ml-4">
-									<div class="h-full {dpi.stato === 'OK' ? 'bg-emerald-500' : (dpi.stato === 'WARNING' ? 'bg-amber-400' : 'bg-red-500')}" style="width: 100%"></div>
-								</div>
-							</div>
+							<AlertCard
+									titolo={dpi.nome}
+									sottotitolo={dpi.matricola}
+									variante={dpi.stato === 'DANGER' ? 'danger' : (dpi.stato === 'WARNING' ? 'warning' : 'success')}
+									icona={HardHat}
+									stato={dpi.stato === 'DANGER' ? 'SCADUTO' : (dpi.stato === 'WARNING' ? 'IN SCADENZA' : 'REGOLARE')}
+									data="Revisione: {dpi.revisione}"
+									href={resolveRoute('/dashboard/dipendente/dpi')}
+							/>
 						{/each}
 						{#if dotazioniDPI.length === 0}
 							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessun DPI assegnato</div>

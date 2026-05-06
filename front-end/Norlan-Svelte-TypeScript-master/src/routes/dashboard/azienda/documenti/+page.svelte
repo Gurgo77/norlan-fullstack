@@ -18,6 +18,7 @@
 	import { Documento } from '$lib/models/Documento';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -190,17 +191,14 @@
 			{/each}
 		</div>
 	{/if}
-	<div class="mt-12 flex items-center gap-4 rounded-3xl border border-[#1B4B6B]/10 bg-[#1B4B6B]/5 p-6">
-		<div class="rounded-2xl bg-[#1B4B6B] p-3 text-white shadow-lg">
-			<FileDown size={20} />
-		</div>
-		<div>
-			<p class="text-xs font-black uppercase tracking-tight text-[#1B4B6B]">Richiesta Documenti Speciali</p>
-			<p class="text-[10px] font-medium uppercase tracking-tighter text-gray-500">
-				Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la
-				<a href="/dashboard/azienda/comunicazioni?chatId=1" class="font-black text-[#1B4B6B] underline">Chat NorLan</a>.
-			</p>
-		</div>
+	<div class="mt-12">
+		<AlertCard
+				titolo="Richiesta Documenti Speciali"
+				sottotitolo="Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la Chat NorLan."
+				variante="info"
+				icona={FileDown}
+				href="/dashboard/azienda/comunicazioni?chatId=1"
+		/>
 	</div>
 </div>
 
