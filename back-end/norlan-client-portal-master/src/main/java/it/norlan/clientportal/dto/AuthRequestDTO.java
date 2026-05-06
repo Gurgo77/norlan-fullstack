@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor  // <--- AGGIUNGI QUESTA
+@NoArgsConstructor
 @AllArgsConstructor
 public class AuthRequestDTO {
 
