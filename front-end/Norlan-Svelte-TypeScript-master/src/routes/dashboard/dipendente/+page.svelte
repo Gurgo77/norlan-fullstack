@@ -5,7 +5,7 @@
 	import {
 		HardHat, Calendar, FileBadge, Download,
 		MessageSquare, Clock, AlertTriangle, CheckCircle2,
-		X, Send, Loader2, ChevronRight, User, ShieldCheck, LayoutDashboard
+		X, Send, Loader2, User, ShieldCheck, LayoutDashboard
 	} from 'lucide-svelte';
 
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
@@ -13,6 +13,7 @@
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { ChatService } from '$lib/services/ChatService';
 	import { Messaggio } from '$lib/models/Messaggio';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	interface Impegno {
 		id: number;
@@ -199,15 +200,6 @@
 		chatMessage = '';
 		scrollChat();
 	}
-
-	function getStatusBadge(stato: string) {
-		switch(stato) {
-			case 'OK': return 'bg-emerald-500 text-white';
-			case 'WARNING': return 'bg-amber-400 text-[#1B4B6B]';
-			case 'DANGER': return 'bg-red-500 text-white';
-			default: return 'bg-gray-200';
-		}
-	}
 </script>
 
 <div in:fade class="max-w-7xl mx-auto space-y-8 pb-20">
@@ -233,32 +225,18 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<a href="{resolveRoute('/dashboard/dipendente/corsi')}" class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl transition-all">
-				<div class="flex items-center gap-6">
-					<div class="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg {getStatusBadge(statoFormazione)}">
-						{#if statoFormazione === 'OK'} <CheckCircle2 size={30} />
-						{:else} <AlertTriangle size={30} /> {/if}
-					</div>
-					<div>
-						<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Formazione</p>
-						<h2 class="text-xl font-black text-[#1B4B6B] uppercase">{statoFormazione === 'OK' ? 'In Regola' : 'Corsi Pendenti'}</h2>
-					</div>
-				</div>
-				<ChevronRight size={24} class="text-gray-200 group-hover:text-[#1B4B6B]" />
-			</a>
-
-			<a href="{resolveRoute('/dashboard/dipendente/dpi')}" class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-xl transition-all">
-				<div class="flex items-center gap-6">
-					<div class="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg {getStatusBadge(statoDPI)}">
-						<HardHat size={30} />
-					</div>
-					<div>
-						<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Attrezzature</p>
-						<h2 class="text-xl font-black text-[#1B4B6B] uppercase">{statoDPI === 'OK' ? 'DPI Verificati' : 'Revisioni Scadute'}</h2>
-					</div>
-				</div>
-				<ChevronRight size={24} class="text-gray-200 group-hover:text-[#1B4B6B]" />
-			</a>
+			<StatCard
+					titolo="Formazione"
+					valore={statoFormazione === 'OK' ? 'In Regola' : 'Corsi Pendenti'}
+					icona={statoFormazione === 'OK' ? CheckCircle2 : AlertTriangle}
+					href={resolveRoute('/dashboard/dipendente/corsi')}
+			/>
+			<StatCard
+					titolo="Attrezzature"
+					valore={statoDPI === 'OK' ? 'DPI Verificati' : 'Revisioni Scadute'}
+					icona={HardHat}
+					href={resolveRoute('/dashboard/dipendente/dpi')}
+			/>
 		</div>
 
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">

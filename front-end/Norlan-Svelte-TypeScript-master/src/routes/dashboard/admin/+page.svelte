@@ -17,6 +17,7 @@
 	import type { DocenteData } from '$lib/models/Docente';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import type { Documento } from '$lib/models/Documento';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	interface ScadenzaTabella {
 		id: string;
@@ -194,70 +195,25 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-12">
-			<a href={resolveRoute('/dashboard/admin/aziende')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 0}}>
-				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-						<Building2 size={24} />
-					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
-				</div>
-				<div>
-					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.aziende}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Aziende Clienti</p>
-				</div>
-			</a>
+			<div in:scale={{duration: 200, delay: 0}} class="h-full">
+				<StatCard titolo="Aziende Clienti" valore={stats.aziende} icona={Building2} href={resolveRoute('/dashboard/admin/aziende')} />
+			</div>
 
-			<a href={resolveRoute('/dashboard/admin/dipendenti')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 50}}>
-				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-						<Users size={24} />
-					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
-				</div>
-				<div>
-					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.dipendenti}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Personale Aziende</p>
-				</div>
-			</a>
+			<div in:scale={{duration: 200, delay: 50}} class="h-full">
+				<StatCard titolo="Personale Aziende" valore={stats.dipendenti} icona={Users} href={resolveRoute('/dashboard/admin/dipendenti')} />
+			</div>
 
-			<a href={resolveRoute('/dashboard/admin/docenti')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 100}}>
-				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-						<UserSquare2 size={24} />
-					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
-				</div>
-				<div>
-					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.docenti}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Docenti Attivi</p>
-				</div>
-			</a>
+			<div in:scale={{duration: 200, delay: 100}} class="h-full">
+				<StatCard titolo="Docenti Attivi" valore={stats.docenti} icona={UserSquare2} href={resolveRoute('/dashboard/admin/docenti')} />
+			</div>
 
-			<a href={resolveRoute('/dashboard/admin/formazione')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 150}}>
-				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-						<GraduationCap size={24} />
-					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
-				</div>
-				<div>
-					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.corsiAttivi}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Corsi in Programma</p>
-				</div>
-			</a>
+			<div in:scale={{duration: 200, delay: 150}} class="h-full">
+				<StatCard titolo="Corsi in Programma" valore={stats.corsiAttivi} icona={GraduationCap} href={resolveRoute('/dashboard/admin/formazione')} />
+			</div>
 
-			<a href={resolveRoute('/dashboard/admin/dpi')} class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#1B4B6B]/30 hover:-translate-y-1 transition-all cursor-pointer" in:scale={{duration: 200, delay: 200}}>
-				<div class="flex justify-between items-start mb-4">
-					<div class="p-4 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
-						<HardHat size={24} />
-					</div>
-					<ArrowRight size={20} class="text-gray-300 group-hover:text-[#1B4B6B] transition-colors" />
-				</div>
-				<div>
-					<h2 class="text-4xl font-black text-[#1B4B6B]">{stats.dpiTotali}</h2>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Gestione DPI</p>
-				</div>
-			</a>
+			<div in:scale={{duration: 200, delay: 200}} class="h-full">
+				<StatCard titolo="Gestione DPI" valore={stats.dpiTotali} icona={HardHat} href={resolveRoute('/dashboard/admin/dpi')} />
+			</div>
 		</div>
 
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">

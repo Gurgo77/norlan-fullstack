@@ -18,6 +18,7 @@
 	import { FeedbackService } from '$lib/services/FeedbackService';
 	import type { DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { SvelteMap } from 'svelte/reactivity';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	interface FeedbackStatsDTO {
 		idCorso: number;
@@ -337,10 +338,20 @@
 	{:else}
 
 		<div class="mb-14">
-			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3">
-				<div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><CheckCircle2 size={20}/></div>
-				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Conclusi & Validazioni</h2>
-				<span class="ml-auto text-xs font-bold text-gray-400 uppercase">{corsiConclusi.length} Elementi</span>
+			<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-gray-200 pb-4">
+				<div class="flex items-center gap-3">
+					<div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><CheckCircle2 size={20}/></div>
+					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Conclusi & Validazioni</h2>
+				</div>
+				<div class="w-full md:w-auto">
+					<StatCard
+							titolo="Da Processare"
+							valore={corsiConclusi.length}
+							icona={CheckSquare}
+							bgIcona="bg-emerald-50"
+							testoIcona="text-emerald-600"
+					/>
+				</div>
 			</div>
 
 			{#if corsiConclusi.length === 0}

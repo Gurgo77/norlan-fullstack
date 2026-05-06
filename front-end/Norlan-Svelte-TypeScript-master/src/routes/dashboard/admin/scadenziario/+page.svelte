@@ -9,6 +9,7 @@
 	import { Documento } from '$lib/models/Documento';
 	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
 	import { DocumentoService } from '$lib/services/DocumentoService';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
@@ -95,7 +96,6 @@
 		}).length,
 		inAttesa: filteredDocumenti.filter(d => d.stato === StatoDocumento.IN_ATTESA_FIRMA).length
 	});
-
 </script>
 
 <div in:fade>
@@ -107,21 +107,10 @@
 	</div>
 
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md hover:border-[#1B4B6B]/30 transition-all cursor-default">
-			<div>
-				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pratiche in Scadenza</p>
-				<h2 class="text-3xl font-extrabold text-[#1B4B6B]">{statistiche.inScadenza}</h2>
-			</div>
-			<div class="bg-blue-50 p-4 rounded-xl text-[#1B4B6B]"><FileText size={24} /></div>
-		</div>
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between hover:shadow-md transition-all cursor-default">
-			<div>
-				<p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Pratiche Scadute</p>
-				<h2 class="text-3xl font-extrabold text-red-600">{statistiche.scaduti}</h2>
-			</div>
-			<div class="bg-red-50 p-4 rounded-xl text-red-600"><ShieldAlert size={24} /></div>
-		</div>
+		<StatCard titolo="Pratiche in Scadenza" valore={statistiche.inScadenza} icona={FileText} />
+		<StatCard titolo="Pratiche Scadute" valore={statistiche.scaduti} icona={ShieldAlert} bgIcona="bg-red-50" testoIcona="text-red-600" hoverBgIcona="group-hover:bg-red-600" />
 	</div>
+
 	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 		<div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
 			<div class="relative w-96">

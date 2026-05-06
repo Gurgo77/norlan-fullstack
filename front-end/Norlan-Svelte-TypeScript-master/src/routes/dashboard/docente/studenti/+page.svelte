@@ -8,6 +8,7 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { StatoCorso } from '$lib/models/Enums';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	interface StudenteDettaglio {
 		idUtente: number;
@@ -89,14 +90,14 @@
 			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei Studenti</h1>
 			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Classi e allievi dei corsi attivi</p>
 		</div>
-		<div class="bg-white px-6 py-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
-			<div class="p-3 bg-blue-50 rounded-2xl text-[#1B4B6B]">
-				<Users size={24} />
-			</div>
-			<div>
-				<p class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Studenti Totali</p>
-				<p class="text-lg font-black text-[#1B4B6B] uppercase">{totaleStudentiUnici} ISCRITTI UNICI</p>
-			</div>
+		<div class="w-full md:w-auto">
+			<StatCard
+					titolo="Iscritti Unici"
+					valore={totaleStudentiUnici}
+					icona={Users}
+					bgIcona="bg-blue-50"
+					testoIcona="text-[#1B4B6B]"
+			/>
 		</div>
 	</div>
 	<div class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4">

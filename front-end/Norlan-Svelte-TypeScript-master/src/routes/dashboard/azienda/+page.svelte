@@ -3,7 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		ShieldCheck, ShieldOff, HardHat, Calendar, MessageSquare, Clock, AlertTriangle, CheckCircle2,
-		X, Send, Loader2, ChevronRight, User, Users, Building2, Briefcase,
+		X, Send, Loader2, User, Users, Building2, Briefcase,
 		BellRing, FileText, ArrowRight
 	} from 'lucide-svelte';
 
@@ -18,6 +18,7 @@
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Messaggio } from '$lib/models/Messaggio';
 	import { TipoDocumento } from '$lib/models/Enums';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	interface DpiRegistro extends AssegnazioneDPIDTO {
 		nomeCompletoDipendente: string;
@@ -218,26 +219,12 @@
 				</div>
 			</div>
 			<div class="grid grid-rows-2 gap-4">
-				<a href="/dashboard/azienda/dipendenti" class="bg-[#1B4B6B] rounded-3xl p-6 text-white shadow-lg shadow-blue-900/10 flex items-center justify-between hover:bg-[#153a54] transition-colors group">
-					<div class="flex items-center gap-4">
-						<div class="p-3 bg-white/10 rounded-xl"><Users size={20} /></div>
-						<div>
-							<p class="text-[10px] font-black text-white/50 uppercase tracking-widest">Personale</p>
-							<p class="text-sm font-black uppercase">{dipendenti.length} Censiti</p>
-						</div>
-					</div>
-					<ChevronRight size={20} class="opacity-50 group-hover:opacity-100 transition-opacity" />
-				</a>
-				<a href="/dashboard/azienda/documenti" class="bg-gray-100 rounded-3xl p-6 text-[#1B4B6B] flex items-center justify-between hover:bg-gray-200 transition-colors group">
-					<div class="flex items-center gap-4">
-						<div class="p-3 bg-white rounded-xl shadow-sm"><FileText size={20} /></div>
-						<div>
-							<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Archivio</p>
-							<p class="text-sm font-black uppercase">Documenti</p>
-						</div>
-					</div>
-					<ChevronRight size={20} class="opacity-50 group-hover:opacity-100 transition-opacity" />
-				</a>
+				<div class="h-full">
+					<StatCard titolo="Personale" valore="{dipendenti.length} Censiti" icona={Users} href="/dashboard/azienda/dipendenti" />
+				</div>
+				<div class="h-full">
+					<StatCard titolo="Archivio" valore="Documenti" icona={FileText} href="/dashboard/azienda/documenti" />
+				</div>
 			</div>
 		</div>
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">

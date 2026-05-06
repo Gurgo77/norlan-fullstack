@@ -16,6 +16,8 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { Documento } from '$lib/models/Documento';
 	import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import {AnagraficaService} from "$lib/services/AnagraficaService";
 
 	interface ServerError {
 		response?: {
@@ -38,14 +40,6 @@
 		tipo: string;
 		nomeDpi: string;
 		dataConsegna: string;
-		dataScadenzaRevisione: string;
-	}
-
-	interface DpiPayload {
-		idAssegnazione: number | null;
-		tipo: string;
-		nomeDpi?: string;
-		dataConsegna?: string;
 		dataScadenzaRevisione: string;
 	}
 
@@ -128,8 +122,11 @@
 			const session = AuthService.getSession();
 			if (!session) return;
 			idAziendaCorrente = session.idUtente;
-			nomeAziendaCorrente = session.ragioneSociale || "La tua Azienda";
+
 			const resLavoratori = await LavoratoreService.getByAzienda(idAziendaCorrente);
+			const profile = await AnagraficaService.getAziendaById(session.idUtente);
+			nomeAziendaCorrente = (profile as any).ragioneSociale || "La tua Azienda";
+
 			lavoratori = resLavoratori.map((l: DipendenteDTO) => ({ ...l, nomeAzienda: nomeAziendaCorrente }));
 			const idDaUrl = $page.url.searchParams.get('id');
 			if (idDaUrl) {
@@ -285,15 +282,15 @@
 		if (!selectedDipendente) return;
 		isSavingDpi = true;
 		try {
-			const payload: DpiPayload = {
+			const payload = {
 				idAssegnazione: formDpi.idAssegnazione,
 				tipo: formDpi.tipo,
-				nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : undefined,
-				dataConsegna: formDpi.dataConsegna ? formDpi.dataConsegna : undefined,
+				nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : '',
+				dataConsegna: formDpi.dataConsegna || undefined,
 				dataScadenzaRevisione: formDpi.dataScadenzaRevisione
 			};
 
-			const savedDpi = await LavoratoreService.assegnaDpi(selectedDipendente.idUtente, payload as unknown as AssegnazioneDPI);
+			const savedDpi = await LavoratoreService.assegnaDpi(selectedDipendente.idUtente, payload as any);
 			const dpiSalvato = savedDpi as unknown as DpiEsteso;
 
 			if (formDpi.idAssegnazione) {
@@ -403,7 +400,7 @@
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					<div class="space-y-6">
-						<div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><FileText size={20} /></div><h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2></div></div>
+						<StatCard titolo="Attestati Totali" valore={documentiCorrenti.length} icona={FileText} bgIcona="bg-blue-50" />
 						{#if sortedDocumentiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each sortedDocumentiCorrenti as doc (doc.idDocumento)}
@@ -417,7 +414,15 @@
 						{/if}
 					</div>
 					<div class="space-y-6">
-						<div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><ShieldCheck size={20} /></div><h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2></div><button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md"><Plus size={14} /> Assegna DPI</button></div>
+						<div class="flex items-stretch gap-4">
+							<div class="flex-1">
+								<StatCard titolo="DPI Consegnati" valore={dpiCorrenti.length} icona={ShieldCheck} bgIcona="bg-emerald-50" testoIcona="text-emerald-600" />
+							</div>
+							<button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-5 rounded-3xl flex flex-col items-center justify-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md shrink-0">
+								<Plus size={24} />
+								<span class="text-[9px] font-black uppercase tracking-widest">Assegna</span>
+							</button>
+						</div>
 						{#if sortedDpiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || dpi.id || Math.random())}

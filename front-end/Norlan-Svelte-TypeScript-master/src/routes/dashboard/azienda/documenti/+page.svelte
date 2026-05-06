@@ -17,6 +17,7 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { Documento } from '$lib/models/Documento';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -96,20 +97,8 @@
 		</div>
 
 		<div class="flex gap-4">
-			<div class="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-6 py-3 shadow-sm">
-				<ShieldCheck class="text-green-500" size={20} />
-				<div class="leading-none">
-					<p class="text-[10px] font-black uppercase text-gray-400">A Norma</p>
-					<p class="text-lg font-black text-[#1B4B6B]">{stats.validi}</p>
-				</div>
-			</div>
-			<div class="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-6 py-3 shadow-sm">
-				<AlertCircle class="text-red-500" size={20} />
-				<div class="leading-none">
-					<p class="text-[10px] font-black uppercase text-gray-400">Scaduti</p>
-					<p class="text-lg font-black text-red-600">{stats.scaduti}</p>
-				</div>
-			</div>
+			<StatCard titolo="A Norma" valore={stats.validi} icona={ShieldCheck} bgIcona="bg-transparent" testoIcona="text-green-500"/>
+			<StatCard titolo="Scaduti" valore={stats.scaduti} icona={AlertCircle} bgIcona="bg-transparent" testoIcona="text-red-500"/>
 		</div>
 	</div>
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
