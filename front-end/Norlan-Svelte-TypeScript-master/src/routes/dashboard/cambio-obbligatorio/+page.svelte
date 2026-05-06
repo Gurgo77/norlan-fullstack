@@ -5,6 +5,7 @@
     import { fade, scale } from 'svelte/transition';
     import { ShieldAlert, Lock, Loader2, CheckCircle2 } from 'lucide-svelte';
     import { AuthService } from '$lib/services/AuthService';
+    import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
     let vecchiaPassword = $state('');
     let nuovaPassword = $state('');
@@ -50,16 +51,14 @@
     <div class="w-full max-w-lg bg-white p-10 rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden">
 
         {#if !success}
-            <!-- FORM ORIGINALE -->
             <div in:fade>
-                <div class="flex flex-col items-center text-center mb-8">
-                    <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
-                        <ShieldAlert size={32} />
-                    </div>
-                    <h1 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tight">Sicurezza Account</h1>
-                    <p class="text-sm font-medium text-gray-500 mt-2">
-                        Al primo accesso, è obbligatorio personalizzare la password di sistema temporanea.
-                    </p>
+                <div class="mb-8">
+                    <AlertCard
+                            titolo="Sicurezza Account"
+                            sottotitolo="Al primo accesso, è obbligatorio personalizzare la password di sistema temporanea."
+                            variante="danger"
+                            icona={ShieldAlert}
+                    />
                 </div>
 
                 <form onsubmit={handleSubmit} class="space-y-6">
@@ -98,7 +97,6 @@
                 </form>
             </div>
         {:else}
-            <!-- BANNER DI SUCCESSO COERENTE -->
             <div class="flex flex-col items-center text-center py-10" in:scale>
                 <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
                     <CheckCircle2 size={40} />

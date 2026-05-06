@@ -12,6 +12,7 @@
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
 	import httpClient from '$lib/api/httpClient';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface CorsoFormazioneEsteso extends CorsoFormazione {
 		numeroIscritti?: number;
@@ -261,14 +262,22 @@
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><CheckSquare size={24}/> Registri da Firmare</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiDaFirmare as corso (corso.idCorso)}
-						<div class="bg-white rounded-2xl border-2 border-[#1B4B6B]/20 p-6 flex flex-col gap-4 shadow-sm">
-							<h3 class="font-black text-[#1B4B6B] uppercase leading-tight">{corso.titolo}</h3>
-							<button onclick={() => apriValidazioneRegistro(corso)} class="w-full py-3 bg-[#1B4B6B] text-white rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-[#153a54] transition-colors">
-								<CheckSquare size={14} /> Firma Registro
-							</button>
-							<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-3 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-colors">
-								<BarChart3 size={14} /> Vedi Feedback
-							</button>
+						<div class="flex flex-col gap-3">
+							<AlertCard
+									titolo={corso.titolo}
+									sottotitolo="Registro in attesa di firma elettronica"
+									variante="danger"
+									icona={CheckSquare}
+									stato="Da Firmare"
+							/>
+							<div class="flex flex-col gap-2">
+								<button onclick={() => apriValidazioneRegistro(corso)} class="w-full py-3 bg-[#1B4B6B] text-white rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-[#153a54] transition-colors">
+									<CheckSquare size={14} /> Firma Registro
+								</button>
+								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-3 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-colors">
+									<BarChart3 size={14} /> Vedi Feedback
+								</button>
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -279,9 +288,14 @@
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><Clock size={24}/> Attesa Admin</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiConclusiAttesaAdmin as corso (corso.idCorso)}
-						<div class="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4 shadow-sm">
-							<h3 class="font-black text-[#1B4B6B] uppercase leading-tight">{corso.titolo}</h3>
-							<p class="text-[10px] font-bold text-gray-500 uppercase">Lezioni terminate. In attesa di validazione presenze.</p>
+						<div class="flex flex-col gap-3">
+							<AlertCard
+									titolo={corso.titolo}
+									sottotitolo="Lezioni terminate. In attesa di validazione presenze."
+									variante="warning"
+									icona={Clock}
+									stato="In elaborazione"
+							/>
 							<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-3 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-colors">
 								<BarChart3 size={14} /> Vedi Feedback
 							</button>
@@ -315,7 +329,7 @@
 		<div class="mb-14">
 			<h2 class="text-xl font-extrabold text-gray-700 uppercase mb-6 flex items-center gap-3"><Calendar size={24}/> Corsi Programmati</h2>
 			{#if corsiProgrammati.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-100 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs italic">Nessun corso programmato.</div>
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs italic">Nessun corso programmato.</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiProgrammati as corso (corso.idCorso)}

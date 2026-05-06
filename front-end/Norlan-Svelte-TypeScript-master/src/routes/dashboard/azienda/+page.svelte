@@ -2,11 +2,10 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		ShieldCheck, ShieldOff, HardHat, Calendar, MessageSquare, Clock, AlertTriangle, CheckCircle2,
-		X, Send, Loader2, ChevronRight, User, Users, Building2, Briefcase,
-		BellRing, FileText, ArrowRight
+		ShieldCheck, ShieldOff, HardHat, Calendar, MessageSquare, Clock,
+		AlertTriangle, CheckCircle2, X, Send, Loader2, User, Users,
+		Building2, Briefcase, BellRing, FileText, ArrowRight
 	} from 'lucide-svelte';
-
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
@@ -18,6 +17,8 @@
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Messaggio } from '$lib/models/Messaggio';
 	import { TipoDocumento } from '$lib/models/Enums';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface DpiRegistro extends AssegnazioneDPIDTO {
 		nomeCompletoDipendente: string;
@@ -35,6 +36,7 @@
 	let messaggiChat = $state<Messaggio[]>([]);
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
 	const STAFF_ID = 1;
+
 	let documentiScadenza = $state<Documento[]>([]);
 	let dipendenti = $state<DipendenteDTO[]>([]);
 	let prossimiCorsi = $state<CorsoFormazione[]>([]);
@@ -75,6 +77,7 @@
 		const oggi = new Date().getTime();
 		const scadenza = new Date(dataScadenzaStr).getTime();
 		const diffGiorni = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
+
 		if (diffGiorni < 0) return 'SCADUTO';
 		if (diffGiorni <= 30) return 'DA_REVISIONARE';
 		return 'OK';
@@ -96,7 +99,6 @@
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		const token = AuthService.getToken();
-
 		if (!currentUser || !token) return;
 
 		try {
@@ -182,7 +184,7 @@
 	}
 </script>
 
-<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-20">
+<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-10">
 	<div class="flex items-end justify-between">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -217,60 +219,41 @@
 					<p class="text-xs font-bold text-gray-400 uppercase mt-2">{status.text}</p>
 				</div>
 			</div>
+
 			<div class="grid grid-rows-2 gap-4">
-				<a href="/dashboard/azienda/dipendenti" class="bg-[#1B4B6B] rounded-3xl p-6 text-white shadow-lg shadow-blue-900/10 flex items-center justify-between hover:bg-[#153a54] transition-colors group">
-					<div class="flex items-center gap-4">
-						<div class="p-3 bg-white/10 rounded-xl"><Users size={20} /></div>
-						<div>
-							<p class="text-[10px] font-black text-white/50 uppercase tracking-widest">Personale</p>
-							<p class="text-sm font-black uppercase">{dipendenti.length} Censiti</p>
-						</div>
-					</div>
-					<ChevronRight size={20} class="opacity-50 group-hover:opacity-100 transition-opacity" />
-				</a>
-				<a href="/dashboard/azienda/documenti" class="bg-gray-100 rounded-3xl p-6 text-[#1B4B6B] flex items-center justify-between hover:bg-gray-200 transition-colors group">
-					<div class="flex items-center gap-4">
-						<div class="p-3 bg-white rounded-xl shadow-sm"><FileText size={20} /></div>
-						<div>
-							<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Archivio</p>
-							<p class="text-sm font-black uppercase">Documenti</p>
-						</div>
-					</div>
-					<ChevronRight size={20} class="opacity-50 group-hover:opacity-100 transition-opacity" />
-				</a>
+				<div class="h-full">
+					<StatCard titolo="Personale" valore="{dipendenti.length} Censiti" icona={Users} href="/dashboard/azienda/dipendenti" />
+				</div>
+				<div class="h-full">
+					<StatCard titolo="Archivio" valore="Documenti" icona={FileText} href="/dashboard/azienda/documenti" />
+				</div>
 			</div>
 		</div>
+
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 			<div class="xl:col-span-2 space-y-8">
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<BellRing size={20} class="text-amber-500" /> Scadenze Documentali
+							<BellRing size={20} class="text-amber-500" />
+							Scadenze Documentali
 						</h3>
 						<span class="bg-gray-100 text-gray-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">{alertScadenzeDocs.length} Alert</span>
 					</div>
+
 					<div class="space-y-3">
 						{#each alertScadenzeDocs as alert (alert.idDocumento)}
-							<div class="flex items-center justify-between p-4 rounded-2xl border {alert.scaduto ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}">
-								<div class="flex items-center gap-4">
-									{#if alert.scaduto}
-										<ShieldOff size={18} class="text-red-500 shrink-0" />
-									{:else}
-										<Clock size={18} class="text-amber-500 shrink-0" />
-									{/if}
-									<div>
-										<span class="text-xs font-black uppercase text-[#1B4B6B] block">{alert.tipologia.replace(/_/g, ' ')}</span>
-										<span class="text-[9px] font-bold text-gray-500 uppercase">{alert.modulo}</span>
-									</div>
-								</div>
-								<div class="text-right">
-                             <span class="text-[10px] font-black uppercase {alert.scaduto ? 'text-red-600' : 'text-amber-600'} block">
-                                 {alert.scaduto ? 'SCADUTO' : 'IN SCADENZA'}
-                             </span>
-									<span class="text-[9px] font-bold text-gray-400 uppercase">{formattaData(alert.dataScadenza)}</span>
-								</div>
-							</div>
+							<AlertCard
+									titolo={alert.tipologia.replace(/_/g, ' ')}
+									sottotitolo={alert.modulo}
+									variante={alert.scaduto ? 'danger' : 'warning'}
+									icona={alert.scaduto ? ShieldOff : Clock}
+									stato={alert.scaduto ? 'SCADUTO' : 'IN SCADENZA'}
+									data={formattaData(alert.dataScadenza)}
+									href="/dashboard/azienda/documenti"
+							/>
 						{/each}
+
 						{#if alertScadenzeDocs.length === 0}
 							<div class="py-6 text-center">
 								<CheckCircle2 size={32} class="mx-auto text-emerald-400 mb-2 opacity-50" />
@@ -279,53 +262,46 @@
 						{/if}
 					</div>
 				</div>
+
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<HardHat size={20} class="text-blue-500" /> Criticità DPI Dipendenti
+							<HardHat size={20} class="text-blue-500" />
+							Criticità DPI Dipendenti
 						</h3>
 						<a href="/dashboard/azienda/dpi" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline flex items-center gap-1">Vedi Registro <ArrowRight size={12}/></a>
 					</div>
-					<div class="overflow-x-auto">
-						<table class="w-full text-left">
-							<thead>
-							<tr class="border-b border-gray-50">
-								<th class="pb-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Lavoratore</th>
-								<th class="pb-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Dispositivo</th>
-								<th class="pb-3 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Stato / Rev</th>
-							</tr>
-							</thead>
-							<tbody>
-							{#each alertScadenzeDpi.slice(0,5) as dpi}
-								<tr class="border-b border-gray-50 hover:bg-gray-50/50">
-									<td class="py-4 text-[11px] font-black text-[#1B4B6B] uppercase">{dpi.nomeCompletoDipendente}</td>
-									<td class="py-4 text-[10px] font-bold text-gray-500 uppercase">
-										{dpi.tipo ? dpi.tipo.replace(/_/g, ' ') : 'N.D.'} <br>
-										<span class="text-[8px] text-gray-400 font-medium">ID: {dpi.id}</span>
-									</td>
-									<td class="py-4 text-right">
-                               <span class="inline-flex px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest block w-fit ml-auto mb-1
-                                  {dpi.statoDerivato === 'DA_REVISIONARE' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}">
-                                  {dpi.statoDerivato.replace('_', ' ')}
-                               </span>
-										<span class="text-[9px] font-bold text-gray-400 uppercase">{formattaData(dpi.dataScadenzaRevisione)}</span>
-									</td>
-								</tr>
-							{/each}
-							{#if alertScadenzeDpi.length === 0}
-								<tr><td colspan="3" class="py-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Nessuna revisione DPI scaduta o imminente.</td></tr>
-							{/if}
-							</tbody>
-						</table>
+
+					<div class="space-y-3">
+						{#each alertScadenzeDpi.slice(0,5) as dpi}
+							<AlertCard
+									titolo={dpi.nomeCompletoDipendente}
+									sottotitolo={dpi.tipo ? dpi.tipo.replace(/_/g, ' ') : 'N.D.'}
+									variante={dpi.statoDerivato === 'SCADUTO' ? 'danger' : 'warning'}
+									icona={HardHat}
+									stato={dpi.statoDerivato.replace('_', ' ')}
+									data={formattaData(dpi.dataScadenzaRevisione)}
+									href="/dashboard/azienda/dpi"
+							/>
+						{/each}
+
+						{#if alertScadenzeDpi.length === 0}
+							<div class="py-6 text-center">
+								<CheckCircle2 size={32} class="mx-auto text-emerald-400 mb-2 opacity-50" />
+								<p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Nessuna revisione DPI scaduta o imminente.</p>
+							</div>
+						{/if}
 					</div>
 				</div>
-
 			</div>
+
 			<div class="space-y-8">
 				<div class="bg-gray-50 rounded-[2.5rem] border border-gray-100 p-8">
 					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
-						<Calendar size={20} class="text-[#1B4B6B]" /> Formazione Attiva
+						<Calendar size={20} class="text-[#1B4B6B]" />
+						Formazione Attiva
 					</h3>
+
 					<div class="space-y-4">
 						{#each prossimiCorsi as corso (corso.idCorso)}
 							<div class="flex gap-4 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
@@ -341,9 +317,11 @@
 								</div>
 							</div>
 						{/each}
+
 						{#if prossimiCorsi.length === 0}
 							<p class="text-[10px] font-bold text-gray-400 uppercase italic text-center py-4">Nessun corso in programma.</p>
 						{/if}
+
 						<a href="/dashboard/azienda/formazione" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl font-black uppercase text-center block text-[10px] border border-gray-200 hover:bg-gray-100 transition-all mt-4">
 							Gestisci Iscrizioni
 						</a>
@@ -356,10 +334,13 @@
 					</div>
 					<h4 class="text-sm font-black text-[#1B4B6B] uppercase">{utenteAzienda?.ragioneSociale}</h4>
 					<p class="text-[10px] font-bold text-gray-400 uppercase mt-1 mb-1">P.IVA: {utenteAzienda?.partitaIva}</p>
+
 					<div class="w-full border-t border-gray-50 my-4"></div>
+
 					<div class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase mb-6">
 						<User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}
 					</div>
+
 					<a href="/dashboard/azienda/account" class="w-full py-3 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10">
 						Modifica Profilo Aziendale
 					</a>
@@ -368,6 +349,7 @@
 		</div>
 	{/if}
 </div>
+
 <div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
 		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-[28rem] rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">
@@ -401,6 +383,7 @@
 			</form>
 		</div>
 	{/if}
+
 	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="w-16 h-16 bg-[#1B4B6B] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform relative group">
 		<MessageSquare size={24} class="group-hover:animate-pulse" />
 		<span class="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>

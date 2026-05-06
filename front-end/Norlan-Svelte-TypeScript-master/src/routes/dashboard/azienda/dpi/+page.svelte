@@ -7,6 +7,7 @@
 
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { AuthService } from '$lib/services/AuthService';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	interface DpiRegistro {
 		idAssegnazione?: number;
@@ -138,7 +139,7 @@
 			}
 
 			showDpiModal = false;
-		} catch (error) {
+		} catch {
 			alert("Impossibile completare l'operazione di salvataggio del dispositivo. Riprovare o contattare il supporto tecnico.");
 		} finally {
 			isSavingDpi = false;
@@ -166,7 +167,8 @@
 	);
 
 	const stats = $derived({
-		scaduti: registro.filter(d => d.statoDerivato === 'SCADUTO').length
+		scaduti: registro.filter(d => d.statoDerivato === 'SCADUTO').length,
+		inScadenza: registro.filter(d => d.statoDerivato === 'DA_REVISIONARE').length
 	});
 </script>
 
@@ -177,12 +179,21 @@
 			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione assegnazione e ispezione attrezzature NorLan.</p>
 		</div>
 		<div class="flex items-center gap-6">
-			<div class="bg-white p-4 rounded-2xl shadow-sm border border-red-50 flex items-center gap-4">
-				<div class="bg-red-50 p-2 rounded-lg text-red-500"><AlertTriangle size={20} /></div>
-				<div>
-					<p class="text-[9px] font-bold text-gray-400 uppercase">Scaduti</p>
-					<p class="text-xs font-black text-red-600 uppercase">{stats.scaduti}</p>
-				</div>
+			<div class="flex gap-4">
+				<StatCard
+						titolo="In Scadenza"
+						valore={stats.inScadenza}
+						icona={AlertTriangle}
+						bgIcona="bg-amber-50"
+						testoIcona="text-amber-500"
+				/>
+				<StatCard
+						titolo="Scaduti"
+						valore={stats.scaduti}
+						icona={AlertTriangle}
+						bgIcona="bg-red-50"
+						testoIcona="text-red-500"
+				/>
 			</div>
 			<button
 					onclick={openNewDpiModal}

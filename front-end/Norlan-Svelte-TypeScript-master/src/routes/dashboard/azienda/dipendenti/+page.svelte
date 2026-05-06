@@ -6,9 +6,9 @@
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Users, UserPlus, Trash2, Search, Mail, Building2,
-		IdCard, Loader2, X, ChevronRight, AlertTriangle, ChevronLeft,
+		IdCard, Loader2, X, AlertTriangle, ChevronLeft,
 		FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare,
-		AlertCircle, CheckCircle, Clock, RefreshCw, Edit3, Save
+		AlertCircle, CheckCircle, Clock, RefreshCw, Edit3, Save, Lock
 	} from 'lucide-svelte';
 
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
@@ -16,6 +16,10 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { Documento } from '$lib/models/Documento';
 	import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import {AnagraficaService} from "$lib/services/AnagraficaService";
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 
 	interface ServerError {
 		response?: {
@@ -38,14 +42,6 @@
 		tipo: string;
 		nomeDpi: string;
 		dataConsegna: string;
-		dataScadenzaRevisione: string;
-	}
-
-	interface DpiPayload {
-		idAssegnazione: number | null;
-		tipo: string;
-		nomeDpi?: string;
-		dataConsegna?: string;
 		dataScadenzaRevisione: string;
 	}
 
@@ -128,8 +124,11 @@
 			const session = AuthService.getSession();
 			if (!session) return;
 			idAziendaCorrente = session.idUtente;
-			nomeAziendaCorrente = session.ragioneSociale || "La tua Azienda";
+
 			const resLavoratori = await LavoratoreService.getByAzienda(idAziendaCorrente);
+			const profile = await AnagraficaService.getAziendaById(session.idUtente);
+			nomeAziendaCorrente = (profile as any).ragioneSociale || "La tua Azienda";
+
 			lavoratori = resLavoratori.map((l: DipendenteDTO) => ({ ...l, nomeAzienda: nomeAziendaCorrente }));
 			const idDaUrl = $page.url.searchParams.get('id');
 			if (idDaUrl) {
@@ -285,15 +284,15 @@
 		if (!selectedDipendente) return;
 		isSavingDpi = true;
 		try {
-			const payload: DpiPayload = {
+			const payload = {
 				idAssegnazione: formDpi.idAssegnazione,
 				tipo: formDpi.tipo,
-				nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : undefined,
-				dataConsegna: formDpi.dataConsegna ? formDpi.dataConsegna : undefined,
+				nomeDpi: formDpi.tipo === 'ALTRO' ? formDpi.nomeDpi : '',
+				dataConsegna: formDpi.dataConsegna || undefined,
 				dataScadenzaRevisione: formDpi.dataScadenzaRevisione
 			};
 
-			const savedDpi = await LavoratoreService.assegnaDpi(selectedDipendente.idUtente, payload as unknown as AssegnazioneDPI);
+			const savedDpi = await LavoratoreService.assegnaDpi(selectedDipendente.idUtente, payload as any);
 			const dpiSalvato = savedDpi as unknown as DpiEsteso;
 
 			if (formDpi.idAssegnazione) {
@@ -351,22 +350,22 @@
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{#each filteredLavoratori as l (l.idUtente)}
-					<div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group relative flex flex-col h-full overflow-hidden" in:scale>
-						<div role="button" tabindex="0" onclick={() => apriDettaglio(l)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(l)} class="p-6 pb-4 cursor-pointer flex-1">
-							<button onclick={(e) => { e.stopPropagation(); preparaEliminazione(l); }} class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
-							<div class="flex items-center gap-4 mb-6">
-								<div class="w-14 h-14 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">{l.nome[0]}{l.cognome[0]}</div>
-								<div>
-									<h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">{l.nome} {l.cognome}</h3>
-									<div class="flex items-center gap-1 text-gray-400 mt-1"><Building2 size={12} class="text-[#1B4B6B]"/><span class="text-[9px] font-bold uppercase truncate max-w-[150px] text-[#1B4B6B]">{l.nomeAzienda}</span></div>
-								</div>
-							</div>
-							<div class="space-y-3 pt-4 border-t border-gray-50"><div class="flex items-center justify-between text-[10px] font-bold uppercase"><span class="text-gray-400 flex items-center gap-1"><IdCard size={12}/> C. Fiscale</span><span class="text-[#1B4B6B] font-mono tracking-wider">{l.codiceFiscale}</span></div></div>
-						</div>
-						<button onclick={() => apriDettaglio(l)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-							<div class="flex items-center gap-2"><FileText size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Dettagli Lavoratore</span></div>
-							<ChevronRight size={20} class="text-[#1B4B6B]" />
-						</button>
+					<div in:scale>
+						<DipendenteCard
+								idUtente={l.idUtente}
+								nome={l.nome}
+								cognome={l.cognome}
+								codiceFiscale={l.codiceFiscale}
+								azienda={l.nomeAzienda}
+								canContact={true}
+								canEdit={true}
+								canDelete={true}
+								canViewDetails={true}
+								onEdit={() => { selectedDipendente = l; apriModaleModifica(); }}
+								onDelete={() => preparaEliminazione(l)}
+								onContact={() => vaiInChat(l.idUtente)}
+								onViewDetails={() => apriDettaglio(l)}
+						/>
 					</div>
 				{:else}
 					<div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200"><Users size={48} class="mx-auto text-gray-300 mb-4" /><p class="text-gray-400 font-bold uppercase text-xs tracking-widest">Nessun dipendente censito nel sistema</p></div>
@@ -403,7 +402,7 @@
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					<div class="space-y-6">
-						<div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><FileText size={20} /></div><h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2></div></div>
+						<StatCard titolo="Attestati Totali" valore={documentiCorrenti.length} icona={FileText} bgIcona="bg-blue-50" />
 						{#if sortedDocumentiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each sortedDocumentiCorrenti as doc (doc.idDocumento)}
@@ -417,7 +416,15 @@
 						{/if}
 					</div>
 					<div class="space-y-6">
-						<div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><ShieldCheck size={20} /></div><h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2></div><button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md"><Plus size={14} /> Assegna DPI</button></div>
+						<div class="flex items-stretch gap-4">
+							<div class="flex-1">
+								<StatCard titolo="DPI Consegnati" valore={dpiCorrenti.length} icona={ShieldCheck} bgIcona="bg-emerald-50" testoIcona="text-emerald-600" />
+							</div>
+							<button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-5 rounded-3xl flex flex-col items-center justify-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md shrink-0">
+								<Plus size={24} />
+								<span class="text-[9px] font-black uppercase tracking-widest">Assegna</span>
+							</button>
+						</div>
 						{#if sortedDpiCorrenti.length > 0}
 							<div class="space-y-4">
 								{#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || dpi.id || Math.random())}
@@ -466,16 +473,18 @@
 							<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Password di Accesso *</label>
 							<input bind:value={formDipendente.passwordHash} type="text" placeholder="Password temporanea" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 						{:else}
-							<div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-								<p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
-								<p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password.</p>
-							</div>
+							<AlertCard
+									titolo="Nota di Sicurezza"
+									sottotitolo="Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password."
+									variante="info"
+									icona={Lock}
+							/>
 						{/if}
 					</div>
 				</div>
 				<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
 					<button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-					<button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors">
+					<button onclick={salvaDipendente} disabled={!isFormValid || isSaving} class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all">
 						{#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else if isEditing}<Save size={14}/>{:else}<UserPlus size={14}/>{/if}
 						{isEditing ? 'Aggiorna Dati' : 'Registra Dipendente'}
 					</button>

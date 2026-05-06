@@ -8,6 +8,7 @@
 
 	import { SistemaService } from '$lib/services/SistemaService';
 	import type { LogSincronizzazione } from '$lib/models/LogSincronizzazione';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
@@ -111,37 +112,10 @@
 	</div>
 
 	<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-[#1B4B6B]/30 transition-all cursor-default group">
-			<div class="bg-blue-50 p-4 rounded-xl text-[#1B4B6B] shrink-0 group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors"><Activity size={24} /></div>
-			<div>
-				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Operazioni Totali</p>
-				<h2 class="text-2xl font-extrabold text-[#1B4B6B]">{operazioniTotali}</h2>
-			</div>
-		</div>
-
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-[#1B4B6B]/30 transition-all cursor-default group">
-			<div class="bg-green-50 p-4 rounded-xl text-green-600 shrink-0 group-hover:bg-green-600 group-hover:text-white transition-colors"><User size={24} /></div>
-			<div>
-				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Accessi Rilevati</p>
-				<h2 class="text-2xl font-extrabold text-[#1B4B6B]">{accessiRilevati}</h2>
-			</div>
-		</div>
-
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-[#1B4B6B]/30 transition-all cursor-default group">
-			<div class="bg-indigo-50 p-4 rounded-xl text-indigo-600 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><FileText size={24} /></div>
-			<div>
-				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Doc. Processati</p>
-				<h2 class="text-2xl font-extrabold text-[#1B4B6B]">{documentiProcessati}</h2>
-			</div>
-		</div>
-
-		<div class="bg-white p-6 rounded-2xl shadow-sm border border-red-50 flex items-center gap-4 hover:shadow-md hover:border-red-200 transition-all cursor-default group">
-			<div class="bg-red-50 p-4 rounded-xl text-red-600 shrink-0 group-hover:bg-red-600 group-hover:text-white transition-colors"><ShieldAlert size={24} /></div>
-			<div>
-				<p class="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-0.5">Avvisi / Errori</p>
-				<h2 class="text-2xl font-extrabold text-red-600">{erroriSicurezza}</h2>
-			</div>
-		</div>
+		<StatCard titolo="Operazioni Totali" valore={operazioniTotali} icona={Activity} bgIcona="bg-blue-50" testoIcona="text-[#1B4B6B]" hoverBgIcona="group-hover:bg-[#1B4B6B]"/>
+		<StatCard titolo="Accessi Rilevati" valore={accessiRilevati} icona={User} bgIcona="bg-green-50" testoIcona="text-green-600" hoverBgIcona="group-hover:bg-green-600"/>
+		<StatCard titolo="Doc. Processati" valore={documentiProcessati} icona={FileText} bgIcona="bg-indigo-50" testoIcona="text-indigo-600" hoverBgIcona="group-hover:bg-indigo-600"/>
+		<StatCard titolo="Avvisi / Errori" valore={erroriSicurezza} icona={ShieldAlert} bgIcona="bg-red-50" testoIcona="text-red-600" hoverBgIcona="group-hover:bg-red-600"/>
 	</div>
 
 	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

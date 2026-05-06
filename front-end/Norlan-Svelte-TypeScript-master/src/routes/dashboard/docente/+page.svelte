@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
+	import { SvelteDate } from 'svelte/reactivity';
 	import {
 		LayoutDashboard, BookOpen, Users, Clock, ArrowRight,
 		MessageSquare, CheckCircle2, MapPin, Calendar, Loader2,
@@ -12,6 +13,8 @@
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { StatoCorso } from '$lib/models/Enums';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	interface DashboardStats {
 		corsiInCorso: number;
@@ -52,6 +55,7 @@
 			const corsiInSvolgimento = mieiCorsi.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO);
 			const corsiProgrammati = mieiCorsi.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato);
 			corsiDaValidare = mieiCorsi.filter(c => c.stato === StatoCorso.CONCLUSO);
+
 			let totaleStudenti = 0;
 			let totaleMateriali = 0;
 			const conteggiPromises = mieiCorsi.filter(c => c.stato !== StatoCorso.CERTIFICATO).map(async (corso) => {
@@ -59,6 +63,7 @@
 				const materiali = await FormazioneService.getMaterialiByCorso(corso.idCorso);
 				return { numIscritti: iscritti.length, numMateriali: materiali.length };
 			});
+
 			const risultatiConteggi = await Promise.all(conteggiPromises);
 			risultatiConteggi.forEach(res => {
 				totaleStudenti += res.numIscritti;
@@ -70,8 +75,9 @@
 				studentiTotali: totaleStudenti,
 				materialiCaricati: totaleMateriali
 			};
+
 			const corsiAttivi = [...corsiInSvolgimento, ...corsiProgrammati];
-			const oggiZero = new Date();
+			const oggiZero = new SvelteDate();
 			oggiZero.setHours(0, 0, 0, 0);
 
 			const lezioniElaborate = corsiAttivi
@@ -100,7 +106,6 @@
 			isLoading = false;
 		}
 	});
-
 </script>
 
 <div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
@@ -118,6 +123,7 @@
 			</p>
 		</div>
 	</div>
+
 	{#if isLoading}
 		<div class="py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
@@ -125,25 +131,10 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-xl transition-all group">
-				<div class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-					<BookOpen size={28} />
-				</div>
-				<div>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Corsi in Aula</p>
-					<p class="text-4xl font-black text-[#1B4B6B] leading-none">{stats.corsiInCorso}</p>
-				</div>
-			</div>
-			<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-xl transition-all group">
-				<div class="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-					<Users size={28} />
-				</div>
-				<div>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Studenti Iscritti</p>
-					<p class="text-4xl font-black text-[#1B4B6B] leading-none">{stats.studentiTotali}</p>
-				</div>
-			</div>
+			<StatCard titolo="Corsi in Aula" valore={stats.corsiInCorso} icona={BookOpen} bgIcona="bg-blue-50" testoIcona="text-blue-600" hoverBgIcona="group-hover:bg-blue-600"/>
+			<StatCard titolo="Studenti Iscritti" valore={stats.studentiTotali} icona={Users} bgIcona="bg-emerald-50" testoIcona="text-emerald-600" hoverBgIcona="group-hover:bg-emerald-500"/>
 		</div>
+
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 			<div class="xl:col-span-2 space-y-6">
 				<div class="flex items-center justify-between px-2">
@@ -152,6 +143,7 @@
 						Tutti i corsi <ArrowRight size={12} />
 					</a>
 				</div>
+
 				<div class="space-y-4">
 					{#each lezioniImminenti as lezione (lezione.idCorso)}
 						<div class="bg-white rounded-3xl border {lezione.isOggi ? 'border-[#1B4B6B] shadow-xl shadow-blue-900/5' : 'border-gray-100 shadow-sm'} p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group hover:border-[#1B4B6B]/30 transition-all">
@@ -188,6 +180,7 @@
 							</div>
 						</div>
 					{/each}
+
 					{#if lezioniImminenti.length === 0}
 						<div class="bg-white rounded-3xl border border-dashed border-gray-200 p-12 text-center shadow-sm">
 							<Calendar size={40} class="mx-auto text-gray-200 mb-4" />
@@ -197,24 +190,24 @@
 					{/if}
 				</div>
 			</div>
+
 			<div class="space-y-6">
 				<div class="flex items-center justify-between px-2">
 					<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Azioni Richieste</h2>
 				</div>
+
 				<div class="bg-white rounded-3xl border border-gray-100 p-6 h-full shadow-sm">
 					{#if corsiDaValidare.length > 0}
 						<p class="text-[9px] font-black uppercase tracking-widest text-red-500 mb-4 border-b border-red-50 pb-2">Registri da chiudere</p>
 						<div class="space-y-3 mb-6">
 							{#each corsiDaValidare as corso}
-								<a href="{resolveRoute('/dashboard/docente/corsi')}" class="block bg-red-50 p-4 rounded-2xl border border-red-100 hover:bg-red-100 transition-colors group">
-									<div class="flex items-start gap-3">
-										<div class="p-2 bg-white rounded-lg text-red-500 shrink-0 shadow-sm"><CheckSquare size={16} /></div>
-										<div>
-											<p class="text-xs font-black text-red-700 uppercase leading-tight">{corso.titolo}</p>
-											<p class="text-[9px] font-bold text-red-500 uppercase mt-1">Conferma le presenze per finire</p>
-										</div>
-									</div>
-								</a>
+								<AlertCard
+										titolo={corso.titolo}
+										sottotitolo="Conferma le presenze per finire"
+										variante="danger"
+										icona={CheckSquare}
+										href={resolveRoute('/dashboard/docente/corsi')}
+								/>
 							{/each}
 						</div>
 					{:else}
@@ -223,6 +216,7 @@
 							<p class="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Tutti i registri sono a norma</p>
 						</div>
 					{/if}
+
 					<p class="text-[9px] font-black uppercase tracking-widest text-[#1B4B6B] mb-4 border-b border-gray-50 pb-2">Scorciatoie Rapide</p>
 					<div class="grid grid-cols-2 gap-3">
 						<a href="{resolveRoute('/dashboard/docente/studenti')}" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-[#1B4B6B]/20 hover:bg-blue-50 transition-all text-[#1B4B6B] group">
@@ -239,6 +233,7 @@
 		</div>
 	{/if}
 </div>
+
 <style>
 	:global(body) { background-color: #F9FAFB; }
 </style>

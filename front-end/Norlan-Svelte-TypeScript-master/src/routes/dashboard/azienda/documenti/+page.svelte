@@ -17,6 +17,8 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { Documento } from '$lib/models/Documento';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
+	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -96,20 +98,8 @@
 		</div>
 
 		<div class="flex gap-4">
-			<div class="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-6 py-3 shadow-sm">
-				<ShieldCheck class="text-green-500" size={20} />
-				<div class="leading-none">
-					<p class="text-[10px] font-black uppercase text-gray-400">A Norma</p>
-					<p class="text-lg font-black text-[#1B4B6B]">{stats.validi}</p>
-				</div>
-			</div>
-			<div class="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-6 py-3 shadow-sm">
-				<AlertCircle class="text-red-500" size={20} />
-				<div class="leading-none">
-					<p class="text-[10px] font-black uppercase text-gray-400">Scaduti</p>
-					<p class="text-lg font-black text-red-600">{stats.scaduti}</p>
-				</div>
-			</div>
+			<StatCard titolo="A Norma" valore={stats.validi} icona={ShieldCheck} bgIcona="bg-transparent" testoIcona="text-green-500"/>
+			<StatCard titolo="Scaduti" valore={stats.scaduti} icona={AlertCircle} bgIcona="bg-transparent" testoIcona="text-red-500"/>
 		</div>
 	</div>
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -201,17 +191,14 @@
 			{/each}
 		</div>
 	{/if}
-	<div class="mt-12 flex items-center gap-4 rounded-3xl border border-[#1B4B6B]/10 bg-[#1B4B6B]/5 p-6">
-		<div class="rounded-2xl bg-[#1B4B6B] p-3 text-white shadow-lg">
-			<FileDown size={20} />
-		</div>
-		<div>
-			<p class="text-xs font-black uppercase tracking-tight text-[#1B4B6B]">Richiesta Documenti Speciali</p>
-			<p class="text-[10px] font-medium uppercase tracking-tighter text-gray-500">
-				Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la
-				<a href="/dashboard/azienda/comunicazioni?chatId=1" class="font-black text-[#1B4B6B] underline">Chat NorLan</a>.
-			</p>
-		</div>
+	<div class="mt-12">
+		<AlertCard
+				titolo="Richiesta Documenti Speciali"
+				sottotitolo="Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la Chat NorLan."
+				variante="info"
+				icona={FileDown}
+				href="/dashboard/azienda/comunicazioni?chatId=1"
+		/>
 	</div>
 </div>
 

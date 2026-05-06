@@ -12,6 +12,8 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
+	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 
 	interface CorsoStato {
 		idCorso: number;
@@ -233,17 +235,24 @@
 				<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 					{#each attestatiDaFirmare as attestato (attestato.idDocumento)}
 						{@const idDoc = attestato.idDocumento ?? 0}
-						<div class="bg-white rounded-[2rem] shadow-md border border-amber-200 p-6 relative overflow-hidden flex flex-col md:flex-row gap-6 items-center">
-							<div class="absolute top-0 left-0 w-2 h-full bg-amber-500"></div>
-							<div class="flex-1 space-y-3 pl-2">
-								<h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">Pacchetto Attestati Corso</h3>
-								<p class="text-[10px] font-bold text-gray-500 uppercase leading-relaxed">Scarica il PDF, apponi la firma aziendale e ricaricalo.</p>
-							</div>
-							<div class="w-full md:w-64 space-y-3 shrink-0 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-								<button onclick={() => scaricaOriginale(idDoc)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors"><Download size={16} /> Scarica</button>
+						<div class="flex flex-col gap-3">
+							<AlertCard
+									titolo="Pacchetto Attestati Corso"
+									sottotitolo="Scarica il PDF, apponi la firma aziendale e ricaricalo."
+									variante="warning"
+									icona={FileCheck2}
+									stato="Da Firmare"
+									data="Ricevuto il: {formattaData(attestato.dataCaricamento)}"
+							/>
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+								<button onclick={() => scaricaOriginale(idDoc)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors">
+									<Download size={16} /> Scarica
+								</button>
 								<div class="relative">
 									<input type="file" accept="application/pdf" id="upload-{idDoc}" onchange={(e) => handleFileChange(e, idDoc)} class="hidden" />
-									<label for="upload-{idDoc}" class="w-full py-3 border-2 border-dashed {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all"><UploadCloud size={16} /> {fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}</label>
+									<label for="upload-{idDoc}" class="w-full py-3 border-2 border-dashed {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all">
+										<UploadCloud size={16} /> {fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}
+									</label>
 								</div>
 								<button onclick={() => consegnaAiDipendenti(idDoc)} disabled={!fileFirmati[idDoc] || isActionLoading} class="w-full py-3 bg-emerald-600 text-white rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:bg-emerald-700 shadow-lg">
 									{#if isActionLoading}<Loader2 class="animate-spin" size={16} />{:else}<CheckCircle2 size={16} /> Consegna{/if}
@@ -262,32 +271,21 @@
 			</div>
 		</div>
 
-		<div class="space-y-6">
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each filteredDipendenti as dip (dip.id)}
-				<div class="group flex flex-col xl:flex-row items-center gap-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:border-[#1B4B6B]/20 hover:shadow-xl" in:scale>
-					<div class="flex w-full xl:w-auto items-center gap-6 shrink-0">
-						<div class="flex size-16 items-center justify-center rounded-2xl bg-[#1B4B6B] text-white shadow-lg"><User size={28} /></div>
-						<div class="w-64">
-							<h3 class="text-lg font-black uppercase leading-tight text-[#1B4B6B] truncate">{dip.nomeCompleto}</h3>
-							<p class="text-[10px] font-bold uppercase text-gray-400">{dip.ruolo}</p>
-						</div>
-					</div>
-					<div class="flex flex-1 flex-wrap gap-3">
-						{#each dip.corsi as corso (corso.idCorso)}
-							<div class="flex items-center gap-3 rounded-xl border px-4 py-2 {corso.stato === 'OK' ? 'border-green-100 bg-green-50 text-green-600' : 'border-yellow-100 bg-yellow-50 text-yellow-600'}">
-								<div>
-									<p class="text-[9px] font-black uppercase tracking-tighter max-w-[150px] truncate">{corso.nome}</p>
-									<p class="mt-1 text-[10px] font-bold opacity-80">{corso.data}</p>
-								</div>
-								{#if corso.stato !== 'OK'}
-									<button onclick={() => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.nome)} class="ml-1 p-1 hover:bg-orange-100 rounded-md text-orange-400 hover:text-orange-600 transition-colors"><Trash2 size={14} /></button>
-								{:else}<ShieldCheck size={14} />{/if}
-							</div>
-						{/each}
-					</div>
-					<div class="flex items-center gap-3 w-full xl:w-auto justify-end">
-						<a href="/dashboard/azienda/dipendenti" class="flex items-center gap-2 rounded-2xl border-2 border-[#1B4B6B] bg-white px-4 py-2.5 text-[10px] font-black uppercase text-[#1B4B6B] shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all">Profilo <ArrowRight size={14} /></a>
-					</div>
+				<div in:scale>
+					<DipendenteCard
+							idUtente={dip.id}
+							nome={dip.nomeCompleto}
+							cognome=""
+							ruolo={dip.ruolo}
+							corsi={dip.corsi.map(c => ({ idCorso: c.idCorso, titolo: c.nome, stato: c.stato }))}
+							canContact={false}
+							canEdit={false}
+							canDelete={false}
+							canViewDetails={true}
+							onViewDetails={() => window.location.href = `/dashboard/azienda/dipendenti?id=${dip.id}`}
+					/>
 				</div>
 			{/each}
 		</div>
@@ -332,12 +330,12 @@
 
 {#if showDeleteIscrizioneModal && iscrizioneDaRimuovere}
 	<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center" in:scale>
+		<div class="bg-white w-full max-md rounded-3xl shadow-2xl p-8 text-center" in:scale>
 			<div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40} /></div>
 			<h2 class="text-2xl font-black text-[#1B4B6B] uppercase mb-2">Annullare Iscrizione?</h2>
 			<p class="text-sm text-gray-500 mb-8">Stai per rimuovere il dipendente dal corso: <br><span class="font-bold text-[#1B4B6B]">{iscrizioneDaRimuovere.nomeCorso}</span>.</p>
 			<div class="flex flex-col gap-3">
-				<button onclick={confermaRimozioneIscrizione} disabled={isActionLoading} class="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] transition-all hover:bg-orange-700 flex justify-center items-center gap-2">{#if isActionLoading}<Loader2 size={16} class="animate-spin" />{:else}<Trash2 size={16} />{/if} Sì, Annulla</button>
+				<button onclick={confermaRimozioneIscrizione} disabled={isActionLoading} class="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] transition-all hover:bg-orange-700 flex justify-center items-center gap-2">{#if isActionLoading}<Loader2 size={16} class="animate-spin" />{/if} <Trash2 size={16} /> Sì, Annulla</button>
 				<button onclick={() => {showDeleteIscrizioneModal = false; iscrizioneDaRimuovere = null;}} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">No, Mantieni</button>
 			</div>
 		</div>
