@@ -1,8 +1,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { Shield, BookOpen, Award, Clock, Users } from 'lucide-svelte';
-  import DocentCard from '$lib/Components/Features/Formazione/DocentCard.svelte';
-  import CourseCard from '$lib/Components/Features/Formazione/CourseCard.svelte';
+  import DocenteCard from '$lib/Components/Features/Formazione/DocenteCard.svelte';
+  import CorsoCard from '$lib/Components/Features/Formazione/CorsoCard.svelte';
 
   interface Course {
     title: string;
@@ -357,7 +357,7 @@
 
         {#if courseDetails}
           <div in:fade>
-            <CourseCard corso={courseDetails} />
+            <CorsoCard corso={courseDetails} />
           </div>
         {/if}
       </div>
@@ -368,7 +368,7 @@
         <h2 class="text-2xl md:text-3xl font-bold text-[#1B4B6B] text-center mb-8">Il Nostro Team di Docenti</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {#each docenti as docente (docente.nome)}
-            <DocentCard {docente} />
+            <DocenteCard {docente} />
           {/each}
         </div>
       </div>

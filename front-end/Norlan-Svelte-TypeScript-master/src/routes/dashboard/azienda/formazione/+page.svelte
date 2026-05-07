@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		Search, User, ShieldCheck, AlertTriangle, ArrowRight, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2,
-		BookPlus, X, Send, Trash2
-	} from 'lucide-svelte';
-
+	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, X, Send, Trash2, User } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
@@ -13,27 +9,15 @@
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
-	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
+	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
-	interface CorsoStato {
-		idCorso: number;
-		idDocumento?: number;
-		nome: string;
-		data: string;
-		stato: 'OK' | 'IN_ATTESA' | 'CRITICO';
-	}
-
-	interface DipendenteFormazione {
-		id: number;
-		nomeCompleto: string;
-		ruolo: string;
-		corsi: CorsoStato[];
-		tuttiIdCorsiIscritto: number[];
-	}
+	interface CorsoStato { idCorso: number; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
+	interface DipendenteFormazione { id: number; nomeCompleto: string; ruolo: string; corsi: CorsoStato[]; tuttiIdCorsiIscritto: number[]; }
 
 	let isLoading = $state(true);
 	let isActionLoading = $state(false);
 	let searchQuery = $state('');
+	let filtroStatoCorsi = $state<'TUTTI' | 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'>('TUTTI');
 	let dipendenti = $state<DipendenteFormazione[]>([]);
 	let attestatiDaFirmare = $state<Documento[]>([]);
 	let corsiDisponibili = $state<CorsoFormazione[]>([]);
@@ -50,52 +34,41 @@
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
-
 		try {
 			const [lavoratoriRaw, documentiAzienda, tuttiCorsi] = await Promise.all([
 				LavoratoreService.getByAzienda(session.idUtente),
 				DocumentoService.getDocumentiByAzienda(session.idUtente),
 				FormazioneService.getAllCorsi()
 			]);
-
 			corsiDisponibili = tuttiCorsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato);
 			attestatiDaFirmare = documentiAzienda.filter(d => d.tipologia === 'ATTESTATO_CORSO' && d.stato === 'IN_ATTESA_FIRMA');
-
-			const idDocumentiDaFirmare = attestatiDaFirmare.map(d => d.idDocumento);
 			const promises = lavoratoriRaw.map(async (l) => {
 				const iscrizioniTutte = await FormazioneService.getIscrizioniUtente(l.idUtente);
 				const tuttiId = iscrizioniTutte.map(i => i.idCorso);
-				const iscrizioniDaCompletare = iscrizioniTutte.filter(i => {
-					if (!i.idDocumento) return true;
-					return idDocumentiDaFirmare.includes(i.idDocumento);
-				});
-
 				return {
-					id: l.idUtente,
-					nomeCompleto: `${l.nome} ${l.cognome}`.toUpperCase(),
-					ruolo: l.ruolo.replace('_', ' '),
-					corsi: iscrizioniDaCompletare.map((i) => ({
-						idCorso: i.idCorso,
-						idDocumento: i.idDocumento,
-						nome: i.titoloCorso.toUpperCase(),
-						data: formattaData(i.dataOrarioCorso),
-						stato: (i.presenzaConfermata ? 'OK' : 'IN_ATTESA') as 'OK' | 'IN_ATTESA'
-					})),
+					id: l.idUtente, nomeCompleto: `${l.nome} ${l.cognome}`.toUpperCase(), ruolo: l.ruolo.replace('_', ' '),
+					corsi: iscrizioniTutte.map((i) => {
+						let s: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO' = 'DA_INIZIARE';
+						if (i.statoCorso === 'IN_SVOLGIMENTO') s = 'IN_SVOLGIMENTO';
+						else if (i.statoCorso === 'CONCLUSO' || i.statoCorso === 'CERTIFICATO' || i.statoCorso === 'VALIDATO' || i.presenzaConfermata) s = 'COMPLETATO';
+						return { idCorso: i.idCorso, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
+					}),
 					tuttiIdCorsiIscritto: tuttiId
 				};
 			});
-
 			dipendenti = await Promise.all(promises);
-		} catch (error) {
-			console.error('Si è verificato un errore durante il caricamento dei dati formativi aziendali:', error);
-		} finally {
-			isLoading = false;
-		}
+		} catch (error) { console.error('Si è verificato un errore durante il caricamento dei dati formativi aziendali:', error); }
+		finally { isLoading = false; }
 	});
 
-	const filteredDipendenti = $derived(
-			dipendenti.filter((d) => d.corsi.length > 0 && d.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase()))
-	);
+	const filteredDipendenti = $derived(dipendenti.map(dip => {
+		const corsiFiltrati = dip.corsi.filter(c => {
+			const matchSearch = c.titolo.toLowerCase().includes(searchQuery.toLowerCase()) || dip.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase());
+			const matchStatus = filtroStatoCorsi === 'TUTTI' || c.stato === filtroStatoCorsi;
+			return matchSearch && matchStatus;
+		});
+		return { ...dip, corsiFiltrati };
+	}).filter(dip => dip.corsiFiltrati.length > 0));
 
 	const corsiSelezionabili = $derived.by(() => {
 		if (idDipendenteSelezionato === '') return corsiDisponibili;
@@ -104,40 +77,27 @@
 		return corsiDisponibili.filter(c => !dip.tuttiIdCorsiIscritto.includes(c.idCorso));
 	});
 
-	function apriModaleIscrizione() {
-		idDipendenteSelezionato = ''; idCorsoSelezionato = '';
-		enrollSuccess = false; showModalIscrizione = true;
-	}
+	function apriModaleIscrizione() { idDipendenteSelezionato = ''; idCorsoSelezionato = ''; enrollSuccess = false; showModalIscrizione = true; }
 
 	async function confermaIscrizione() {
 		if (idDipendenteSelezionato === '' || idCorsoSelezionato === '') return;
 		isEnrolling = true;
 		try {
 			await FormazioneService.iscriviUtente(idCorsoSelezionato as number, idDipendenteSelezionato as number);
-
 			const corsoScelto = corsiDisponibili.find(c => c.idCorso === idCorsoSelezionato);
 			const dipendenteScelto = dipendenti.find(d => d.id === idDipendenteSelezionato);
-
 			if (corsoScelto && dipendenteScelto) {
-				dipendenteScelto.corsi = [...dipendenteScelto.corsi, {
-					idCorso: corsoScelto.idCorso, nome: corsoScelto.titolo.toUpperCase(),
-					data: formattaData(corsoScelto.dataOrario), stato: 'IN_ATTESA'
-				}];
-				dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso);
-				dipendenti = [...dipendenti];
+				dipendenteScelto.corsi = [...dipendenteScelto.corsi, { idCorso: corsoScelto.idCorso, titolo: corsoScelto.titolo.toUpperCase(), dataSvolgimento: formattaData(corsoScelto.dataOrario), stato: 'DA_INIZIARE' }];
+				dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso); dipendenti = [...dipendenti];
 			}
 			enrollSuccess = true;
 			setTimeout(() => { showModalIscrizione = false; enrollSuccess = false; }, 2000);
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Operazione non riuscita: verificare i dati o l'iscrizione esistente." };
-			setTimeout(() => actionSuccess = null, 3000);
+			actionSuccess = { type: 'ERR', msg: "Operazione non riuscita: verificare i dati o l'iscrizione esistente." }; setTimeout(() => actionSuccess = null, 3000);
 		} finally { isEnrolling = false; }
 	}
 
-	function preparaRimuoviIscrizione(idDip: number, idCorso: number, nome: string) {
-		iscrizioneDaRimuovere = { idDipendente: idDip, idCorso: idCorso, nomeCorso: nome };
-		showDeleteIscrizioneModal = true;
-	}
+	function preparaRimuoviIscrizione(idDip: number, idCorso: number, nome: string) { iscrizioneDaRimuovere = { idDipendente: idDip, idCorso: idCorso, nomeCorso: nome }; showDeleteIscrizioneModal = true; }
 
 	async function confermaRimozioneIscrizione() {
 		if (!iscrizioneDaRimuovere) return;
@@ -145,21 +105,12 @@
 		try {
 			await FormazioneService.rimuoviIscrizione(iscrizioneDaRimuovere.idCorso, iscrizioneDaRimuovere.idDipendente);
 			dipendenti = dipendenti.map(dip => {
-				if (dip.id === iscrizioneDaRimuovere?.idDipendente) {
-					return {
-						...dip,
-						corsi: dip.corsi.filter(c => c.idCorso !== iscrizioneDaRimuovere?.idCorso),
-						tuttiIdCorsiIscritto: dip.tuttiIdCorsiIscritto.filter(id => id !== iscrizioneDaRimuovere?.idCorso)
-					};
-				}
+				if (dip.id === iscrizioneDaRimuovere?.idDipendente) { return { ...dip, corsi: dip.corsi.filter(c => c.idCorso !== iscrizioneDaRimuovere?.idCorso), tuttiIdCorsiIscritto: dip.tuttiIdCorsiIscritto.filter(id => id !== iscrizioneDaRimuovere?.idCorso) }; }
 				return dip;
 			});
-			actionSuccess = { type: 'DEL', msg: "Iscrizione annullata correttamente." };
-			showDeleteIscrizioneModal = false;
-			setTimeout(() => actionSuccess = null, 3000);
+			actionSuccess = { type: 'DEL', msg: "Iscrizione annullata correttamente." }; showDeleteIscrizioneModal = false; setTimeout(() => actionSuccess = null, 3000);
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Impossibile annullare l'iscrizione selezionata." };
-			setTimeout(() => actionSuccess = null, 3000);
+			actionSuccess = { type: 'ERR', msg: "Impossibile annullare l'iscrizione selezionata." }; setTimeout(() => actionSuccess = null, 3000);
 		} finally { isActionLoading = false; iscrizioneDaRimuovere = null; }
 	}
 
@@ -167,20 +118,14 @@
 		try {
 			const blob = await DocumentoService.downloadDocumento(idDocumento);
 			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url; a.download = `Attestati_Originali_${idDocumento}.pdf`;
-			document.body.appendChild(a); a.click();
-			window.URL.revokeObjectURL(url); a.remove();
-		} catch {
-			actionSuccess = { type: 'ERR', msg: "Impossibile procedere con il download del file selezionato." };
-			setTimeout(() => actionSuccess = null, 3000);
-		}
+			const a = document.createElement('a'); a.href = url; a.download = `Attestati_Originali_${idDocumento}.pdf`;
+			document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); a.remove();
+		} catch { actionSuccess = { type: 'ERR', msg: "Impossibile procedere con il download del file selezionato." }; setTimeout(() => actionSuccess = null, 3000); }
 	}
 
 	function handleFileChange(event: Event, idDocumento: number) {
 		const input = event.target as HTMLInputElement;
-		if (input.files && input.files.length > 0) { fileFirmati[idDocumento] = input.files[0]; }
-		else { delete fileFirmati[idDocumento]; }
+		if (input.files && input.files.length > 0) { fileFirmati[idDocumento] = input.files[0]; } else { delete fileFirmati[idDocumento]; }
 	}
 
 	async function consegnaAiDipendenti(idDocumento: number) {
@@ -188,21 +133,14 @@
 		isActionLoading = true;
 		try {
 			await DocumentoService.approvaDocumento(idDocumento);
-			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
-			delete fileFirmati[idDocumento];
-			dipendenti = dipendenti.map(dip => ({ ...dip, corsi: dip.corsi.filter(c => c.idCorso !== idDocumento) }));
-			actionSuccess = { type: 'DOC', msg: "Documentazione consegnata e archiviata correttamente." };
-			setTimeout(() => actionSuccess = null, 4000);
+			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento); delete fileFirmati[idDocumento];
+			actionSuccess = { type: 'DOC', msg: "Documentazione consegnata e archiviata correttamente." }; setTimeout(() => actionSuccess = null, 4000);
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Si è verificato un problema durante la consegna degli attestati." };
-			setTimeout(() => actionSuccess = null, 3000);
+			actionSuccess = { type: 'ERR', msg: "Si è verificato un problema durante la consegna degli attestati." }; setTimeout(() => actionSuccess = null, 3000);
 		} finally { isActionLoading = false; }
 	}
 
-	function formattaData(dateStr: string) {
-		if(!dateStr) return '';
-		return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-	}
+	function formattaData(dateStr: string) { if(!dateStr) return ''; return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 </script>
 
 <div in:fade class="pb-20">
@@ -215,48 +153,24 @@
 
 	<div class="mb-10 flex flex-col lg:flex-row items-start justify-between gap-6">
 		<h1 class="text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">Formazione Dipendenti</h1>
-		<button onclick={apriModaleIscrizione} class="flex items-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white">
-			<BookPlus size={18} /> Iscrivi a Nuovo Corso
-		</button>
+		<button onclick={apriModaleIscrizione} class="flex items-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white"><BookPlus size={18} /> Iscrivi a Nuovo Corso</button>
 	</div>
 
 	{#if isLoading}
-		<div class="flex flex-col items-center justify-center gap-4 py-32">
-			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<p class="text-[10px] font-black uppercase tracking-widest text-gray-300">Sincronizzazione dati...</p>
-		</div>
+		<div class="flex flex-col items-center justify-center gap-4 py-32"><Loader2 size={48} class="animate-spin text-[#1B4B6B]" /><p class="text-[10px] font-black uppercase tracking-widest text-gray-300">Sincronizzazione dati...</p></div>
 	{:else}
 		{#if attestatiDaFirmare.length > 0}
 			<div class="mb-14" in:fade>
-				<div class="flex items-center gap-3 mb-6 border-b border-amber-200 pb-3">
-					<div class="p-2 bg-amber-100 text-amber-700 rounded-lg"><FileCheck2 size={20}/></div>
-					<h2 class="text-xl font-extrabold text-amber-700 uppercase tracking-tight">Attestati da Controfirmare</h2>
-				</div>
+				<div class="flex items-center gap-3 mb-6 border-b border-amber-200 pb-3"><div class="p-2 bg-amber-100 text-amber-700 rounded-lg"><FileCheck2 size={20}/></div><h2 class="text-xl font-extrabold text-amber-700 uppercase tracking-tight">Attestati da Controfirmare</h2></div>
 				<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 					{#each attestatiDaFirmare as attestato (attestato.idDocumento)}
 						{@const idDoc = attestato.idDocumento ?? 0}
 						<div class="flex flex-col gap-3">
-							<AlertCard
-									titolo="Pacchetto Attestati Corso"
-									sottotitolo="Scarica il PDF, apponi la firma aziendale e ricaricalo."
-									variante="warning"
-									icona={FileCheck2}
-									stato="Da Firmare"
-									data="Ricevuto il: {formattaData(attestato.dataCaricamento)}"
-							/>
+							<AlertCard titolo="Pacchetto Attestati Corso" sottotitolo="Scarica il PDF, apponi la firma aziendale e ricaricalo." variante="warning" icona={FileCheck2} stato="Da Firmare" data="Ricevuto il: {formattaData(attestato.dataCaricamento)}" />
 							<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-								<button onclick={() => scaricaOriginale(idDoc)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors">
-									<Download size={16} /> Scarica
-								</button>
-								<div class="relative">
-									<input type="file" accept="application/pdf" id="upload-{idDoc}" onchange={(e) => handleFileChange(e, idDoc)} class="hidden" />
-									<label for="upload-{idDoc}" class="w-full py-3 border-2 border-dashed {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all">
-										<UploadCloud size={16} /> {fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}
-									</label>
-								</div>
-								<button onclick={() => consegnaAiDipendenti(idDoc)} disabled={!fileFirmati[idDoc] || isActionLoading} class="w-full py-3 bg-emerald-600 text-white rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:bg-emerald-700 shadow-lg">
-									{#if isActionLoading}<Loader2 class="animate-spin" size={16} />{:else}<CheckCircle2 size={16} /> Consegna{/if}
-								</button>
+								<button onclick={() => scaricaOriginale(idDoc)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors"><Download size={16} /> Scarica</button>
+								<div class="relative"><input type="file" accept="application/pdf" id="upload-{idDoc}" onchange={(e) => handleFileChange(e, idDoc)} class="hidden" /><label for="upload-{idDoc}" class="w-full py-3 border-2 border-dashed {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all"><UploadCloud size={16} /> {fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}</label></div>
+								<button onclick={() => consegnaAiDipendenti(idDoc)} disabled={!fileFirmati[idDoc] || isActionLoading} class="w-full py-3 bg-emerald-600 text-white rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:bg-emerald-700 shadow-lg">{#if isActionLoading}<Loader2 class="animate-spin" size={16} />{:else}<CheckCircle2 size={16} /> Consegna{/if}</button>
 							</div>
 						</div>
 					{/each}
@@ -264,31 +178,29 @@
 			</div>
 		{/if}
 
-		<div class="mb-10 flex gap-4 mt-8">
-			<div class="group relative flex-1">
-				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={18} />
-				<input bind:value={searchQuery} type="text" placeholder="Cerca dipendente..." class="w-full rounded-2xl border border-gray-100 bg-white py-4 pl-12 pr-4 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm" />
+		<div class="mb-10 flex flex-col md:flex-row gap-4 mt-8">
+			<div class="group relative flex-1"><Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={18} /><input bind:value={searchQuery} type="text" placeholder="Cerca dipendente o corso..." class="w-full rounded-2xl border border-gray-100 bg-white py-4 pl-12 pr-4 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm" /></div>
+			<div class="flex gap-2 overflow-x-auto">
+				<button onclick={() => filtroStatoCorsi = 'TUTTI'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'TUTTI' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Tutti</button>
+				<button onclick={() => filtroStatoCorsi = 'DA_INIZIARE'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'DA_INIZIARE' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Da Iniziare</button>
+				<button onclick={() => filtroStatoCorsi = 'IN_SVOLGIMENTO'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'IN_SVOLGIMENTO' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">In Svolgimento</button>
+				<button onclick={() => filtroStatoCorsi = 'COMPLETATO'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'COMPLETATO' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Completati</button>
 			</div>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each filteredDipendenti as dip (dip.id)}
-				<div in:scale>
-					<DipendenteCard
-							idUtente={dip.id}
-							nome={dip.nomeCompleto}
-							cognome=""
-							ruolo={dip.ruolo}
-							corsi={dip.corsi.map(c => ({ idCorso: c.idCorso, titolo: c.nome, stato: c.stato }))}
-							canContact={false}
-							canEdit={false}
-							canDelete={false}
-							canViewDetails={true}
-							onViewDetails={() => window.location.href = `/dashboard/azienda/dipendenti?id=${dip.id}`}
-					/>
+		{#each filteredDipendenti as dip (dip.id)}
+			<div class="mb-14" in:scale>
+				<h3 class="text-xl font-extrabold text-[#1B4B6B] uppercase border-b border-gray-200 pb-3 mb-6 flex items-center gap-3"><User size={24} class="text-[#1B4B6B]" /> {dip.nomeCompleto} <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg ml-2">{dip.ruolo}</span></h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					{#each dip.corsiFiltrati as corso (corso.idCorso)}
+						<DashboardCorsoCard ruolo="azienda" corso={{ id: corso.idCorso, titolo: corso.titolo, stato: corso.stato, dataSvolgimento: corso.dataSvolgimento, luogo: 'Sede NorLan / Aula Virtuale' }} onAnnullaIscrizione={corso.stato === 'DA_INIZIARE' ? () => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.titolo) : undefined}/>
+					{/each}
 				</div>
-			{/each}
-		</div>
+			</div>
+		{/each}
+		{#if filteredDipendenti.length === 0}
+			<div class="py-20 text-center border-2 border-dashed border-gray-200 rounded-3xl bg-white"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nessun corso trovato per i filtri selezionati.</p></div>
+		{/if}
 	{/if}
 </div>
 
@@ -299,8 +211,7 @@
 				<div class="absolute inset-0 z-[60] bg-white flex flex-col items-center justify-center p-8 text-center" in:fade><CheckCircle2 size={80} class="text-emerald-500 mb-4" /><h2 class="text-2xl font-black text-[#1B4B6B] uppercase">Iscrizione Completata</h2></div>
 			{/if}
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center shrink-0">
-				<h2 class="text-lg font-extrabold uppercase">Iscrizione Formativa</h2>
-				<button onclick={() => showModalIscrizione = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<h2 class="text-lg font-extrabold uppercase">Iscrizione Formativa</h2><button onclick={() => showModalIscrizione = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
 			</div>
 			<div class="p-8 flex-1 bg-gray-50/50 space-y-6">
 				<div class="space-y-2">
@@ -314,9 +225,7 @@
 					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Corso *</label>
 					<select bind:value={idCorsoSelezionato} disabled={idDipendenteSelezionato === ''} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all disabled:opacity-50">
 						<option value="" disabled>{idDipendenteSelezionato === '' ? '-- Seleziona prima un dipendente --' : '-- Seleziona corso --'}</option>
-						{#each corsiSelezionabili as corso (corso.idCorso)}
-							<option value={corso.idCorso}>{corso.titolo} - {formattaData(corso.dataOrario)}</option>
-						{/each}
+						{#each corsiSelezionabili as corso (corso.idCorso)}<option value={corso.idCorso}>{corso.titolo} - {formattaData(corso.dataOrario)}</option>{/each}
 					</select>
 				</div>
 			</div>
@@ -330,7 +239,7 @@
 
 {#if showDeleteIscrizioneModal && iscrizioneDaRimuovere}
 	<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-md rounded-3xl shadow-2xl p-8 text-center" in:scale>
+		<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center" in:scale>
 			<div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40} /></div>
 			<h2 class="text-2xl font-black text-[#1B4B6B] uppercase mb-2">Annullare Iscrizione?</h2>
 			<p class="text-sm text-gray-500 mb-8">Stai per rimuovere il dipendente dal corso: <br><span class="font-bold text-[#1B4B6B]">{iscrizioneDaRimuovere.nomeCorso}</span>.</p>

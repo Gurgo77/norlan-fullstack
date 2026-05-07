@@ -3,9 +3,21 @@
 	import { fade, scale } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
 	import {
-		HardHat, Calendar, FileBadge, Download,
-		MessageSquare, AlertTriangle, CheckCircle2,
-		X, Send, Loader2, User, ShieldCheck, LayoutDashboard, BookOpen
+		HardHat,
+		Calendar,
+		FileBadge,
+		Download,
+		MessageSquare,
+		AlertTriangle,
+		CheckCircle2,
+		X,
+		Send,
+		Loader2,
+		User,
+		ShieldCheck,
+		LayoutDashboard,
+		BookOpen,
+		PlayCircle
 	} from 'lucide-svelte';
 
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
@@ -15,6 +27,9 @@
 	import { Messaggio } from '$lib/models/Messaggio';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DashboardCorsoCard, {
+		type DashboardCorso
+	} from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
 	interface Impegno {
 		id: number;
@@ -70,12 +85,16 @@
 	let dotazioniDPI = $state<Dpi[]>([]);
 	let materiali = $state<Materiale[]>([]);
 
+	let ultimoCorsoAttivo = $state<DashboardCorso | null>(null);
+
 	const dataOggi = new Intl.DateTimeFormat('it-IT', {
-		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
 	}).format(new Date());
 
-	onMount(async () =>
-	{
+	onMount(async () => {
 		currentUser = AuthService.getSession();
 		const token = AuthService.getToken();
 
@@ -105,8 +124,13 @@
 				const diffGiorni = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
 
 				let s: 'OK' | 'WARNING' | 'DANGER' = 'OK';
-				if (diffGiorni < 0) { s = 'DANGER'; hasDpiDanger = true; }
-				else if (diffGiorni <= 30) { s = 'WARNING'; hasDpiWarning = true; }
+				if (diffGiorni < 0) {
+					s = 'DANGER';
+					hasDpiDanger = true;
+				} else if (diffGiorni <= 30) {
+					s = 'WARNING';
+					hasDpiWarning = true;
+				}
 
 				return {
 					id: d.idAssegnazione || d.id || 0,
@@ -120,19 +144,28 @@
 
 			dotazioniDPI.sort((a, b) => a.timestamp - b.timestamp);
 
-			statoDPI = hasDpiDanger ? 'DANGER' : (hasDpiWarning ? 'WARNING' : 'OK');
+			statoDPI = hasDpiDanger ? 'DANGER' : hasDpiWarning ? 'WARNING' : 'OK';
 
 			let hasCorsiImminenti = false;
-			iscrizioniData.forEach(i => {
+			let firstActiveCourse: any = null;
+
+			iscrizioniData.forEach((i) => {
 				const dataOrario = new Date(i.dataOrarioCorso).getTime();
 
 				if (i.statoCorso === 'PROGRAMMATO' || i.statoCorso === 'IN_SVOLGIMENTO') {
 					hasCorsiImminenti = true;
+					if (!firstActiveCourse) firstActiveCourse = i;
+
 					impegni.push({
 						id: i.idCorso,
 						tipo: 'CORSO',
 						titolo: i.titoloCorso,
-						data: new Date(i.dataOrarioCorso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+						data: new Date(i.dataOrarioCorso).toLocaleString('it-IT', {
+							day: '2-digit',
+							month: '2-digit',
+							hour: '2-digit',
+							minute: '2-digit'
+						}),
 						colore: 'text-blue-500',
 						timestamp: dataOrario
 					});
@@ -151,6 +184,20 @@
 
 			impegni.sort((a, b) => a.timestamp - b.timestamp);
 
+			if (firstActiveCourse) {
+				ultimoCorsoAttivo = {
+					id: firstActiveCourse.idCorso,
+					titolo: firstActiveCourse.titoloCorso,
+					codice: 'C-' + firstActiveCourse.idCorso,
+					stato:
+							firstActiveCourse.statoCorso === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE',
+					dataSvolgimento: new Date(firstActiveCourse.dataOrarioCorso)
+							.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })
+							.toUpperCase(),
+					luogo: 'Sede NorLan / Aula Virtuale'
+				};
+			}
+
 			statoFormazione = hasCorsiImminenti ? 'WARNING' : 'OK';
 
 			chatService = new ChatService(
@@ -160,19 +207,20 @@
 							scrollChat();
 						}
 					},
-					(err: string) => console.error("Chat Error:", err)
+					(err: string) => console.error('Chat Error:', err)
 			);
 			chatService.connect(token, currentUser.idUtente);
-
 		} catch (error) {
-			console.error("Dashboard Sync Error:", error);
+			console.error('Dashboard Sync Error:', error);
 		} finally {
 			isLoading = false;
 			setTimeout(scrollChat, 100);
 		}
 	});
 
-	onDestroy(() => { if (chatService) chatService.disconnect(); });
+	onDestroy(() => {
+		if (chatService) chatService.disconnect();
+	});
 
 	function scrollChat() {
 		if (chatScrollContainer) chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight;
@@ -201,31 +249,39 @@
 		chatMessage = '';
 		scrollChat();
 	}
+
+	function riprendiCorso(id: number | string) {
+		window.location.href = resolveRoute('/dashboard/dipendente/corsi');
+	}
 </script>
 
-<div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
-	<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div in:fade class="mx-auto max-w-7xl space-y-8 pb-10">
+	<div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
 		<div>
-			<div class="flex items-center gap-3 mb-2">
-				<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm">
+			<div class="mb-2 flex items-center gap-3">
+				<div class="rounded-xl bg-[#1B4B6B] p-2 text-white shadow-sm">
 					<LayoutDashboard size={20} />
 				</div>
-				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
+				<p class="text-[10px] font-black uppercase tracking-widest text-gray-400">{dataOggi}</p>
 			</div>
-			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Benvenuto {utente?.nome}</h1>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
+			<h1 class="text-4xl font-black uppercase tracking-tighter text-[#1B4B6B]">
+				Benvenuto {utente?.nome}
+			</h1>
+			<p class="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
 				Area Riservata Lavoratore
 			</p>
 		</div>
 	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
+		<div class="flex flex-col items-center justify-center gap-4 py-32">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Accesso ai registri...</span>
+			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400"
+			>Accesso ai registri...</span
+			>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 			<StatCard
 					titolo="Formazione"
 					valore={statoFormazione === 'OK' ? 'In Regola' : 'Corsi Pendenti'}
@@ -240,13 +296,29 @@
 			/>
 		</div>
 
-		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-			<div class="xl:col-span-2 space-y-8">
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
+		{#if ultimoCorsoAttivo}
+			<div>
+				<h3
+						class="mb-4 flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"
+				>
+					<PlayCircle size={20} class="text-blue-500" /> Corso in Evidenza
+				</h3>
+				<DashboardCorsoCard
+						ruolo="dipendente"
+						corso={ultimoCorsoAttivo}
+				/>
+			</div>
+		{/if}
+
+		<div class="grid grid-cols-1 gap-8 xl:grid-cols-3">
+			<div class="space-y-8 xl:col-span-2">
+				<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+					<h3
+							class="mb-6 flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"
+					>
 						<Calendar size={20} class="text-blue-500" /> Prossime Scadenze Corsi
 					</h3>
-					<div class="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar-data pr-2">
+					<div class="custom-scrollbar-data max-h-[400px] space-y-4 overflow-y-auto pr-2">
 						{#each impegni as imp}
 							<AlertCard
 									titolo={imp.titolo}
@@ -258,76 +330,118 @@
 							/>
 						{/each}
 						{#if impegni.length === 0}
-							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessuna lezione programmata</div>
+							<div class="py-6 text-center text-[10px] font-bold uppercase text-gray-300">
+								Nessuna lezione programmata
+							</div>
 						{/if}
 					</div>
 				</div>
 
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-					<div class="flex items-center justify-between mb-6">
-						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
+				<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+					<div class="mb-6 flex items-center justify-between">
+						<h3
+								class="flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"
+						>
 							<ShieldCheck size={20} class="text-emerald-500" /> Dispositivi di Protezione (DPI)
 						</h3>
-						<a href="{resolveRoute('/dashboard/dipendente/dpi')}" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a>
+						<a
+								href={resolveRoute('/dashboard/dipendente/dpi')}
+								class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a
+						>
 					</div>
-					<div class="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar-data pr-4">
+					<div class="custom-scrollbar-data max-h-[400px] space-y-4 overflow-y-auto pr-4">
 						{#each dotazioniDPI as dpi}
 							<AlertCard
 									titolo={dpi.nome}
 									sottotitolo={dpi.matricola}
-									variante={dpi.stato === 'DANGER' ? 'danger' : (dpi.stato === 'WARNING' ? 'warning' : 'success')}
+									variante={dpi.stato === 'DANGER'
+									? 'danger'
+									: dpi.stato === 'WARNING'
+										? 'warning'
+										: 'success'}
 									icona={HardHat}
-									stato={dpi.stato === 'DANGER' ? 'SCADUTO' : (dpi.stato === 'WARNING' ? 'IN SCADENZA' : 'REGOLARE')}
+									stato={dpi.stato === 'DANGER'
+									? 'SCADUTO'
+									: dpi.stato === 'WARNING'
+										? 'IN SCADENZA'
+										: 'REGOLARE'}
 									data="Revisione: {dpi.revisione}"
 									href={resolveRoute('/dashboard/dipendente/dpi')}
 							/>
 						{/each}
 						{#if dotazioniDPI.length === 0}
-							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessun DPI assegnato</div>
+							<div class="py-6 text-center text-[10px] font-bold uppercase text-gray-300">
+								Nessun DPI assegnato
+							</div>
 						{/if}
 					</div>
 				</div>
 
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-					<div class="flex items-center justify-between mb-6">
-						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
+				<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+					<div class="mb-6 flex items-center justify-between">
+						<h3
+								class="flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"
+						>
 							<FileBadge size={20} class="text-purple-500" /> Attestati Conseguiti
 						</h3>
-						<a href="{resolveRoute('/dashboard/dipendente/attestati')}" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi archivio</a>
+						<a
+								href={resolveRoute('/dashboard/dipendente/attestati')}
+								class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi archivio</a
+						>
 					</div>
-					<div class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar-data pr-2">
+					<div class="custom-scrollbar-data max-h-[300px] space-y-3 overflow-y-auto pr-2">
 						{#each materiali as mat}
-							<div class="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 group transition-all hover:bg-white hover:shadow-md">
+							<div
+									class="group flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-all hover:bg-white hover:shadow-md"
+							>
 								<div class="flex items-center gap-4">
-									<div class="p-2 bg-purple-100 text-purple-600 rounded-xl shrink-0">
+									<div class="shrink-0 rounded-xl bg-purple-100 p-2 text-purple-600">
 										<FileBadge size={16} />
 									</div>
 									<div>
-										<span class="text-xs font-bold text-[#1B4B6B] uppercase block">{mat.titolo}</span>
-										<span class="text-[9px] font-black text-gray-400 uppercase mt-0.5 block">Data: {mat.data}</span>
+										<span class="block text-xs font-bold uppercase text-[#1B4B6B]"
+										>{mat.titolo}</span
+										>
+										<span
+												class="mt-0.5 block text-[9px] font-black uppercase text-gray-400"
+										>Data: {mat.data}</span
+										>
 									</div>
 								</div>
-								<a href="{resolveRoute('/dashboard/dipendente/attestati')}" class="text-gray-400 hover:text-[#1B4B6B] transition-colors p-2 bg-white rounded-lg border border-gray-200 hover:border-[#1B4B6B] shrink-0 ml-4">
+								<a
+										href={resolveRoute('/dashboard/dipendente/attestati')}
+										class="ml-4 shrink-0 rounded-lg border border-gray-200 bg-white p-2 text-gray-400 transition-colors hover:border-[#1B4B6B] hover:text-[#1B4B6B]"
+								>
 									<Download size={16} />
 								</a>
 							</div>
 						{/each}
 						{#if materiali.length === 0}
-							<div class="py-6 text-center text-[10px] font-bold text-gray-300 uppercase">Nessun attestato conseguito</div>
+							<div class="py-6 text-center text-[10px] font-bold uppercase text-gray-300">
+								Nessun attestato conseguito
+							</div>
 						{/if}
 					</div>
 				</div>
-
 			</div>
 
 			<div class="space-y-8">
-				<div class="bg-gray-100 rounded-[2.5rem] p-8 flex flex-col items-center text-center">
-					<div class="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm text-[#1B4B6B]">
+				<div class="flex flex-col items-center text-center rounded-[2.5rem] bg-gray-100 p-8">
+					<div
+							class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#1B4B6B] shadow-sm"
+					>
 						<User size={32} />
 					</div>
-					<h4 class="text-sm font-black text-[#1B4B6B] uppercase">{utente?.cognome} {utente?.nome}</h4>
-					<p class="text-[9px] font-bold text-gray-400 uppercase mb-6">{utente?.codiceFiscale}</p>
-					<a href="{resolveRoute('/dashboard/dipendente/account')}" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl text-[10px] font-black uppercase border border-gray-200 hover:bg-gray-50 transition-all">Gestisci Profilo</a>
+					<h4 class="text-sm font-black uppercase text-[#1B4B6B]">
+						{utente?.cognome}
+						{utente?.nome}
+					</h4>
+					<p class="mb-6 text-[9px] font-bold uppercase text-gray-400">{utente?.codiceFiscale}</p>
+					<a
+							href={resolveRoute('/dashboard/dipendente/account')}
+							class="w-full rounded-xl border border-gray-200 bg-white py-3 text-[10px] font-black uppercase text-[#1B4B6B] transition-all hover:bg-gray-50"
+					>Gestisci Profilo</a
+					>
 				</div>
 			</div>
 		</div>
@@ -336,35 +450,82 @@
 
 <div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
-		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-96 rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">
-			<div class="bg-[#1B4B6B] p-5 text-white flex justify-between items-center">
+		<div
+				transition:scale={{ duration: 200, start: 0.9 }}
+				class="mb-4 flex h-96 w-80 flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-2xl"
+		>
+			<div class="flex items-center justify-between bg-[#1B4B6B] p-5 text-white">
 				<span class="text-xs font-black uppercase tracking-widest">Supporto NorLan</span>
-				<button onclick={() => isChatOpen = false}><X size={16} /></button>
+				<button onclick={() => (isChatOpen = false)}><X size={16} /></button>
 			</div>
-			<div bind:this={chatScrollContainer} class="flex-1 bg-gray-50 p-4 overflow-y-auto space-y-3 custom-scrollbar">
+			<div
+					bind:this={chatScrollContainer}
+					class="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4"
+			>
 				{#each messaggiChat as msg}
-					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
-						<div class="max-w-[80%] p-3 rounded-2xl text-xs {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-tr-none' : 'bg-white text-[#1B4B6B] rounded-tl-none'}">
+					<div
+							class="flex {msg.idMittente === currentUser?.idUtente
+							? 'justify-end'
+							: 'justify-start'}"
+					>
+						<div
+								class="max-w-[80%] p-3 text-xs rounded-2xl {msg.idMittente === currentUser?.idUtente
+								? 'rounded-tr-none bg-[#1B4B6B] text-white'
+								: 'rounded-tl-none bg-white text-[#1B4B6B]'}"
+						>
 							{msg.testo}
 						</div>
 					</div>
 				{/each}
 			</div>
-			<form class="p-3 bg-white border-t flex gap-2" onsubmit={(e) => {e.preventDefault(); inviaMessaggioChat();}}>
-				<input bind:value={chatMessage} type="text" placeholder="Scrivi..." class="flex-1 bg-gray-50 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none" />
-				<button type="submit" class="w-10 h-10 bg-[#1B4B6B] text-white rounded-xl flex items-center justify-center"><Send size={14} /></button>
+			<form
+					class="flex gap-2 border-t bg-white p-3"
+					onsubmit={(e) => {
+					e.preventDefault();
+					inviaMessaggioChat();
+				}}
+			>
+				<input
+						bind:value={chatMessage}
+						type="text"
+						placeholder="Scrivi..."
+						class="flex-1 rounded-xl border-none bg-gray-50 px-4 py-2 text-xs font-bold outline-none"
+				/>
+				<button
+						type="submit"
+						class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1B4B6B] text-white"
+				><Send size={14} /></button
+				>
 			</form>
 		</div>
 	{/if}
-	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="w-16 h-16 bg-[#1B4B6B] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform">
+	<button
+			onclick={() => {
+			isChatOpen = !isChatOpen;
+			if (isChatOpen) setTimeout(scrollChat, 50);
+		}}
+			class="flex h-16 w-16 items-center justify-center rounded-full bg-[#1B4B6B] text-white shadow-2xl transition-transform hover:scale-110"
+	>
 		<MessageSquare size={24} />
 	</button>
 </div>
 
 <style>
-	:global(body) { background-color: #F9FAFB; }
-	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-	.custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
-	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+	:global(body) {
+		background-color: #f9fafb;
+	}
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 4px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background: #e2e8f0;
+		border-radius: 10px;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar {
+		width: 5px;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar-thumb {
+		background: #e2e8f0;
+		border-radius: 10px;
+	}
 </style>
