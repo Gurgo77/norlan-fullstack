@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.NotificaDTO;
 import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Utente;
@@ -12,11 +11,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 

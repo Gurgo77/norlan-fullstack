@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.MessaggioDTO;
 import it.norlan.clientportal.model.Messaggio;
 import it.norlan.clientportal.model.Utente;
@@ -15,11 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -170,7 +167,6 @@ class MessaggioServiceTest {
 
     @Test
     void salvaMessaggio_ComunicazioneNonGestita_LanciaAccessDeniedException() {
-        // Test di comunicazione tra Azienda e Docente (non prevista dalle regole di business)
         when(utenteRepository.findById(2)).thenReturn(Optional.of(azienda));
         when(utenteRepository.findById(4)).thenReturn(Optional.of(docente));
 

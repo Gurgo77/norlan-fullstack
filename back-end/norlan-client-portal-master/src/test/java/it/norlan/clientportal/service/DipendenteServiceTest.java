@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.DipendenteDTO;
 import it.norlan.clientportal.model.Azienda;
 import it.norlan.clientportal.model.Dipendente;
@@ -11,11 +10,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -104,6 +101,7 @@ class DipendenteServiceTest {
 
     @Test
     void eliminaDipendente_Successo_PulisceRelazioniEdElimina() {
+
         when(dipendenteRepository.findById(10)).thenReturn(Optional.of(dipendente));
         when(dpiRepository.findByDipendenteIdUtente(10)).thenReturn(Collections.emptyList());
         when(feedbackRepository.findAll()).thenReturn(Collections.emptyList());

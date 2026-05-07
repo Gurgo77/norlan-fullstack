@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.AssegnazioneDPIDTO;
 import it.norlan.clientportal.model.AssegnazioneDPI;
 import it.norlan.clientportal.model.Dipendente;
@@ -11,11 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -198,7 +195,7 @@ class AssegnazioneDPIServiceTest {
         dpi.setIdAssegnazione(100);
         dpi.setDipendente(dipendente);
         dpi.setTipo(AssegnazioneDPI.TipoDPI.ALTRO);
-        dpi.setNomeDpi("Guanti isolanti");
+        dpi.setNomeDpi("Guanti");
         dpi.setDataConsegna(LocalDate.of(2023, 1, 1));
         dpi.setDataScadenzaRevisione(LocalDate.of(2023, 12, 31));
 
@@ -207,7 +204,7 @@ class AssegnazioneDPIServiceTest {
         assertEquals(100, dto.getIdAssegnazione());
         assertEquals(8, dto.getIdDipendente());
         assertEquals(AssegnazioneDPI.TipoDPI.ALTRO, dto.getTipo());
-        assertEquals("Guanti isolanti", dto.getNomeDpi());
+        assertEquals("Guanti", dto.getNomeDpi());
         assertEquals(LocalDate.of(2023, 1, 1), dto.getDataConsegna());
         assertEquals(LocalDate.of(2023, 12, 31), dto.getDataScadenzaRevisione());
         assertTrue(dto.isDaRevisionare());

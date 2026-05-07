@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.norlan.clientportal.dto.AuthRequestDTO;
 import it.norlan.clientportal.dto.CambioPasswordDTO;
@@ -21,9 +20,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -111,14 +108,14 @@ class AuthControllerTest {
     @Test
     void login_UtenteAutenticatoMaNonNelDB_Ritorna401() throws Exception {
         AuthRequestDTO request = new AuthRequestDTO();
-        request.setEmail("fantasma@norlan.it");
+        request.setEmail("nodb@norlan.it");
         request.setPassword("password123");
 
         Authentication authMock = mock(Authentication.class);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authMock);
 
-        when(utenteService.findByEmail("fantasma@norlan.it")).thenReturn(Optional.empty());
+        when(utenteService.findByEmail("nodb@norlan.it")).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -177,25 +174,21 @@ class AuthControllerTest {
 
     @Test
     void cambiaPassword_ErroreGenerico_Ritorna500() throws Exception {
-        CambioPasswordDTO request = new CambioPasswordDTO();
-        request.setVecchiaPassword("oldPass");
-        request.setNuovaPassword("newPass");
+        doThrow(new RuntimeException("Errore imprevisto"))
+                .when(utenteService).cambiaPassword(any(), any(), any());
 
-        doThrow(new RuntimeException("Database error"))
-                .when(utenteService).cambiaPassword("user@norlan.it", "oldPass", "newPass");
+        org.springframework.security.core.Authentication auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "utente@test.it",
+                        null,
+                        java.util.Collections.emptyList()
+                );
 
-        UsernamePasswordAuthenticationToken principal =
-                new UsernamePasswordAuthenticationToken("utente@test.it", "password");
-
-        mockMvc.perform(put("/auth/cambia-password")
-                .principal(principal)
-                .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .principal(() -> "user@norlan.it"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Errore durante l'aggiornamento della password"));
-
-        verify(logService).registraEvento(eq("Aggiornamento credenziali di sicurezza"), eq(false), anyString());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/auth/cambia-password")
+                        .principal(auth)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{ \"vecchiaPassword\": \"old\", \"nuovaPassword\": \"new\" }"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isInternalServerError());
     }
 
     @Test

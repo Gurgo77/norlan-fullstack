@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.MaterialeDidatticoDTO;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.repository.IscrizioneCorsoRepository;
@@ -10,12 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -129,12 +126,9 @@ class MaterialeDidatticoServiceTest {
         MaterialeDidattico result = materialeService.salvaMateriale(materiale);
 
         assertNotNull(result.getDataCaricamento());
+
         verify(repository).save(materiale);
-
-        // Verifica notifica al docente (1 in-app)
         verify(notificaService).inviaNotifica(eq(docente), anyString(), eq(Notifica.Priorita.BASSA), eq(Notifica.CanaleNotifica.IN_APP));
-
-        // Verifica notifiche al discente (1 in-app, 1 email)
         verify(notificaService).inviaNotifica(eq(studente), anyString(), eq(Notifica.Priorita.MEDIA), eq(Notifica.CanaleNotifica.IN_APP));
         verify(notificaService).inviaNotifica(eq(studente), anyString(), eq(Notifica.Priorita.MEDIA), eq(Notifica.CanaleNotifica.EMAIL));
     }

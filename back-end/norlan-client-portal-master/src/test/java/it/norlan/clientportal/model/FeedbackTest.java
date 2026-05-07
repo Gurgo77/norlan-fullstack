@@ -23,7 +23,7 @@ class FeedbackTest {
 
     @Test
     void costruttore_InizializzaDataCreazioneCorrettamente() {
-        assertNotNull(feedback.getDataCreazione(), "La data di creazione non deve essere nulla al momento dell'istanziazione");
+        assertNotNull(feedback.getDataCreazione(), "La data di creazione non può essere nulla");
 
     }
 
@@ -34,7 +34,7 @@ class FeedbackTest {
         feedback.setRatingContenuti(5);
 
 
-        assertDoesNotThrow(() -> feedback.prePersistValidation(), "I rating tra 1 e 5 sono considerati validi");
+        assertDoesNotThrow(() -> feedback.prePersistValidation(), "I rating devono essere un valore compreso tra 1 e 5");
 
     }
 
@@ -48,7 +48,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
+        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
 
     }
 
@@ -62,7 +62,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
+        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
 
     }
 
@@ -76,7 +76,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
+        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
 
     }
 
@@ -90,7 +90,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
+        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
 
     }
 

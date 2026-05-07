@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.norlan.clientportal.dto.*;
 import it.norlan.clientportal.model.*;
@@ -13,10 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.util.List;
 import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -300,7 +297,7 @@ class AnagraficaControllerTest {
 
     @Test
     void updateAdmin_Eccezione_Ritorna404() throws Exception {
-        when(adminService.aggiornaAdmin(eq(3), any())).thenThrow(new RuntimeException("Amministratore non trovato"));
+        when(adminService.aggiornaAdmin(eq(3), any())).thenThrow(new RuntimeException("Admin non trovato"));
 
         mockMvc.perform(put("/api/anagrafica/admin/3")
                         .contentType(MediaType.APPLICATION_JSON)

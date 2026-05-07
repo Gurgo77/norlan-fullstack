@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.IscrizioneCorsoDTO;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.model.IscrizioneCorso.IscrizioneId;
@@ -12,11 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -184,14 +181,11 @@ class IscrizioneCorsoServiceTest {
 
     @Test
     void getPathAttestato_NessunDocumento_RitornaNull() {
-        IscrizioneCorso iscrizioneSenzaDoc = new IscrizioneCorso();
-        iscrizioneSenzaDoc.setDocumentoAttestato(null);
+        when(iscrizioneRepository.findById(iscrizioneId)).thenReturn(Optional.of(iscrizione));
 
-        when(iscrizioneRepository.findById(any())).thenReturn(Optional.of(iscrizioneSenzaDoc));
+        String path = iscrizioneService.getPathAttestato(1, 10);
 
-        String pathRisultante = iscrizioneService.getPathAttestato(1, 1);
-
-        assertNull(pathRisultante, "Il percorso dell'attestato deve essere null se non è presente un documento associato.");
+        assertNull(path);
     }
 
     @Test

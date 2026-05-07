@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.AdminDTO;
 import it.norlan.clientportal.model.Admin;
 import it.norlan.clientportal.model.Utente;
@@ -11,10 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -110,7 +107,7 @@ class AdminServiceTest {
                 () -> adminService.salvaAdmin(inputAdmin)
         );
 
-        assertEquals("Configurazione negata: Il sistema prevede un unico Amministratore globale.", exception.getMessage());
+        assertEquals("Configurazione negata: Il sistema prevede un unico admin globale.", exception.getMessage());
         verify(adminRepository, never()).save(any());
     }
 
@@ -163,7 +160,7 @@ class AdminServiceTest {
                 () -> adminService.aggiornaAdmin(1, dto)
         );
 
-        assertEquals("Amministratore non trovato", exception.getMessage());
+        assertEquals("Admin non trovato", exception.getMessage());
         verify(adminRepository, never()).save(any());
     }
 

@@ -1,5 +1,4 @@
 package it.norlan.clientportal.strategy;
-
 import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.service.LogSincronizzazioneService;
@@ -16,12 +15,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-
 import java.util.Properties;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -61,7 +57,7 @@ class EmailNotificaStrategyTest {
     @Test
     void getCanaleSupportato_RitornaEmail() {
         assertEquals(Notifica.CanaleNotifica.EMAIL, strategy.getCanaleSupportato(),
-                "La strategia deve dichiarare esplicitamente il supporto per il canale EMAIL.");
+                "La strategia deve dichiarare presenza canale via EMAIL.");
     }
 
     @Test

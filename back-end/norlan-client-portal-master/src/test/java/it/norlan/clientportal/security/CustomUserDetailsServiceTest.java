@@ -1,5 +1,4 @@
 package it.norlan.clientportal.security;
-
 import it.norlan.clientportal.model.Admin;
 import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.repository.UtenteRepository;
@@ -11,9 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 

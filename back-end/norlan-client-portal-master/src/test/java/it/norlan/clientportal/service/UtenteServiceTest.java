@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.UtenteDTO;
 import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Utente;
@@ -12,9 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -40,7 +37,7 @@ class UtenteServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Utilizziamo una classe anonima dato che Utente potrebbe essere abstract
+
         utente = new Utente() {};
         utente.setIdUtente(1);
         utente.setEmail("test@norlan.it");

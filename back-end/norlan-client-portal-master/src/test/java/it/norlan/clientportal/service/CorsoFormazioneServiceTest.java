@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.CorsoFormazioneDTO;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.repository.CorsoFormazioneRepository;
@@ -11,12 +10,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,10 +43,10 @@ class CorsoFormazioneServiceTest {
 
     @BeforeEach
     void setUp() {
+
         docente = new Docente();
         docente.setIdUtente(10);
         docente.setEmail("docente@test.it");
-
         corso = new CorsoFormazione();
         corso.setIdCorso(1);
         corso.setTitolo("Corso Sicurezza Base");

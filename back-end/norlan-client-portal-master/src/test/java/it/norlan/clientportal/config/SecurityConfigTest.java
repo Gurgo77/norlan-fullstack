@@ -1,12 +1,9 @@
 package it.norlan.clientportal.config;
 
-import it.norlan.clientportal.security.CustomUserDetailsService;
-import it.norlan.clientportal.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -25,12 +22,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {
-
-    @Mock
-    private JwtAuthenticationFilter jwtAuthFilter;
-
-    @Mock
-    private CustomUserDetailsService userDetailsService;
 
     @InjectMocks
     private SecurityConfig securityConfig;

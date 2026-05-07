@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.norlan.clientportal.dto.CorsoFormazioneDTO;
 import it.norlan.clientportal.dto.IscrizioneCorsoDTO;
@@ -23,10 +22,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.util.List;
 import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;

@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.norlan.clientportal.dto.ContattoWebDTO;
 import it.norlan.clientportal.model.Admin;
@@ -15,10 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -68,7 +65,7 @@ class PublicControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Messaggio inviato con successo!"));
 
-        String expectedCorpoMail = "Nuovo messaggio dal form web di NorLan:\n\n"
+        String expectedCorpoMail = "Nuovo messaggio dal form di contatto:\n\n"
                 + "Nome: Mario Rossi\n"
                 + "Email di contatto: mario.rossi@test.it\n\n"
                 + "Messaggio:\nRichiesta di informazioni sui corsi.";
@@ -98,22 +95,21 @@ class PublicControllerTest {
     }
 
     @Test
-    void riceviContatto_AdminNonTrovato_LanciaEccezione() throws Exception {
+    void riceviContatto_AdminNonTrovato_LanciaEccezione() {
         ContattoWebDTO dto = new ContattoWebDTO();
         dto.setNome("Anna");
         dto.setPrivacyAccepted(true);
 
         when(adminService.getUnicoAdmin()).thenReturn(Optional.empty());
 
-        mockMvc.perform(post("/api/public/contatto")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(result -> {
-                    Exception ex = result.getResolvedException();
-                    assertTrue(ex instanceof RuntimeException);
-                    assertEquals("Sistema non configurato per la ricezione messaggi", ex.getMessage());
-                });
+        Exception exception = assertThrows(Exception.class, () -> {
+            mockMvc.perform(post("/api/public/contatto")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(dto)));
+        });
+
+        assertTrue(exception.getCause().getMessage().contains("Sistema non configurato"),
+                "La root cause deve corrispondere all'eccezione della logica di business");
 
         verifyNoInteractions(notificaService);
     }

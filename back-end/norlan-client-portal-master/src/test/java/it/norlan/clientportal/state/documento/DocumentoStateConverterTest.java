@@ -1,8 +1,6 @@
 package it.norlan.clientportal.state.documento;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -20,7 +18,7 @@ class DocumentoStateConverterTest {
     void convertToDatabaseColumn_StatoNull_RitornaNull() {
         String result = converter.convertToDatabaseColumn(null);
 
-        assertNull(result, "La conversione di uno stato null deve restituire null per il DB.");
+        assertNull(result, "La conversione di uno stato null deve restituire null per  DB.");
     }
 
     @Test

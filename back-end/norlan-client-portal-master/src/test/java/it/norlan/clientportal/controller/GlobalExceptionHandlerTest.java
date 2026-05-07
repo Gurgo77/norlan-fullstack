@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import it.norlan.clientportal.service.LogSincronizzazioneService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,9 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -54,12 +51,12 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<String> response = globalExceptionHandler.handleDataIntegrityException(eccezione);
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertEquals("Operazione bloccata dal database (probabile violazione di vincoli relazionali).", response.getBody());
+        assertEquals("Operazione bloccata dal database perchè probabile violazione di vincoli relazionali.", response.getBody());
 
         verify(logService).registraEvento(
                 eq("Blocco sicurezza: Violazione integrità dati"),
                 eq(false),
-                eq("Eccezione database: Foreign Key Constraint o Unique Constraint fallito. Dettaglio tecnico: Violazione vincolo unico")
+                eq("Eccezione database, causa radice del database")
         );
     }
 
@@ -71,12 +68,12 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<String> response = globalExceptionHandler.handleDataIntegrityException(eccezione);
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertEquals("Operazione bloccata dal database (probabile violazione di vincoli relazionali).", response.getBody());
+        assertEquals("Operazione bloccata dal database perchè probabile violazione di vincoli relazionali.", response.getBody());
 
         verify(logService).registraEvento(
                 eq("Blocco sicurezza: Violazione integrità dati"),
                 eq(false),
-                eq("Eccezione database: Foreign Key Constraint o Unique Constraint fallito. Dettaglio tecnico: Causa radice del database")
+                eq("Eccezione database, causa radice del database")
         );
     }
 

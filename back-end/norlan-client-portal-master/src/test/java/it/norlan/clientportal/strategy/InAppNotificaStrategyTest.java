@@ -1,5 +1,4 @@
 package it.norlan.clientportal.strategy;
-
 import it.norlan.clientportal.model.Notifica;
 import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.repository.NotificaRepository;
@@ -9,7 +8,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 
@@ -46,6 +44,6 @@ class InAppNotificaStrategyTest {
     void getCanaleSupportato_RitornaInApp() {
         Notifica.CanaleNotifica canale = strategy.getCanaleSupportato();
 
-        assertEquals(Notifica.CanaleNotifica.IN_APP, canale, "La strategia deve dichiarare il supporto per il canale IN_APP.");
+        assertEquals(Notifica.CanaleNotifica.IN_APP, canale, "La strategia deve dichiarare presenza canale via IN_APP.");
     }
 }

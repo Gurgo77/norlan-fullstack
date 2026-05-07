@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import it.norlan.clientportal.dto.ComplianceDTO;
 import it.norlan.clientportal.model.LivelloRischio;
 import it.norlan.clientportal.service.ComplianceService;
@@ -11,7 +10,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,7 +38,7 @@ class ComplianceControllerTest {
                 LivelloRischio.VERDE,
                 0,
                 0,
-                "Conformit  garantita: tutti i documenti sono validi."
+                "Compliance ok: tutti i documenti sono validi."
         );
 
         when(complianceService.calcolaComplianceAzienda(idAzienda)).thenReturn(mockResponse);
@@ -50,6 +48,6 @@ class ComplianceControllerTest {
                 .andExpect(jsonPath("$.statoGlobale").value("VERDE"))
                 .andExpect(jsonPath("$.documentiScaduti").value(0))
                 .andExpect(jsonPath("$.documentiInScadenza").value(0))
-                .andExpect(jsonPath("$.messaggioSuggerimento").value("Conformit  garantita: tutti i documenti sono validi."));
+                .andExpect(jsonPath("$.messaggioSuggerimento").value("Compliance ok: tutti i documenti sono validi."));
     }
 }

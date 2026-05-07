@@ -16,7 +16,7 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -103,9 +103,7 @@ class WebSocketConfigTest {
     @Test
     void channelInterceptor_ConnessioneConTokenValido_IniettaUtente() {
         ChannelInterceptor interceptor = estraiIntercettoreDiSicurezza();
-        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
-        accessor.setNativeHeader("Authorization", "Bearer tokenValido");
-        Message<?> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+        Message<?> message = creaMessaggioStomp(StompCommand.CONNECT, "Bearer tokenValido");
         MessageChannel channel = mock(MessageChannel.class);
 
         UserDetails mockUser = new User("admin@norlan.it", "pwd", Collections.emptyList());
@@ -118,7 +116,7 @@ class WebSocketConfigTest {
         assertNotNull(elaborato);
         StompHeaderAccessor elaboratoAccessor = StompHeaderAccessor.getAccessor(elaborato, StompHeaderAccessor.class);
         assertNotNull(elaboratoAccessor.getUser(), "L'utente autenticato deve essere iniettato nell'accessor");
-        assertEquals(mockUser.getUsername(), elaboratoAccessor.getUser().getName());
+        assertEquals("admin@norlan.it", elaboratoAccessor.getUser().getName());
     }
 
     @Test
@@ -131,7 +129,6 @@ class WebSocketConfigTest {
 
         assertEquals(message, elaborato, "Un comando diverso da CONNECT non deve essere intercettato dalla logica JWT");
     }
-
 
     private ChannelInterceptor estraiIntercettoreDiSicurezza() {
         ChannelRegistration registrationMock = mock(ChannelRegistration.class);
@@ -148,6 +145,9 @@ class WebSocketConfigTest {
         if (token != null) {
             accessor.setNativeHeader("Authorization", token);
         }
-        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+        accessor.setLeaveMutable(true);
+
+        return new GenericMessage<>(new byte[0], accessor.getMessageHeaders());
     }
 }

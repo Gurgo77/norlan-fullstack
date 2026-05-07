@@ -141,9 +141,10 @@ public class IscrizioneCorsoService {
 
     @Transactional(readOnly = true)
     public String getPathAttestato(Integer idLavoratore, Integer idCorso) {
-        return iscrizioneRepository.findById(new IscrizioneId(idLavoratore, idCorso))
-                .map(iscrizione -> iscrizione.getDocumentoAttestato() != null ? iscrizione.getDocumentoAttestato().getFilePath() : null)
+        IscrizioneCorso iscrizione = iscrizioneRepository.findById(new IscrizioneId(idLavoratore, idCorso))
                 .orElseThrow(() -> new IllegalArgumentException("Iscrizione non trovata"));
+
+        return iscrizione.getDocumentoAttestato() != null ? iscrizione.getDocumentoAttestato().getFilePath() : null;
     }
 
     @Transactional(readOnly = true)

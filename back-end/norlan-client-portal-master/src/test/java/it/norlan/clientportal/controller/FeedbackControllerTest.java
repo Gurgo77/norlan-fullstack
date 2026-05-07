@@ -1,5 +1,4 @@
 package it.norlan.clientportal.controller;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.norlan.clientportal.dto.FeedbackDTO;
 import it.norlan.clientportal.dto.FeedbackStatsDTO;
@@ -13,9 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -54,7 +51,7 @@ class FeedbackControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Feedback archiviato con successo e metriche aggiornate."));
+                .andExpect(content().string("Feedback archiviato con successo."));
     }
 
     @Test
@@ -65,14 +62,14 @@ class FeedbackControllerTest {
         request.setRatingDocenza(5);
         request.setRatingContenuti(5);
 
-        doThrow(new IllegalStateException("Violazione: Impossibile fornire feedback per un corso non ancora terminato."))
+        doThrow(new IllegalStateException("Violazione: Impossibile inviare feedback per un corso non ancora terminato."))
                 .when(feedbackService).registraFeedback(any(FeedbackDTO.class));
 
         mockMvc.perform(post("/api/feedback/invia")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Violazione: Impossibile fornire feedback per un corso non ancora terminato."));
+                .andExpect(content().string("Violazione: Impossibile inviare feedback per un corso non ancora terminato."));
     }
 
     @Test

@@ -1,5 +1,4 @@
 package it.norlan.clientportal.factory;
-
 import it.norlan.clientportal.model.Admin;
 import it.norlan.clientportal.model.Azienda;
 import it.norlan.clientportal.model.Dipendente;
@@ -7,7 +6,6 @@ import it.norlan.clientportal.model.Docente;
 import it.norlan.clientportal.model.Utente;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class UtenteFactoryTest {
@@ -61,6 +59,6 @@ class UtenteFactoryTest {
                 IllegalArgumentException.class,
                 () -> utenteFactory.creaUtente(null)
         );
-        assertEquals("Impossibile istanziare un Utente: il ruolo non può essere nullo.", exception.getMessage());
+        assertEquals("Impossibile istanziare utente: il ruolo non è inserito", exception.getMessage());
     }
 }

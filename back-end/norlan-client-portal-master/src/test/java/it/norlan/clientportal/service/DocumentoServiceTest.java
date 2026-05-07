@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.DocumentoDTO;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.repository.CorsoFormazioneRepository;
@@ -12,10 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.util.*;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -46,19 +43,16 @@ class DocumentoServiceTest {
 
     @BeforeEach
     void setUp() {
+
         azienda = new Azienda();
         azienda.setIdUtente(1);
         azienda.setRagioneSociale("Azienda Test Srl");
-
         documento = new Documento();
         documento.setIdDocumento(100);
         documento.setAzienda(azienda);
         documento.setTipologia(Documento.TipoDocumento.DVR);
         documento.setModulo(Documento.ModuloServizio.SICUREZZA);
-
-        // Sostituito con la corretta classe di stato iniziale
         documento.setStato(new StatoCaricato());
-
         documento.setFilePath("/docs/dvr_2026.pdf");
         documento.setDataCaricamento(LocalDate.now());
         documento.setDataScadenza(LocalDate.now().plusYears(1));
@@ -282,7 +276,6 @@ class DocumentoServiceTest {
         assertEquals("Azienda Test Srl", dto.getRagioneSocialeAzienda());
         assertEquals(Documento.ModuloServizio.SICUREZZA, dto.getModulo());
         assertEquals(Documento.TipoDocumento.DVR, dto.getTipologia());
-        // Adeguamento alla stringa restituita da StatoCaricato.getNomeStato()
         assertEquals("CARICATO", dto.getStato());
         assertFalse(dto.isScaduto());
     }

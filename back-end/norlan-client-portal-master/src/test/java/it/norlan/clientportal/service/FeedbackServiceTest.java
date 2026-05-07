@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.FeedbackDTO;
 import it.norlan.clientportal.dto.FeedbackStatsDTO;
 import it.norlan.clientportal.model.CorsoFormazione;
@@ -13,11 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -41,6 +38,7 @@ class FeedbackServiceTest {
 
     @BeforeEach
     void setUp() {
+
         feedbackDTO = new FeedbackDTO();
         feedbackDTO.setIdUtente(1);
         feedbackDTO.setIdCorso(10);

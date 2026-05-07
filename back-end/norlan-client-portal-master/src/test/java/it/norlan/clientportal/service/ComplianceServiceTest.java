@@ -1,5 +1,4 @@
 package it.norlan.clientportal.service;
-
 import it.norlan.clientportal.dto.ComplianceDTO;
 import it.norlan.clientportal.model.Documento;
 import it.norlan.clientportal.model.LivelloRischio;
@@ -9,11 +8,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +34,7 @@ class ComplianceServiceTest {
         assertEquals(LivelloRischio.VERDE, result.getStatoGlobale());
         assertEquals(0, result.getDocumentiScaduti());
         assertEquals(0, result.getDocumentiInScadenza());
-        assertEquals("Conformità garantita: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
+        assertEquals("Compliance ok: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
     }
 
     @Test
