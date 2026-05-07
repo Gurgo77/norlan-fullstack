@@ -2,9 +2,9 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		ShieldCheck, ShieldOff, HardHat, Calendar, MessageSquare, Clock,
+		ShieldCheck, ShieldOff, HardHat, MessageSquare, Clock,
 		AlertTriangle, CheckCircle2, X, Send, Loader2, User, Users,
-		Building2, Briefcase, BellRing, FileText, ArrowRight
+		Building2, Briefcase, BellRing, FileText, ArrowRight, PlayCircle
 	} from 'lucide-svelte';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
@@ -19,6 +19,7 @@
 	import { TipoDocumento } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
 	interface DpiRegistro extends AssegnazioneDPIDTO {
 		nomeCompletoDipendente: string;
@@ -60,13 +61,8 @@
 	const infoStato = $derived(() => {
 		const haDocsScaduti = documentiScadenza.some(d => d.scaduto);
 		const haDpiScaduti = alertScadenzeDpi.some(d => d.statoDerivato === 'SCADUTO');
-
-		if (haDocsScaduti || haDpiScaduti) {
-			return { label: 'CRITICO', color: 'bg-red-500', icon: AlertTriangle, text: 'Azione Immediata Richiesta' };
-		}
-		if (alertScadenzeDocs.length > 0 || alertScadenzeDpi.length > 0) {
-			return { label: 'ATTENZIONE', color: 'bg-amber-400 text-[#1B4B6B]', icon: Clock, text: 'Scadenze Imminenti Rilevate' };
-		}
+		if (haDocsScaduti || haDpiScaduti) return { label: 'CRITICO', color: 'bg-red-500', icon: AlertTriangle, text: 'Azione Immediata Richiesta' };
+		if (alertScadenzeDocs.length > 0 || alertScadenzeDpi.length > 0) return { label: 'ATTENZIONE', color: 'bg-amber-400 text-[#1B4B6B]', icon: Clock, text: 'Scadenze Imminenti Rilevate' };
 		return { label: 'A NORMA', color: 'bg-emerald-500', icon: ShieldCheck, text: 'Nessuna criticità rilevata' };
 	});
 
@@ -74,10 +70,7 @@
 
 	function calcolaStatoDpi(dataScadenzaStr: string | undefined): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
 		if (!dataScadenzaStr) return 'OK';
-		const oggi = new Date().getTime();
-		const scadenza = new Date(dataScadenzaStr).getTime();
-		const diffGiorni = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
-
+		const diffGiorni = Math.ceil((new Date(dataScadenzaStr).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
 		if (diffGiorni < 0) return 'SCADUTO';
 		if (diffGiorni <= 30) return 'DA_REVISIONARE';
 		return 'OK';
@@ -88,52 +81,42 @@
 		return new Date(dateStr).toLocaleDateString('it-IT');
 	}
 
+	function scaricaReport(idCorso: number | string) {
+		alert("Download report formazione corso ID: " + idCorso);
+	}
+
 	function scrollChat() {
-		setTimeout(() => {
-			if (chatScrollContainer) {
-				chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight;
-			}
-		}, 50);
+		setTimeout(() => { if (chatScrollContainer) chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight; }, 50);
 	}
 
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		const token = AuthService.getToken();
 		if (!currentUser || !token) return;
-
 		try {
 			const profilo = await AnagraficaService.getAziendaById(currentUser.idUtente) as AziendaData;
 			utenteAzienda = profilo;
-
 			const [docs, lavoratori, corsi, cronologiaChat] = await Promise.all([
 				DocumentoService.getDocumentiByAzienda(currentUser.idUtente),
 				LavoratoreService.getByAzienda(currentUser.idUtente),
 				FormazioneService.getAllCorsi(),
 				ChatService.getCronologia(currentUser.idUtente, STAFF_ID)
 			]);
-
 			documentiScadenza = docs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
 			dipendenti = lavoratori;
-			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO').slice(0, 3);
+			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato).slice(0, 2);
 			messaggiChat = cronologiaChat;
-
 			const dpiPromises = dipendenti.map(async (d) => {
 				try {
 					const dpiLav = await LavoratoreService.getDpiByLavoratore(d.idUtente);
 					return dpiLav.map((dpi: any) => ({
-						...dpi,
-						nomeCompletoDipendente: `${d.nome} ${d.cognome}`,
+						...dpi, nomeCompletoDipendente: `${d.nome} ${d.cognome}`,
 						statoDerivato: calcolaStatoDpi(dpi.dataScadenzaRevisione || dpi.dataScadenza)
 					})) as DpiRegistro[];
-				} catch {
-					return [];
-				}
+				} catch { return []; }
 			});
-
 			const dpiResults = await Promise.all(dpiPromises);
-			const allDpi = dpiResults.flat();
-			dpiInScadenza = allDpi.filter(dpi => dpi.statoDerivato !== 'OK');
-
+			dpiInScadenza = dpiResults.flat().filter(dpi => dpi.statoDerivato !== 'OK');
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
@@ -141,46 +124,19 @@
 							scrollChat();
 						}
 					},
-					(err: string) => console.error("Errore riscontrato nel modulo di comunicazione chat:", err)
+					(err: string) => console.error(err)
 			);
 			chatService.connect(token, currentUser.idUtente);
-
-		} catch (error) {
-			console.error("Si è verificato un errore durante la sincronizzazione della dashboard aziendale:", error);
-		} finally {
-			isLoading = false;
-			setTimeout(scrollChat, 100);
-		}
+		} catch (error) { console.error(error); } finally { isLoading = false; setTimeout(scrollChat, 100); }
 	});
 
-	onDestroy(() => {
-		if (chatService) chatService.disconnect();
-	});
+	onDestroy(() => { if (chatService) chatService.disconnect(); });
 
 	function inviaMessaggioChat() {
 		if (!chatMessage.trim() || !currentUser || !chatService) return;
-
-		const payload: ChatMessagePayload = {
-			idMittente: currentUser.idUtente,
-			idDestinatario: STAFF_ID,
-			testo: chatMessage
-		};
-
-		chatService.sendMessage(payload);
-
-		const msgMock = new Messaggio({
-			idMessaggio: Date.now(),
-			idMittente: currentUser.idUtente,
-			nomeMittente: currentUser.email,
-			idDestinatario: STAFF_ID,
-			testo: chatMessage,
-			timestampInvio: new Date().toISOString(),
-			letto: false
-		});
-
-		messaggiChat = [...messaggiChat, msgMock];
-		chatMessage = '';
-		scrollChat();
+		chatService.sendMessage({ idMittente: currentUser.idUtente, idDestinatario: STAFF_ID, testo: chatMessage });
+		const msgMock = new Messaggio({ idMessaggio: Date.now(), idMittente: currentUser.idUtente, nomeMittente: currentUser.email, idDestinatario: STAFF_ID, testo: chatMessage, timestampInvio: new Date().toISOString(), letto: false });
+		messaggiChat = [...messaggiChat, msgMock]; chatMessage = ''; scrollChat();
 	}
 </script>
 
@@ -188,15 +144,11 @@
 	<div class="flex items-end justify-between">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
-				<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm">
-					<Building2 size={20} />
-				</div>
+				<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm"><Building2 size={20} /></div>
 				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
 			</div>
 			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">{utenteAzienda?.ragioneSociale || 'Area Azienda'}</h1>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-				Pannello di controllo aziendale
-			</p>
+			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Pannello di controllo aziendale</p>
 		</div>
 	</div>
 
@@ -219,14 +171,9 @@
 					<p class="text-xs font-bold text-gray-400 uppercase mt-2">{status.text}</p>
 				</div>
 			</div>
-
 			<div class="grid grid-rows-2 gap-4">
-				<div class="h-full">
-					<StatCard titolo="Personale" valore="{dipendenti.length} Censiti" icona={Users} href="/dashboard/azienda/dipendenti" />
-				</div>
-				<div class="h-full">
-					<StatCard titolo="Archivio" valore="Documenti" icona={FileText} href="/dashboard/azienda/documenti" />
-				</div>
+				<StatCard titolo="Personale" valore="{dipendenti.length} Censiti" icona={Users} href="/dashboard/azienda/dipendenti" />
+				<StatCard titolo="Archivio" valore="Documenti" icona={FileText} href="/dashboard/azienda/documenti" />
 			</div>
 		</div>
 
@@ -235,25 +182,14 @@
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<BellRing size={20} class="text-amber-500" />
-							Scadenze Documentali
+							<BellRing size={20} class="text-amber-500" /> Scadenze Documentali
 						</h3>
 						<span class="bg-gray-100 text-gray-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">{alertScadenzeDocs.length} Alert</span>
 					</div>
-
 					<div class="space-y-3">
 						{#each alertScadenzeDocs as alert (alert.idDocumento)}
-							<AlertCard
-									titolo={alert.tipologia.replace(/_/g, ' ')}
-									sottotitolo={alert.modulo}
-									variante={alert.scaduto ? 'danger' : 'warning'}
-									icona={alert.scaduto ? ShieldOff : Clock}
-									stato={alert.scaduto ? 'SCADUTO' : 'IN SCADENZA'}
-									data={formattaData(alert.dataScadenza)}
-									href="/dashboard/azienda/documenti"
-							/>
+							<AlertCard titolo={alert.tipologia.replace(/_/g, ' ')} sottotitolo={alert.modulo} variante={alert.scaduto ? 'danger' : 'warning'} icona={alert.scaduto ? ShieldOff : Clock} stato={alert.scaduto ? 'SCADUTO' : 'IN SCADENZA'} data={formattaData(alert.dataScadenza)} href="/dashboard/azienda/documenti" />
 						{/each}
-
 						{#if alertScadenzeDocs.length === 0}
 							<div class="py-6 text-center">
 								<CheckCircle2 size={32} class="mx-auto text-emerald-400 mb-2 opacity-50" />
@@ -266,25 +202,14 @@
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<HardHat size={20} class="text-blue-500" />
-							Criticità DPI Dipendenti
+							<HardHat size={20} class="text-blue-500" /> Criticità DPI Dipendenti
 						</h3>
 						<a href="/dashboard/azienda/dpi" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline flex items-center gap-1">Vedi Registro <ArrowRight size={12}/></a>
 					</div>
-
 					<div class="space-y-3">
 						{#each alertScadenzeDpi.slice(0,5) as dpi}
-							<AlertCard
-									titolo={dpi.nomeCompletoDipendente}
-									sottotitolo={dpi.tipo ? dpi.tipo.replace(/_/g, ' ') : 'N.D.'}
-									variante={dpi.statoDerivato === 'SCADUTO' ? 'danger' : 'warning'}
-									icona={HardHat}
-									stato={dpi.statoDerivato.replace('_', ' ')}
-									data={formattaData(dpi.dataScadenzaRevisione)}
-									href="/dashboard/azienda/dpi"
-							/>
+							<AlertCard titolo={dpi.nomeCompletoDipendente} sottotitolo={dpi.tipo ? dpi.tipo.replace(/_/g, ' ') : 'N.D.'} variante={dpi.statoDerivato === 'SCADUTO' ? 'danger' : 'warning'} icona={HardHat} stato={dpi.statoDerivato.replace('_', ' ')} data={formattaData(dpi.dataScadenzaRevisione)} href="/dashboard/azienda/dpi" />
 						{/each}
-
 						{#if alertScadenzeDpi.length === 0}
 							<div class="py-6 text-center">
 								<CheckCircle2 size={32} class="mx-auto text-emerald-400 mb-2 opacity-50" />
@@ -298,52 +223,36 @@
 			<div class="space-y-8">
 				<div class="bg-gray-50 rounded-[2.5rem] border border-gray-100 p-8">
 					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
-						<Calendar size={20} class="text-[#1B4B6B]" />
-						Formazione Attiva
+						<PlayCircle size={20} class="text-[#1B4B6B]" /> Formazione in Evidenza
 					</h3>
-
 					<div class="space-y-4">
 						{#each prossimiCorsi as corso (corso.idCorso)}
-							<div class="flex gap-4 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
-								<div class="flex flex-col items-center justify-center w-12 h-12 bg-blue-50 text-blue-600 rounded-xl shrink-0">
-									<span class="text-[9px] font-black uppercase">{new Date(corso.dataOrario).toLocaleString('it-IT', {month: 'short'})}</span>
-									<span class="text-sm font-black">{new Date(corso.dataOrario).getDate()}</span>
-								</div>
-								<div class="overflow-hidden flex-1">
-									<p class="text-xs font-black text-[#1B4B6B] uppercase leading-tight line-clamp-2" title={corso.titolo}>{corso.titolo}</p>
-									<div class="flex items-center gap-1 mt-1 text-[9px] font-bold text-gray-400 uppercase">
-										<Clock size={10} /> {new Date(corso.dataOrario).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
-									</div>
-								</div>
-							</div>
+							<DashboardCorsoCard
+									ruolo="azienda"
+									corso={{
+                            id: corso.idCorso,
+                            titolo: corso.titolo,
+                            stato: 'DA_INIZIARE',
+                            dataSvolgimento: formattaData(corso.dataOrario),
+                            luogo: corso.luogoFisico
+                        }}
+									onAzioneCorso={() => scaricaReport(corso.idCorso)}
+							/>
 						{/each}
-
 						{#if prossimiCorsi.length === 0}
 							<p class="text-[10px] font-bold text-gray-400 uppercase italic text-center py-4">Nessun corso in programma.</p>
 						{/if}
-
-						<a href="/dashboard/azienda/formazione" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl font-black uppercase text-center block text-[10px] border border-gray-200 hover:bg-gray-100 transition-all mt-4">
-							Gestisci Iscrizioni
-						</a>
+						<a href="/dashboard/azienda/formazione" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl font-black uppercase text-center block text-[10px] border border-gray-200 hover:bg-gray-100 transition-all mt-4">Gestisci Formazione</a>
 					</div>
 				</div>
 
 				<div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center">
-					<div class="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center mb-4 text-[#1B4B6B]">
-						<Briefcase size={28} />
-					</div>
+					<div class="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center mb-4 text-[#1B4B6B]"><Briefcase size={28} /></div>
 					<h4 class="text-sm font-black text-[#1B4B6B] uppercase">{utenteAzienda?.ragioneSociale}</h4>
 					<p class="text-[10px] font-bold text-gray-400 uppercase mt-1 mb-1">P.IVA: {utenteAzienda?.partitaIva}</p>
-
 					<div class="w-full border-t border-gray-50 my-4"></div>
-
-					<div class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase mb-6">
-						<User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}
-					</div>
-
-					<a href="/dashboard/azienda/account" class="w-full py-3 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10">
-						Modifica Profilo Aziendale
-					</a>
+					<div class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase mb-6"><User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}</div>
+					<a href="/dashboard/azienda/account" class="w-full py-3 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10">Modifica Profilo</a>
 				</div>
 			</div>
 		</div>
@@ -354,38 +263,24 @@
 	{#if isChatOpen}
 		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-[28rem] rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">
 			<div class="bg-[#1B4B6B] p-5 text-white flex justify-between items-center shrink-0">
-				<div class="flex items-center gap-2">
-					<ShieldCheck size={16} />
-					<span class="text-xs font-black uppercase tracking-widest">Supporto NorLan</span>
-				</div>
+				<div class="flex items-center gap-2"><ShieldCheck size={16} /><span class="text-xs font-black uppercase tracking-widest">Supporto NorLan</span></div>
 				<button onclick={() => isChatOpen = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={16} /></button>
 			</div>
 			<div bind:this={chatScrollContainer} class="flex-1 bg-gray-50 p-4 overflow-y-auto space-y-3 custom-scrollbar">
 				{#each messaggiChat as msg (msg.idMessaggio)}
 					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
-						<div class="max-w-[85%] p-3 rounded-2xl text-xs font-medium shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-tr-none' : 'bg-white border border-gray-200 text-[#1B4B6B] rounded-tl-none'}">
-							{msg.testo}
-						</div>
+						<div class="max-w-[85%] p-3 rounded-2xl text-xs font-medium shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-tr-none' : 'bg-white border border-gray-200 text-[#1B4B6B] rounded-tl-none'}">{msg.testo}</div>
 					</div>
 				{/each}
-				{#if messaggiChat.length === 0}
-					<div class="h-full flex flex-col items-center justify-center text-gray-300">
-						<MessageSquare size={32} class="opacity-20 mb-2" />
-						<span class="text-[10px] font-black uppercase tracking-widest text-center">Richiedi consulenza<br>allo staff tecnico</span>
-					</div>
-				{/if}
 			</div>
 			<form class="p-3 bg-white border-t border-gray-100 flex gap-2 shrink-0" onsubmit={(e) => {e.preventDefault(); inviaMessaggioChat();}}>
-				<input bind:value={chatMessage} type="text" placeholder="Scrivi messaggio..." class="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-[#1B4B6B]/20" />
-				<button type="submit" disabled={!chatMessage.trim() || !chatService} class="w-10 h-10 bg-[#1B4B6B] text-white rounded-xl flex items-center justify-center disabled:opacity-50 disabled:grayscale transition-all shadow-md">
-					<Send size={14} />
-				</button>
+				<input bind:value={chatMessage} type="text" placeholder="Scrivi messaggio..." class="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold outline-none" />
+				<button type="submit" disabled={!chatMessage.trim() || !chatService} class="w-10 h-10 bg-[#1B4B6B] text-white rounded-xl flex items-center justify-center shadow-md"><Send size={14} /></button>
 			</form>
 		</div>
 	{/if}
-
 	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="w-16 h-16 bg-[#1B4B6B] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform relative group">
-		<MessageSquare size={24} class="group-hover:animate-pulse" />
+		<MessageSquare size={24} />
 		<span class="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
 	</button>
 </div>

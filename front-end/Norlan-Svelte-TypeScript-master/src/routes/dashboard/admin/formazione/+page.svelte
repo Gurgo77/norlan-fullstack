@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		Plus, X, Trash2, Search,
-		Calendar, MapPin, Loader2, User,
-		CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users,
-		BarChart, Star, BookOpen
-	} from 'lucide-svelte';
+	import { Plus, X, Trash2, Search, Calendar, MapPin, Loader2, User, CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users, BarChart, Star, BookOpen } from 'lucide-svelte';
 
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Docente, type DocenteData } from '$lib/models/Docente';
@@ -20,6 +15,7 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
 	interface FeedbackStatsDTO {
 		idCorso: number;
@@ -60,29 +56,16 @@
 			!!formCorso.titolo && !!formCorso.dataOrario && !!formCorso.luogoFisico && !!formCorso.idDocente
 	);
 
-	const corsiAttiviAdmin = $derived(
-			corsi.filter(c => c.stato !== StatoCorso.CERTIFICATO)
-	);
+	const corsiAttiviAdmin = $derived(corsi.filter(c => c.stato !== StatoCorso.CERTIFICATO));
+	const corsiFiltrati = $derived(corsiAttiviAdmin.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase())));
 
-	const corsiFiltrati = $derived(
-			corsiAttiviAdmin.filter(c => (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
-	);
-
-	const corsiConclusi = $derived(corsiFiltrati.filter(c =>
-			c.stato === StatoCorso.CONCLUSO ||
-			c.stato === StatoCorso.ATTESA_FIRMA_DOCENTE ||
-			c.stato === StatoCorso.VALIDATO
-	));
+	const corsiConclusi = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.CONCLUSO || c.stato === StatoCorso.ATTESA_FIRMA_DOCENTE || c.stato === StatoCorso.VALIDATO));
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato));
-
-	const corsiArchiviati = $derived(
-			corsi.filter(c => c.stato === StatoCorso.CERTIFICATO && (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase()))
-	);
+	const corsiArchiviati = $derived(corsi.filter(c => c.stato === StatoCorso.CERTIFICATO && (c.titolo || '').toLowerCase().includes(searchQuery.toLowerCase())));
 
 	const aziendeCoinvolte = $derived.by(() => {
 		if (!selectedCorso || iscrizioniAttuali.length === 0 || dipendenti.length === 0) return [];
-
 		const presenti = iscrizioniAttuali.filter(i => i.presenzaConfermata);
 		const map = new SvelteMap<number, { idAzienda: number, ragioneSociale: string, count: number }>();
 
@@ -92,14 +75,7 @@
 
 			let idAzienda = null;
 			let nomeAzienda = "Azienda Sconosciuta";
-
-			const dipConAzienda = dip as DipendenteDTO & {
-				azienda?: { idUtente?: number, id?: number, ragioneSociale?: string, nome?: string },
-				aziendaId?: number,
-				aziendaRagioneSociale?: string,
-				idAzienda?: number,
-				ragioneSocialeAzienda?: string
-			};
+			const dipConAzienda = dip as DipendenteDTO & { azienda?: { idUtente?: number, id?: number, ragioneSociale?: string, nome?: string }, aziendaId?: number, aziendaRagioneSociale?: string, idAzienda?: number, ragioneSocialeAzienda?: string };
 
 			if (dipConAzienda.azienda && typeof dipConAzienda.azienda === 'object') {
 				idAzienda = dipConAzienda.azienda.idUtente || dipConAzienda.azienda.id;
@@ -114,16 +90,11 @@
 
 			if (idAzienda) {
 				if (!map.has(idAzienda)) {
-					map.set(idAzienda, {
-						idAzienda: idAzienda,
-						ragioneSociale: nomeAzienda,
-						count: 0
-					});
+					map.set(idAzienda, { idAzienda: idAzienda, ragioneSociale: nomeAzienda, count: 0 });
 				}
 				map.get(idAzienda)!.count++;
 			}
 		});
-
 		return Array.from(map.values());
 	});
 
@@ -134,12 +105,11 @@
 				AnagraficaService.getAllDocenti(),
 				AnagraficaService.getAllDipendenti()
 			]);
-
 			corsi = corsiRes;
 			docenti = (docentiRes as DocenteData[]).map(d => new Docente(d));
 			dipendenti = dipendentiRes as DipendenteDTO[];
 		} catch (error) {
-			console.error("Errore durante il caricamento dei dati:", error);
+			console.error(error);
 		} finally {
 			isLoading = false;
 		}
@@ -159,17 +129,13 @@
 
 			const nuovo = await FormazioneService.createCorso(payload);
 			corsi = [...corsi, nuovo];
-
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
 		} catch (error) {
 			const err = error as { response?: { status?: number } };
-
 			if (err.response?.status === 409) {
-				console.error("Conflitto rilevato durante la creazione del corso.");
 				alert("Impossibile creare il corso: i dati inseriti sono in conflitto.");
 			} else {
-				console.error("Errore durante la programmazione del corso:", error);
 				alert("Si è verificato un errore durante la programmazione del corso.");
 			}
 		} finally {
@@ -190,7 +156,6 @@
 			showModalElimina = false;
 			idCorsoDaEliminare = null;
 		} catch (error) {
-			console.error("Errore durante la rimozione del corso:", error);
 			alert("Si è verificato un errore durante l'eliminazione.");
 		}
 	}
@@ -226,7 +191,6 @@
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.ATTESA_FIRMA_DOCENTE } as CorsoFormazione : c);
 			showModalPresenze = false;
 		} catch (error) {
-			console.error("Errore durante la validazione delle presenze:", error);
 			alert("Si è verificato un errore durante la validazione del registro.");
 		} finally {
 			isActionLoading = false;
@@ -259,7 +223,6 @@
 
 	async function confermaDistribuzioneAttestati() {
 		if (!selectedCorso) return;
-
 		const missing = aziendeCoinvolte.some(a => !fileUploads[a.idAzienda]);
 		if (missing) {
 			alert("È necessario caricare un certificato PDF per tutte le aziende elencate.");
@@ -268,19 +231,12 @@
 
 		isActionLoading = true;
 		try {
-			const payload = aziendeCoinvolte.map(a => ({
-				idAzienda: a.idAzienda,
-				file: fileUploads[a.idAzienda]
-			}));
-
+			const payload = aziendeCoinvolte.map(a => ({ idAzienda: a.idAzienda, file: fileUploads[a.idAzienda] }));
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
 			alert("Attestati distribuiti correttamente.");
-
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
-
 			showModalUpload = false;
 		} catch (error) {
-			console.error("Errore durante il caricamento degli attestati:", error);
 			alert("Si è verificato un errore durante il caricamento degli attestati.");
 		} finally {
 			isActionLoading = false;
@@ -315,48 +271,39 @@
 			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">GESTIONE FORMAZIONE</h1>
 			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Pianificazione corsi, aule e docenze.</p>
 		</div>
-
-		<button
-				onclick={() => showModalNuovo = true}
-				class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
-		>
+		<button onclick={() => showModalNuovo = true} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
 			<Plus size={18} /> Programma Corso
 		</button>
 	</div>
 
 	<div class="mb-8 relative w-72 group">
 		<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={16} />
-		<input
-				bind:value={searchQuery}
-				type="text"
-				placeholder="Cerca per titolo..."
-				class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase shadow-sm"
-		/>
+		<input bind:value={searchQuery} type="text" placeholder="Cerca per titolo..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase shadow-sm" />
 	</div>
 
 	{#if isLoading}
-		<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
+		<div class="py-20 text-center">
+			<Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" />
+		</div>
 	{:else}
 
 		<div class="mb-14">
 			<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-gray-200 pb-4">
 				<div class="flex items-center gap-3">
-					<div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><CheckCircle2 size={20}/></div>
+					<div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+						<CheckCircle2 size={20}/>
+					</div>
 					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Conclusi & Validazioni</h2>
 				</div>
 				<div class="w-full md:w-auto">
-					<StatCard
-							titolo="Da Processare"
-							valore={corsiConclusi.length}
-							icona={CheckSquare}
-							bgIcona="bg-emerald-50"
-							testoIcona="text-emerald-600"
-					/>
+					<StatCard titolo="Da Processare" valore={corsiConclusi.length} icona={CheckSquare} bgIcona="bg-emerald-50" testoIcona="text-emerald-600" />
 				</div>
 			</div>
 
 			{#if corsiConclusi.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">Nessun corso concluso da processare.</div>
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">
+					Nessun corso concluso da processare.
+				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiConclusi as corso (corso.idCorso)}
@@ -383,7 +330,6 @@
 										<UploadCloud size={14} /> Genera & Invia Attestati
 									</button>
 								{/if}
-
 								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2.5 mt-1 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-all shadow-sm">
 									<BarChart size={14} /> Metriche Feedback
 								</button>
@@ -396,22 +342,30 @@
 
 		<div class="mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3">
-				<div class="p-2 bg-blue-100 text-blue-700 rounded-lg"><Loader2 size={20} class="animate-spin-slow"/></div>
+				<div class="p-2 bg-blue-100 text-blue-700 rounded-lg">
+					<Loader2 size={20} class="animate-spin-slow"/>
+				</div>
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi In Svolgimento</h2>
 			</div>
+
 			{#if corsiInSvolgimento.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">Nessun corso attualmente in aula.</div>
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">
+					Nessun corso attualmente in aula.
+				</div>
 			{:else}
-				<div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiInSvolgimento as corso (corso.idCorso)}
-						<div class="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 flex flex-col relative overflow-hidden">
-							<div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
-							<div class="flex-1">
-								<h3 class="font-extrabold text-[#1B4B6B] uppercase mb-4 ml-2">{corso.titolo}</h3>
-								<div class="space-y-2 ml-2">
-									<div class="flex items-center gap-2 text-xs font-bold text-gray-500"><MapPin size={14} /> {corso.luogoFisico}</div>
-								</div>
-							</div>
+						<div in:scale>
+							<DashboardCorsoCard
+									ruolo="admin"
+									corso={{
+                                    id: corso.idCorso,
+                                    titolo: corso.titolo,
+                                    stato: 'IN_SVOLGIMENTO',
+                                    dataSvolgimento: formattaData(corso.dataOrario),
+                                    luogo: corso.luogoFisico
+                                }}
+							/>
 						</div>
 					{/each}
 				</div>
@@ -420,22 +374,31 @@
 
 		<div class="mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3">
-				<div class="p-2 bg-gray-100 text-gray-700 rounded-lg"><Calendar size={20}/></div>
+				<div class="p-2 bg-gray-100 text-gray-700 rounded-lg">
+					<Calendar size={20}/>
+				</div>
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Programmati</h2>
 			</div>
+
 			{#if corsiProgrammati.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">Nessun corso futuro programmato.</div>
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs">
+					Nessun corso futuro programmato.
+				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 					{#each corsiProgrammati as corso (corso.idCorso)}
-						<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 group hover:border-[#1B4B6B]/30 transition-all">
-							<div class="flex justify-between items-start mb-4">
-								<span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border border-gray-200 text-gray-600 bg-gray-50">Programmato</span>
-								<button onclick={() => preparaEliminaCorso(corso.idCorso)} class="text-gray-300 hover:text-red-600"><Trash2 size={14} /></button>
-							</div>
-							<h3 class="font-extrabold text-[#1B4B6B] text-sm uppercase mb-3 line-clamp-2">{corso.titolo}</h3>
-							<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5 mb-1"><Calendar size={12}/> {formattaData(corso.dataOrario)}</p>
-							<p class="text-[10px] font-bold text-gray-500 flex items-center gap-1.5"><User size={12}/> {corso.emailDocente || 'N/D'}</p>
+						<div in:scale>
+							<DashboardCorsoCard
+									ruolo="admin"
+									corso={{
+                                    id: corso.idCorso,
+                                    titolo: corso.titolo,
+                                    stato: 'DA_INIZIARE',
+                                    dataSvolgimento: formattaData(corso.dataOrario),
+                                    luogo: corso.luogoFisico
+                                }}
+									onEliminaCorso={() => preparaEliminaCorso(corso.idCorso)}
+							/>
 						</div>
 					{/each}
 				</div>
@@ -444,7 +407,9 @@
 
 		<div class="mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3 opacity-60 hover:opacity-100 transition-opacity">
-				<div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg"><BookOpen size={20}/></div>
+				<div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg">
+					<BookOpen size={20}/>
+				</div>
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
 			</div>
 
@@ -453,14 +418,18 @@
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 					{#each corsiArchiviati as corso (corso.idCorso)}
-						<div class="bg-gray-50/50 rounded-2xl border border-gray-200 p-5 flex flex-col justify-between">
-							<span class="text-[9px] font-black px-2 py-0.5 rounded uppercase border border-gray-300 text-gray-500 bg-white w-fit mb-3">CERTIFICATO</span>
-							<h3 class="font-bold text-[#1B4B6B] text-xs uppercase line-clamp-1 mb-4">{corso.titolo}</h3>
-							<div class="mt-auto pt-4 flex flex-col gap-2 border-t border-gray-200">
-								<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-2 bg-white text-[#1B4B6B] border border-[#1B4B6B]/20 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/5 transition-colors shadow-sm">
-									<BarChart size={12} /> Vedi Feedback
-								</button>
-							</div>
+						<div in:scale>
+							<DashboardCorsoCard
+									ruolo="admin"
+									corso={{
+                                    id: corso.idCorso,
+                                    titolo: corso.titolo,
+                                    stato: 'COMPLETATO',
+                                    dataSvolgimento: formattaData(corso.dataOrario),
+                                    luogo: corso.luogoFisico
+                                }}
+									onAzioneCorso={() => apriStatisticheFeedback(corso)}
+							/>
 						</div>
 					{/each}
 				</div>
@@ -474,7 +443,9 @@
 		<div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Programma Nuovo Corso</h2>
-				<button onclick={() => showModalNuovo = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalNuovo = false} class="text-white hover:rotate-90 transition-all duration-300">
+					<X size={24} />
+				</button>
 			</div>
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				<div class="flex flex-col gap-6">
@@ -502,7 +473,9 @@
 				</div>
 			</div>
 			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4">
-				<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">Annulla</button>
+				<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">
+					Annulla
+				</button>
 				<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50 transition-colors">
 					{isSaving ? 'Creazione...' : 'Salva Corso'}
 				</button>
@@ -516,11 +489,15 @@
 		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Validazione Presenze: {selectedCorso?.titolo}</h2>
-				<button onclick={() => showModalPresenze = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalPresenze = false} class="text-white hover:rotate-90 transition-all duration-300">
+					<X size={24} />
+				</button>
 			</div>
 			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isActionLoading}
-					<div class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} /></div>
+					<div class="py-10 text-center">
+						<Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} />
+					</div>
 				{:else}
 					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i partecipanti.</p>
 					<div class="space-y-2">
@@ -552,11 +529,15 @@
 		<div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
 			<div class="bg-emerald-600 p-6 text-white flex justify-between items-center rounded-t-3xl">
 				<h2 class="text-lg font-extrabold uppercase">Distribuzione Attestati Aziendali</h2>
-				<button onclick={() => showModalUpload = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
+				<button onclick={() => showModalUpload = false} class="text-white hover:rotate-90 transition-all duration-300">
+					<X size={24} />
+				</button>
 			</div>
 			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
 				{#if isActionLoading && aziendeCoinvolte.length === 0}
-					<div class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-emerald-600" size={32} /></div>
+					<div class="py-10 text-center">
+						<Loader2 class="animate-spin mx-auto text-emerald-600" size={32} />
+					</div>
 				{:else}
 					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda.</p>
 
@@ -570,7 +551,9 @@
 						{#each aziendeCoinvolte as azienda (azienda.idAzienda)}
 							<div class="p-5 bg-white border border-gray-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
 								<div class="flex items-start gap-4">
-									<div class="p-3 bg-gray-100 rounded-xl text-gray-500"><Building2 size={20} /></div>
+									<div class="p-3 bg-gray-100 rounded-xl text-gray-500">
+										<Building2 size={20} />
+									</div>
 									<div>
 										<h3 class="text-sm font-extrabold text-[#1B4B6B] uppercase">{azienda.ragioneSociale}</h3>
 										<p class="text-[10px] font-bold text-emerald-600 flex items-center gap-1.5 mt-1 uppercase">
@@ -593,7 +576,11 @@
 			</div>
 			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4">
 				<button onclick={confermaDistribuzioneAttestati} disabled={isActionLoading || aziendeCoinvolte.length === 0} class="w-full py-4 bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 uppercase text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 flex justify-center items-center gap-2">
-					{#if isActionLoading} <Loader2 class="animate-spin" size={16} /> Elaborazione... {:else} Invia Documenti alle Aziende {/if}
+					{#if isActionLoading}
+						<Loader2 class="animate-spin" size={16} /> Elaborazione...
+					{:else}
+						Invia Documenti alle Aziende
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -610,7 +597,9 @@
 					</h2>
 					<p class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso.titolo}</p>
 				</div>
-				<button onclick={() => showModalFeedback = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={28} /></button>
+				<button onclick={() => showModalFeedback = false} class="text-white hover:rotate-90 transition-all duration-300">
+					<X size={28} />
+				</button>
 			</div>
 
 			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
@@ -653,7 +642,9 @@
 						<div class="space-y-4">
 							{#each statsFeedback.commenti as commento (commento)}
 								<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
-									<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0"><User size={16}/></div>
+									<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0">
+										<User size={16}/>
+									</div>
 									<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
 								</div>
 							{/each}
@@ -675,12 +666,18 @@
 	<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[200] p-4" transition:fade>
 		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" in:scale>
 			<div class="p-8 text-center">
-				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+					<Trash2 size={40}/>
+				</div>
 				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il corso?</h2>
 				<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva.</p>
 				<div class="flex flex-col gap-3">
-					<button onclick={confermaEliminaCorso} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Sì, elimina definitivamente</button>
-					<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla</button>
+					<button onclick={confermaEliminaCorso} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
+						Sì, elimina definitivamente
+					</button>
+					<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
+						No, annulla
+					</button>
 				</div>
 			</div>
 		</div>

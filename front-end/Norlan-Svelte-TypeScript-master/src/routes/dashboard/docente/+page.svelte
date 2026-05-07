@@ -4,9 +4,9 @@
 	import { resolveRoute } from '$app/paths';
 	import { SvelteDate } from 'svelte/reactivity';
 	import {
-		LayoutDashboard, BookOpen, Users, Clock, ArrowRight,
-		MessageSquare, CheckCircle2, MapPin, Calendar, Loader2,
-		Play, CheckSquare
+		LayoutDashboard, BookOpen, Users, ArrowRight,
+		MessageSquare, CheckCircle2, Calendar, Loader2,
+		CheckSquare
 	} from 'lucide-svelte';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { AuthService } from '$lib/services/AuthService';
@@ -15,6 +15,7 @@
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
 	interface DashboardStats {
 		corsiInCorso: number;
@@ -50,14 +51,17 @@
 		try {
 			const profilo = await AnagraficaService.getDocenteById(session.idUtente);
 			nomeDocente = (profilo as { nome?: string }).nome || session.email.split('@')[0];
+
 			const tuttiCorsi = await FormazioneService.getAllCorsi();
 			const mieiCorsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
+
 			const corsiInSvolgimento = mieiCorsi.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO);
 			const corsiProgrammati = mieiCorsi.filter(c => c.stato === StatoCorso.PROGRAMMATO || !c.stato);
 			corsiDaValidare = mieiCorsi.filter(c => c.stato === StatoCorso.CONCLUSO);
 
 			let totaleStudenti = 0;
 			let totaleMateriali = 0;
+
 			const conteggiPromises = mieiCorsi.filter(c => c.stato !== StatoCorso.CERTIFICATO).map(async (corso) => {
 				const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 				const materiali = await FormazioneService.getMaterialiByCorso(corso.idCorso);
@@ -106,6 +110,10 @@
 			isLoading = false;
 		}
 	});
+
+	function apriRegistro(idCorso: number) {
+		window.location.href = resolveRoute('/dashboard/docente/corsi');
+	}
 </script>
 
 <div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
@@ -144,51 +152,30 @@
 					</a>
 				</div>
 
-				<div class="space-y-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 					{#each lezioniImminenti as lezione (lezione.idCorso)}
-						<div class="bg-white rounded-3xl border {lezione.isOggi ? 'border-[#1B4B6B] shadow-xl shadow-blue-900/5' : 'border-gray-100 shadow-sm'} p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden group hover:border-[#1B4B6B]/30 transition-all">
-							{#if lezione.isOggi}
-								<div class="absolute top-0 right-0 w-32 h-32 bg-[#1B4B6B]/5 rounded-full blur-3xl"></div>
-							{/if}
-							<div class="flex items-center gap-6 relative z-10 w-full md:w-auto">
-								<div class="w-16 h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 {lezione.isOggi ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-[#1B4B6B]'}">
-									<span class="text-xs font-black uppercase tracking-tighter">{lezione.isOggi ? 'OGGI' : lezione.dataStr.split(' ')[0]}</span>
-									{#if !lezione.isOggi}
-										<span class="text-[9px] font-bold uppercase">{lezione.dataStr.split(' ')[1]}</span>
-									{/if}
-								</div>
-								<div class="flex-1 min-w-0">
-									{#if lezione.stato === StatoCorso.IN_SVOLGIMENTO}
-										<span class="inline-block bg-blue-100 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest mb-1">In Svolgimento</span>
-									{/if}
-									<h3 class="text-lg font-black text-[#1B4B6B] uppercase leading-tight mb-2 truncate group-hover:text-blue-700 transition-colors" title={lezione.titolo}>{lezione.titolo}</h3>
-
-									<div class="flex flex-wrap items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-										<span class="flex items-center gap-1.5"><Clock size={12} class={lezione.isOggi ? 'text-[#1B4B6B]' : ''} /> {lezione.orario}</span>
-										<span class="flex items-center gap-1.5"><MapPin size={12} class={lezione.isOggi ? 'text-[#1B4B6B]' : ''} /> {lezione.luogo}</span>
-									</div>
-								</div>
-							</div>
-							<div class="w-full md:w-auto relative z-10 shrink-0">
-								<a href="{resolveRoute('/dashboard/docente/corsi')}" class="w-full md:w-auto px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 {lezione.stato === StatoCorso.IN_SVOLGIMENTO ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-[#1B4B6B] hover:bg-gray-100'}">
-									{#if lezione.stato === StatoCorso.IN_SVOLGIMENTO}
-										Apri Corso <Play size={14} fill="currentColor" />
-									{:else}
-										Dettagli <ArrowRight size={14} />
-									{/if}
-								</a>
-							</div>
-						</div>
+						<DashboardCorsoCard
+								ruolo="docente"
+								corso={{
+                                id: lezione.idCorso,
+                                titolo: lezione.titolo,
+                                codice: `C-${lezione.idCorso}`,
+                                stato: lezione.stato === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE',
+                                dataSvolgimento: `${lezione.dataStr} - ${lezione.orario}`,
+                                luogo: lezione.luogo
+                            }}
+								onValidaPresenze={() => apriRegistro(lezione.idCorso)}
+						/>
 					{/each}
-
-					{#if lezioniImminenti.length === 0}
-						<div class="bg-white rounded-3xl border border-dashed border-gray-200 p-12 text-center shadow-sm">
-							<Calendar size={40} class="mx-auto text-gray-200 mb-4" />
-							<h3 class="text-lg font-black text-[#1B4B6B] uppercase">Nessuna lezione a breve</h3>
-							<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Non ci sono corsi programmati nei prossimi giorni.</p>
-						</div>
-					{/if}
 				</div>
+
+				{#if lezioniImminenti.length === 0}
+					<div class="bg-white rounded-3xl border border-dashed border-gray-200 p-12 text-center shadow-sm">
+						<Calendar size={40} class="mx-auto text-gray-200 mb-4" />
+						<h3 class="text-lg font-black text-[#1B4B6B] uppercase">Nessuna lezione a breve</h3>
+						<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Non ci sono corsi programmati nei prossimi giorni.</p>
+					</div>
+				{/if}
 			</div>
 
 			<div class="space-y-6">
