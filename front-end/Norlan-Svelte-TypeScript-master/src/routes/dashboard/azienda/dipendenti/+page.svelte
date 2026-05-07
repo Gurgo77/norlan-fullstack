@@ -20,6 +20,7 @@
 	import {AnagraficaService} from "$lib/services/AnagraficaService";
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
+	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 
 	interface ServerError {
 		response?: {
@@ -89,14 +90,14 @@
 	);
 
 	function getStatoScadenza(dataScadenza: string | undefined) {
-		if (!dataScadenza) return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
+		if (!dataScadenza) return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3, raw: 'OK' as 'OK'|'WARNING'|'DANGER' };
 		const oggi = new Date();
 		const scadenza = new Date(dataScadenza);
 		const diffTempo = scadenza.getTime() - oggi.getTime();
 		const giorniRimanenti = Math.ceil(diffTempo / (1000 * 3600 * 24));
-		if (giorniRimanenti < 0) return { colore: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Scaduto', IconaDef: AlertCircle, peso: 1 };
-		if (giorniRimanenti <= 30) return { colore: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', label: `In scadenza (${giorniRimanenti}gg)`, IconaDef: Clock, peso: 2 };
-		return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
+		if (giorniRimanenti < 0) return { colore: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Scaduto', IconaDef: AlertCircle, peso: 1, raw: 'DANGER' as 'OK'|'WARNING'|'DANGER' };
+		if (giorniRimanenti <= 30) return { colore: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', label: `In scadenza (${giorniRimanenti}gg)`, IconaDef: Clock, peso: 2, raw: 'WARNING' as 'OK'|'WARNING'|'DANGER' };
+		return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle, peso: 3, raw: 'OK' as 'OK'|'WARNING'|'DANGER' };
 	}
 
 	const sortedDocumentiCorrenti = $derived(
@@ -269,7 +270,9 @@
 		showDpiModal = true;
 	}
 
-	function openUpdateDpiModal(dpi: DpiEsteso) {
+	function openUpdateDpiModal(idDpi: number | string) {
+		const dpi = dpiCorrenti.find(d => d.idAssegnazione === idDpi || d.id === idDpi);
+		if (!dpi) return;
 		formDpi = {
 			idAssegnazione: dpi.idAssegnazione || dpi.id || null,
 			tipo: dpi.tipo || '',
@@ -309,7 +312,12 @@
 		}
 	}
 
-	function preparaEliminaDPI(dpi: DpiEsteso) { dpiDaEliminare = dpi; showDeleteDpiModal = true; }
+	function preparaEliminaDPI(idDpi: number | string) {
+		const dpi = dpiCorrenti.find(d => d.idAssegnazione === idDpi || d.id === idDpi);
+		if(!dpi) return;
+		dpiDaEliminare = dpi;
+		showDeleteDpiModal = true;
+	}
 
 	async function confermaEliminaDPI() {
 		if (!dpiDaEliminare) return;
@@ -430,8 +438,25 @@
 								{#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || dpi.id || Math.random())}
 									{@const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ')}
 									{@const stato = getStatoScadenza(dpi.dataScadenzaRevisione)}
-									{@const IconaStato = stato.IconaDef}
-									<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all"><div class="flex justify-between items-start mb-3"><div class="flex items-center gap-3"><div class="p-2 {stato.bg} {stato.colore} rounded-xl"><ShieldCheck size={16} /></div><div><h4 class="font-extrabold text-[#1B4B6B] uppercase text-xs leading-tight">{nomeDpiReale}</h4></div></div><div class="flex gap-1"><button onclick={() => openUpdateDpiModal(dpi)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-gray-50 rounded-lg hover:bg-blue-50"><RefreshCw size={14} /></button><button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-gray-50 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button></div></div><div class="flex items-center justify-between pt-3 border-t border-gray-50"><div class="flex items-center gap-1.5 text-gray-400"><Calendar size={10} /><span class="text-[9px] font-bold uppercase">Revisione: {dpi.dataScadenzaRevisione ? new Date(dpi.dataScadenzaRevisione).toLocaleDateString() : 'N.D.'}</span></div><div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.border} {stato.bg} {stato.colore}"><IconaStato size={12} /><span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span></div></div></div>
+									<div class="relative group">
+										<DpiCard
+												ruolo="azienda"
+												dpi={{
+                                     id: dpi.idAssegnazione || dpi.id || 0,
+                                     nome: nomeDpiReale,
+                                     stato: stato.raw,
+                                     dataRevisione: dpi.dataScadenzaRevisione ? new Date(dpi.dataScadenzaRevisione).toLocaleDateString() : 'N.D.',
+                                  }}
+												onModifica={openUpdateDpiModal}
+										/>
+										<button
+												onclick={() => preparaEliminaDPI(dpi.idAssegnazione || dpi.id || 0)}
+												class="absolute -top-2 -right-2 bg-red-100 text-red-600 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-200"
+												title="Rimuovi DPI"
+										>
+											<Trash2 size={14} />
+										</button>
+									</div>
 								{/each}
 							</div>
 						{:else}

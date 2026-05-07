@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		HardHat, ShieldCheck, ShieldAlert, ShieldOff,
-		Search, Loader2, RefreshCw
-	} from 'lucide-svelte';
+	import { goto } from '$app/navigation';
+	import { HardHat, Search, Loader2 } from 'lucide-svelte';
 
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
+	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 
 	type ComplianceStatus = 'OK' | 'WARNING' | 'DANGER';
 	type OpzioneFiltro = 'TUTTI' | ComplianceStatus;
@@ -18,6 +17,7 @@
 		matricola: string;
 		stato: ComplianceStatus;
 		revisione: string;
+		consegna: string;
 	}
 
 	interface DpiBackendData {
@@ -27,6 +27,7 @@
 		nomeDpi?: string;
 		dataScadenzaRevisione?: string;
 		dataScadenza?: string;
+		dataConsegna?: string;
 	}
 
 	let isLoading = $state(true);
@@ -40,15 +41,6 @@
 
 	function impostaFiltro(valore: OpzioneFiltro) {
 		filtroStato = valore;
-	}
-
-	function getStatusConfig(stato: ComplianceStatus) {
-		const configs = {
-			OK: { color: 'text-emerald-500', bg: 'bg-emerald-50', icon: ShieldCheck, label: 'REGOLARE' },
-			WARNING: { color: 'text-amber-500', bg: 'bg-amber-50', icon: ShieldAlert, label: 'IN SCADENZA' },
-			DANGER: { color: 'text-red-500', bg: 'bg-red-50', icon: ShieldOff, label: 'SCADUTO' }
-		};
-		return configs[stato];
 	}
 
 	function calcolaStato(dataScadenzaStr: string | undefined | null): ComplianceStatus {
@@ -87,7 +79,8 @@
 					nome: nomeReale,
 					matricola: `DPI-${idReale}`,
 					stato: calcolaStato(dataReale),
-					revisione: dataReale ? new Date(dataReale).toLocaleDateString('it-IT') : 'NON PREVISTA'
+					revisione: dataReale ? new Date(dataReale).toLocaleDateString('it-IT') : 'NON PREVISTA',
+					consegna: d.dataConsegna ? new Date(d.dataConsegna).toLocaleDateString('it-IT') : 'N.D.'
 				};
 			});
 
@@ -114,9 +107,16 @@
 		critici: dotazioni.filter(d => d.stato === 'DANGER').length,
 		attenzione: dotazioni.filter(d => d.stato === 'WARNING').length
 	});
+
+	function richiediSostituzione(idDpi: number | string) {
+		const dpi = dotazioni.find(d => d.id === idDpi);
+		if (!dpi) return;
+		const testo = `Salve, vorrei segnalare la necessità di sostituire o revisionare il seguente dispositivo: ${dpi.nome} (Matricola: ${dpi.matricola}).`;
+		goto(`/dashboard/dipendente/messaggi?testo=${encodeURIComponent(testo)}`);
+	}
 </script>
 
-<div in:fade class="max-w-7xl mx-auto space-y-8 pb-10">
+<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-10">
 
 	<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
 		<div>
@@ -149,7 +149,7 @@
 			/>
 		</div>
 
-		<div class="flex bg-gray-100 p-1.5 rounded-[1.5rem] gap-1 overflow-x-auto">
+		<div class="flex bg-white shadow-sm border border-gray-100 p-1.5 rounded-[1.5rem] gap-1 overflow-x-auto">
 			{#each opzioniFiltro as opzione (opzione)}
 				<button
 						onclick={() => impostaFiltro(opzione)}
@@ -168,46 +168,32 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione inventario DPI...</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each dpiFiltrati as dpi (dpi.id)}
-				{@const config = getStatusConfig(dpi.stato)}
-				<div in:scale={{duration: 300}} class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all group">
-					<div class="p-8 flex items-start gap-6">
-						<div class="w-20 h-20 rounded-[1.8rem] {config.bg} {config.color} flex items-center justify-center shrink-0 shadow-inner">
-							<config.icon size={32} />
-						</div>
-
-						<div class="flex-1 min-w-0">
-							<div class="flex justify-between items-start mb-2">
-                         <span class="text-[8px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-md {config.bg} {config.color}">
-                            {config.label}
-                         </span>
-								<p class="text-[9px] font-black text-gray-300 uppercase tracking-tighter truncate ml-2" title={dpi.matricola}>ID: {dpi.matricola}</p>
-							</div>
-							<h3 class="text-lg font-black text-[#1B4B6B] uppercase leading-tight mb-4 group-hover:text-blue-700 transition-colors">
-								{dpi.nome}
-							</h3>
-
-							<div class="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl w-fit">
-								<RefreshCw size={14} class="text-[#1B4B6B]" />
-								<div class="flex flex-col">
-									<span class="text-[7px] font-black text-gray-400 uppercase">Revisione</span>
-									<span class="text-[10px] font-black text-[#1B4B6B]">{dpi.revisione}</span>
-								</div>
-							</div>
-						</div>
-					</div>
+				<div in:scale={{duration: 300}}>
+					<DpiCard
+							ruolo="dipendente"
+							dpi={{
+                      id: dpi.id,
+                      nome: dpi.nome,
+                      matricola: dpi.matricola,
+                      stato: dpi.stato,
+                      dataRevisione: dpi.revisione,
+                      dataConsegna: dpi.consegna
+                   }}
+							onRichiediSostituzione={richiediSostituzione}
+					/>
 				</div>
 			{/each}
-
-			{#if dpiFiltrati.length === 0}
-				<div class="col-span-1 md:col-span-2 py-20 bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm">
-					<HardHat size={48} class="text-gray-200 mb-4" />
-					<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun dispositivo trovato</h3>
-					<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">L'inventario non contiene corrispondenze per i criteri inseriti.</p>
-				</div>
-			{/if}
 		</div>
+
+		{#if dpiFiltrati.length === 0}
+			<div class="py-20 bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm">
+				<HardHat size={48} class="text-gray-200 mb-4" />
+				<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun dispositivo trovato</h3>
+				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">L'inventario non contiene corrispondenze per i criteri inseriti.</p>
+			</div>
+		{/if}
 	{/if}
 </div>
 

@@ -1,54 +1,21 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import { fade, scale, slide } from 'svelte/transition';
+    import { fade, slide } from 'svelte/transition';
     import {
-        ShieldCheck, Search, Building2, Loader2, Calendar,
-        AlertTriangle, CheckCircle2, ChevronDown, ChevronRight,
-        Mail, MessageSquare, HardHat, ShieldOff, Clock
+        Search, Building2, Loader2, Mail, MessageSquare,
+        HardHat, ShieldOff, Clock, ShieldCheck
     } from 'lucide-svelte';
-
-    import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
+    import { LavoratoreService } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
-    import { Azienda, type AziendaData } from '$lib/models/Azienda';
-    import { SvelteDate } from 'svelte/reactivity';
     import { resolveRoute } from "$app/paths";
-
-    import StatCard from '$lib/Components/UI/StatCard.svelte';
-    import AlertCard from '$lib/Components/UI/AlertCard.svelte';
-
-    interface DpiSafe {
-        idAssegnazione?: number;
-        id?: number;
-        idDipendente?: number;
-        tipo: string;
-        nomeDpi?: string;
-        dataConsegna?: string;
-        dataScadenzaRevisione?: string;
-        dataScadenza?: string;
-        daRevisionare?: boolean;
-    }
-
-    interface DipendenteEsteso extends DipendenteDTO {
-        idAzienda?: number | string;
-        nomeAzienda?: string;
-        dpis?: DpiSafe[];
-    }
-
-    interface GruppoAzienda {
-        idAzienda: string;
-        dipendenti: DipendenteEsteso[];
-    }
+    import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 
     let isLoading = $state(true);
     let searchQuery = $state('');
-    let aziende = $state<Azienda[]>([]);
-    let dipendenti = $state<DipendenteEsteso[]>([]);
-    let aziendeEspanse = $state<Record<string, boolean>>({});
-
-    function toggleAzienda(idAzienda: string) {
-        aziendeEspanse[idAzienda] = !aziendeEspanse[idAzienda];
-    }
+    let filtroStato = $state('TUTTI');
+    let aziende = $state<any[]>([]);
+    let dipendenti = $state<any[]>([]);
 
     onMount(async () => {
         try {
@@ -56,217 +23,187 @@
                 AnagraficaService.getAllAziende(),
                 LavoratoreService.getAll()
             ]);
-
-            const aziendeList = (resAziende as AziendaData[]).map(a => new Azienda(a));
-            aziende = aziendeList;
-
-            const dipendentiConAzienda = (resDipendenti as DipendenteDTO[]).map(d => {
-                const item = d as DipendenteDTO & { idAzienda?: number | string };
-                const aziendaAssoc = aziendeList.find(a => String(a.idUtente) === String(item.idAzienda));
-                return {
+            aziende = resAziende;
+            const workers = await Promise.all(resDipendenti.map(async (dip: any) => {
+                const dpis = await LavoratoreService.getDpiByLavoratore(dip.idUtente);
+                const az = aziende.find(a => String(a.idUtente) === String(dip.idAzienda));
+                const dpisSafe = dpis.map((d: any, index: number) => ({
                     ...d,
-                    idAzienda: item.idAzienda,
-                    nomeAzienda: aziendaAssoc ? aziendaAssoc.ragioneSociale : "Senza Azienda"
-                } as DipendenteEsteso;
-            });
-
-            const dipendentiCompleti = await Promise.all(
-                dipendentiConAzienda.map(async (dip) => {
-                    if (!dip.idUtente) return { ...dip, dpis: [] };
-                    try {
-                        const dpisRaw = await LavoratoreService.getDpiByLavoratore(dip.idUtente);
-                        return { ...dip, dpis: dpisRaw as unknown as DpiSafe[] };
-                    } catch {
-                        return { ...dip, dpis: [] };
-                    }
-                })
-            );
-
-            dipendenti = dipendentiCompleti;
-
-            aziendeList.forEach(a => {
-                aziendeEspanse[String(a.idUtente)] = true;
-            });
-            aziendeEspanse["Senza Azienda"] = true;
-
-        } catch (error) {
-            console.error("Errore DPI:", error);
+                    _uniqueKey: d.idAssegnazione || d.id || `temp-${dip.idUtente}-${index}`
+                }));
+                return { ...dip, nomeAzienda: az?.ragioneSociale || "N.D.", emailAzienda: az?.email, dpis: dpisSafe };
+            }));
+            dipendenti = workers;
+        } catch (f) {
+            console.error(f);
         } finally {
             isLoading = false;
         }
     });
 
-    const filteredDipendenti = $derived(
-        dipendenti.filter(d => {
-            if (!d.dpis || d.dpis.length === 0) return false;
+    const calcolaStato = (d?: string) => {
+        if (!d || d === '9999-12-31') return 'OK';
+        const diff = Math.ceil((new Date(d).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+        return diff < 0 ? 'DANGER' : diff <= 30 ? 'WARNING' : 'OK';
+    };
+
+    const gruppiFiltrati = $derived(() => {
+        const map: Record<string, any> = {};
+        dipendenti.forEach(dip => {
             const query = searchQuery.toLowerCase();
-            return d.nome.toLowerCase().includes(query) ||
-                d.cognome.toLowerCase().includes(query) ||
-                (d.nomeAzienda && d.nomeAzienda.toLowerCase().includes(query));
-        })
-    );
+            const matchSearch = dip.nome.toLowerCase().includes(query) || dip.nomeAzienda.toLowerCase().includes(query);
+            if (!matchSearch) return;
 
-    const dipendentiRaggruppati = $derived(() => {
-        const gruppi: Record<string, GruppoAzienda> = {};
-        const ordinati = [...filteredDipendenti].sort((a, b) => {
-            const azA = a.nomeAzienda || "Senza Azienda";
-            const azB = b.nomeAzienda || "Senza Azienda";
-            return azA.localeCompare(azB);
-        });
+            const dpisFiltrati = dip.dpis.filter((dpi: any) => {
+                const s = calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza);
+                return filtroStato === 'TUTTI' || s === filtroStato;
+            });
 
-        for (const dip of ordinati) {
-            const nomeAzienda = dip.nomeAzienda || "Senza Azienda";
-            const idAzienda = String(dip.idAzienda || "Senza Azienda");
-            if (!gruppi[nomeAzienda]) {
-                gruppi[nomeAzienda] = { idAzienda, dipendenti: [] };
+            if (dpisFiltrati.length > 0) {
+                if (!map[dip.nomeAzienda]) {
+                    map[dip.nomeAzienda] = { idAzienda: dip.idAzienda, nome: dip.nomeAzienda, email: dip.emailAzienda, lavoratori: [] };
+                }
+                map[dip.nomeAzienda].lavoratori.push({ ...dip, dpis: dpisFiltrati });
             }
-            gruppi[nomeAzienda].dipendenti.push(dip);
-        }
-        return gruppi;
+        });
+        return Object.values(map);
     });
 
     const globalStats = $derived({
-        totali: dipendenti.reduce((acc, d) => acc + (d.dpis?.length || 0), 0),
-        scaduti: dipendenti.reduce((acc, d) => acc + (d.dpis?.filter(dpi => isScaduto(dpi.dataScadenzaRevisione || dpi.dataScadenza)).length || 0), 0),
-        inScadenza: dipendenti.reduce((acc, d) => {
-            const warning = d.dpis?.filter(dpi => {
-                const data = dpi.dataScadenzaRevisione || dpi.dataScadenza;
-                if (!data || data === '9999-12-31') return false;
-                const scad = new Date(data).getTime();
-                const oggi = new Date().getTime();
-                const diff = Math.ceil((scad - oggi) / (1000 * 3600 * 24));
-                return diff >= 0 && diff <= 30;
-            }).length || 0;
-            return acc + warning;
-        }, 0)
+        totali: dipendenti.reduce((acc, d) => acc + d.dpis.length, 0),
+        scaduti: dipendenti.reduce((acc, d) => acc + d.dpis.filter((dpi: any) => calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza) === 'DANGER').length, 0),
+        warning: dipendenti.reduce((acc, d) => acc + d.dpis.filter((dpi: any) => calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza) === 'WARNING').length, 0)
     });
 
-    function isScaduto(data: string | undefined) {
-        if (!data || data === '9999-12-31') return false;
-        const oggi = new SvelteDate();
-        oggi.setHours(0, 0, 0, 0);
-        const scad = new SvelteDate(data);
-        scad.setHours(0, 0, 0, 0);
-        return scad < oggi;
+    function formattaData(d?: string) {
+        return (!d || d === '9999-12-31') ? 'N.D.' : new Date(d).toLocaleDateString('it-IT');
     }
 
-    function formattaData(data: string | undefined) {
-        if (!data || data === '9999-12-31') return 'Nessuna Scadenza';
-        return new Date(data).toLocaleDateString();
-    }
+    async function sollecitaAzienda(gruppo: any, canale: 'email' | 'chat') {
+        const msg = `Gentile Amministrazione di ${gruppo.nome},\n\nVi segnaliamo che dal nostro sistema di monitoraggio risultano dei Dispositivi di Protezione Individuale (DPI) scaduti o anomali assegnati ai vostri lavoratori.\n\nVi invitiamo a verificare la sezione DPI del vostro pannello e a procedere con l'aggiornamento o la sostituzione nel più breve tempo possibile per ripristinare la conformità aziendale.\n\nCordiali saluti,\nStaff NorLan`;
 
-    function sollecitaViaEmail(dpi: DpiSafe, dipendente: DipendenteEsteso) {
-        if (!dipendente || !dipendente.idAzienda) return;
-        const azienda = aziende.find(a => String(a.idUtente) === String(dipendente.idAzienda));
-        if (!azienda || !azienda.email) return;
-        const subject = encodeURIComponent(`URGENTE: Rinnovo DPI Scaduto - ${dipendente.nome} ${dipendente.cognome}`);
-        const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
-        const dataScad = formattaData(dpi.dataScadenzaRevisione || dpi.dataScadenza);
-        const body = encodeURIComponent(`Il DPI (${nomeDpiReale}) di ${dipendente.nome} ${dipendente.cognome} è SCADUTO il ${dataScad}.`);
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
-    }
-
-    async function sollecitaViaChat(dpi: DpiSafe, dipendente: DipendenteEsteso) {
-        if (!dipendente || !dipendente.idAzienda) return;
-        const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ');
-        const dataScad = formattaData(dpi.dataScadenzaRevisione || dpi.dataScadenza);
-        const msg = encodeURIComponent(`DPI (${nomeDpiReale}) di ${dipendente.nome} ${dipendente.cognome} scaduto il ${dataScad}.`);
-        await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${dipendente.idAzienda}&msg=${msg}`);
+        if (canale === 'email' && gruppo.email) {
+            window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${gruppo.email}&su=Avviso Urgente: Rinnovo DPI Scaduti - NorLan&body=${encodeURIComponent(msg)}`, '_blank');
+        } else {
+            await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${gruppo.idAzienda}&msg=${encodeURIComponent(msg)}`);
+        }
     }
 </script>
 
-<div in:fade class="max-w-7xl mx-auto p-6 pb-20">
-    <div class="mb-10 flex flex-col md:flex-row justify-between items-start gap-6">
-        <div>
-            <h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
-                <ShieldCheck class="text-[#1B4B6B]" size={36} />
-                Gestione Globale DPI
-            </h1>
+<div in:fade class="max-w-[1600px] mx-auto p-6 pb-20">
+    <div class="mb-10 flex flex-col xl:flex-row justify-between items-end gap-6">
+        <div class="w-full xl:w-auto">
+            <h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Controllo Compliance DPI</h1>
+
+            <div class="flex flex-wrap items-center gap-3 mt-5">
+                {#each ['TUTTI', 'DANGER', 'WARNING', 'OK'] as s}
+                    <button
+                            onclick={() => filtroStato = s}
+                            class="px-5 py-2 rounded-full text-[10px] font-black uppercase transition-all shadow-sm
+                        {filtroStato === s ? 'bg-[#1B4B6B] text-white' : 'bg-white text-gray-400 hover:bg-gray-50'}">
+                        {s === 'DANGER' ? 'Scaduti' : s === 'WARNING' ? 'In Scadenza' : s}
+                        ({s === 'TUTTI' ? globalStats.totali : s === 'DANGER' ? globalStats.scaduti : s === 'WARNING' ? globalStats.warning : (globalStats.totali - globalStats.scaduti - globalStats.warning)})
+                    </button>
+                {/each}
+            </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-auto">
-            <StatCard titolo="DPI Totali" valore={globalStats.totali} icona={HardHat} />
-            <StatCard titolo="Scaduti" valore={globalStats.scaduti} icona={ShieldOff} bgIcona="bg-red-50" testoIcona="text-red-600" />
-            <StatCard titolo="In Scadenza" valore={globalStats.inScadenza} icona={Clock} bgIcona="bg-amber-50" testoIcona="text-amber-600" />
+        <div class="flex items-center gap-3 w-full xl:w-auto overflow-x-auto pb-2 xl:pb-0">
+            <div class="bg-white rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm min-w-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/10 cursor-default border border-transparent hover:border-blue-100">
+                <div class="p-2 bg-gray-50 text-gray-500 rounded-xl"><HardHat size={16}/></div>
+                <div>
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Asset Totali</p>
+                    <p class="text-xl font-black text-[#1B4B6B] leading-none mt-1">{globalStats.totali}</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm min-w-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-red-900/10 cursor-default border border-transparent hover:border-red-100">
+                <div class="p-2 bg-red-50 text-red-600 rounded-xl"><ShieldOff size={16}/></div>
+                <div>
+                    <p class="text-[9px] font-black text-red-400 uppercase tracking-widest">Scaduti</p>
+                    <p class="text-xl font-black text-red-600 leading-none mt-1">{globalStats.scaduti}</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm min-w-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-900/10 cursor-default border border-transparent hover:border-amber-100">
+                <div class="p-2 bg-amber-50 text-amber-600 rounded-xl"><Clock size={16}/></div>
+                <div>
+                    <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest">In Scadenza</p>
+                    <p class="text-xl font-black text-amber-600 leading-none mt-1">{globalStats.warning}</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="mb-8 flex gap-4">
-        <div class="relative w-full max-w-[400px] group">
-            <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B]" size={18} />
-            <input bind:value={searchQuery} type="text" placeholder="Cerca lavoratore o azienda..." class="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold uppercase shadow-sm" />
-        </div>
+    <div class="mb-12 relative max-w-xl">
+        <Search class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <input bind:value={searchQuery} type="text" placeholder="Cerca azienda o dipendente..." class="w-full pl-14 pr-4 py-4 bg-white border border-gray-100 rounded-2xl text-xs font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-[#1B4B6B]/5 transition-all" />
     </div>
 
     {#if isLoading}
-        <div class="py-32 text-center flex flex-col items-center">
-            <Loader2 size={48} class="animate-spin text-[#1B4B6B] mb-4" />
-        </div>
+        <div class="py-40 text-center"><Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto opacity-20" /></div>
     {:else}
-        <div class="space-y-8">
-            {#each Object.entries(dipendentiRaggruppati()) as [nomeAzienda, gruppo], i (nomeAzienda ?? i)}
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" in:scale={{start: 0.98, duration: 300}}>
-                    <button onclick={() => toggleAzienda(gruppo.idAzienda)} class="w-full p-6 bg-gray-50/50 hover:bg-gray-100/50 flex items-center justify-between border-b border-gray-100">
+        <div class="space-y-12">
+            {#each gruppiFiltrati() as gruppo (gruppo.nome)}
+                <div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden" transition:slide>
+
+                    <div class="p-6 md:px-8 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 gap-4">
                         <div class="flex items-center gap-4">
-                            <div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl"><Building2 size={24} /></div>
-                            <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">{nomeAzienda}</h2>
+                            <div class="w-12 h-12 bg-[#1B4B6B] text-white rounded-2xl flex items-center justify-center shadow-lg shrink-0"><Building2 size={20}/></div>
+                            <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter leading-none">{gruppo.nome}</h2>
                         </div>
-                        <div class="text-gray-400">
-                            {#if aziendeEspanse[gruppo.idAzienda]}<ChevronDown size={24} />{:else}<ChevronRight size={24} />{/if}
+
+                        <div class="flex items-center gap-2 p-1.5 bg-red-50/50 rounded-2xl">
+                            <div class="px-3">
+                                <span class="text-[10px] font-black text-red-600 uppercase">Sollecita:</span>
+                            </div>
+                            <button onclick={() => sollecitaAzienda(gruppo, 'email')} class="p-2.5 bg-white text-red-600 rounded-xl shadow-sm hover:bg-red-600 hover:text-white transition-all group">
+                                <Mail size={16} class="group-hover:scale-110 transition-transform" />
+                            </button>
+                            <button onclick={() => sollecitaAzienda(gruppo, 'chat')} class="p-2.5 bg-[#1B4B6B] text-white rounded-xl shadow-sm hover:bg-[#153a54] transition-all group">
+                                <MessageSquare size={16} class="group-hover:scale-110 transition-transform" />
+                            </button>
                         </div>
-                    </button>
+                    </div>
 
-                    {#if aziendeEspanse[gruppo.idAzienda]}
-                        <div transition:slide class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-gray-50/30">
-                            {#each gruppo.dipendenti as dip, j (dip.idUtente ?? j)}
-                                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col h-full overflow-hidden">
-                                    <div class="p-4 border-b border-gray-50 flex items-center gap-3 bg-white">
-                                        <div class="w-10 h-10 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl flex items-center justify-center font-black text-sm">
-                                            {dip.nome[0]}{dip.cognome[0]}
-                                        </div>
-                                        <div class="overflow-hidden">
-                                            <h3 class="font-extrabold text-[#1B4B6B] text-sm uppercase leading-tight truncate">{dip.nome} {dip.cognome}</h3>
-                                            <p class="text-[9px] font-bold text-gray-400 mt-0.5 truncate">{dip.codiceFiscale}</p>
-                                        </div>
-                                    </div>
+                    <div class="p-6 md:px-8">
+                        {#each gruppo.lavoratori as dip (dip.idUtente)}
+                            <div class="mb-10 last:mb-0">
 
-                                    <div class="p-4 flex-1 flex flex-col gap-3 bg-gray-50/50">
-                                        <div class="space-y-3">
-                                            {#each (dip.dpis || []) as dpi, k (dpi.idAssegnazione ?? dpi.id ?? k)}
-                                                {@const nomeDpiReale = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : dpi.tipo.replace(/_/g, ' ')}
-                                                {@const dataScad = dpi.dataScadenzaRevisione || dpi.dataScadenza}
-                                                {@const scaduto = isScaduto(dataScad)}
-
-                                                <div class="flex flex-col gap-2">
-                                                    <AlertCard
-                                                            titolo={nomeDpiReale}
-                                                            sottotitolo={scaduto ? 'Dispositivo Scaduto' : 'Dispositivo in Regola'}
-                                                            stato={scaduto ? 'SCADUTO' : 'VALIDO'}
-                                                            data={formattaData(dataScad)}
-                                                            icona={scaduto ? ShieldOff : CheckCircle2}
-                                                            variante={scaduto ? 'danger' : 'success'}
-                                                    />
-                                                    {#if scaduto}
-                                                        <div class="flex gap-2 -mt-1">
-                                                            <button onclick={() => sollecitaViaEmail(dpi, dip)} class="flex-1 py-1.5 bg-red-600 text-white rounded-md text-[8px] font-black uppercase flex items-center justify-center gap-1"><Mail size={10} /> Email</button>
-                                                            <button onclick={() => sollecitaViaChat(dpi, dip)} class="flex-1 py-1.5 bg-[#1B4B6B] text-white rounded-md text-[8px] font-black uppercase flex items-center justify-center gap-1"><MessageSquare size={10} /> Chat</button>
-                                                        </div>
-                                                    {/if}
-                                                </div>
-                                            {/each}
-                                        </div>
-                                    </div>
+                                <div class="flex items-center gap-3 mb-6">
+                                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-[10px] font-black text-[#1B4B6B] shrink-0">{dip.nome[0]}{dip.cognome[0]}</div>
+                                    <h3 class="text-sm font-black text-[#1B4B6B] uppercase">{dip.nome} {dip.cognome}</h3>
+                                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest ml-2 hidden sm:inline-block">C.F: {dip.codiceFiscale}</span>
                                 </div>
-                            {/each}
-                        </div>
-                    {/if}
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                    {#each dip.dpis as dpi (dpi._uniqueKey)}
+                                        <DpiCard ruolo="admin" dpi={{
+                                            id: dpi._uniqueKey,
+                                            nome: (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' '),
+                                            stato: calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza),
+                                            dataRevisione: formattaData(dpi.dataScadenzaRevisione || dpi.dataScadenza),
+                                            dataConsegna: formattaData(dpi.dataConsegna)
+                                        }} />
+                                    {/each}
+                                </div>
+
+                            </div>
+                        {/each}
+                    </div>
                 </div>
             {/each}
+
+            {#if gruppiFiltrati().length === 0}
+                <div class="py-32 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm">
+                    <ShieldCheck size={48} class="mx-auto text-gray-200 mb-4" />
+                    <h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun Risultato</h3>
+                </div>
+            {/if}
         </div>
     {/if}
 </div>
 
 <style>
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    :global(body) { background-color: #F9FAFB; }
 </style>

@@ -2,6 +2,7 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import { page } from '$app/stores';
 	import {
 		MessageSquare, Search, Loader2, Building2,
 		Send, GraduationCap, ShieldCheck, Clock, Users
@@ -128,6 +129,18 @@
 			);
 			chatService.connect(token, session.idUtente);
 
+			// Controllo pre-compilazione da URL (es. da DpiCard)
+			const urlParams = $page.url.searchParams;
+			const testoPrecompilato = urlParams.get('testo');
+
+			if (testoPrecompilato) {
+				const contattoAzienda = contatti.find(c => c.ruolo === 'AZIENDA');
+				if (contattoAzienda) {
+					await selezionaContatto(contattoAzienda);
+					nuovoMessaggioTesto = testoPrecompilato;
+				}
+			}
+
 		} catch (error) {
 			console.error("Errore critico onMount chat:", error);
 		} finally {
@@ -177,7 +190,6 @@
 
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
-	<!-- SIDEBAR -->
 	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
 		<div class="p-8 border-b border-gray-100 bg-white">
 			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
@@ -228,7 +240,6 @@
 		</div>
 	</div>
 
-	<!-- AREA CHAT -->
 	<div class="flex-1 flex flex-col bg-white">
 		{#if contattoSelezionato}
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">

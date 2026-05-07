@@ -2,23 +2,26 @@
 	import { onMount } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
-		Search, Plus, ShieldCheck, AlertTriangle, Clock, Loader2, RefreshCw, X, Save, HardHat
+		Search, Plus, ShieldCheck, AlertTriangle, Loader2, X, Save, HardHat, User
 	} from 'lucide-svelte';
 
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { AuthService } from '$lib/services/AuthService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 
 	interface DpiRegistro {
 		idAssegnazione?: number;
 		id?: number;
 		idDipendente: number;
 		nomeCompletoDipendente: string;
-		statoDerivato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
+		statoDerivato: 'OK' | 'WARNING' | 'DANGER';
 		tipo?: string;
 		nomeDpi?: string;
 		dataConsegna?: string;
 		dataScadenzaRevisione?: string;
+		matricola?: string;
+		note?: string;
 	}
 
 	interface FormDPI {
@@ -61,7 +64,8 @@
 					...dpi,
 					idDipendente: d.idUtente,
 					nomeCompletoDipendente: `${d.nome} ${d.cognome}`.toUpperCase(),
-					statoDerivato: calcolaStato(dpi.dataScadenzaRevisione)
+					statoDerivato: calcolaStato(dpi.dataScadenzaRevisione),
+					matricola: dpi.note || `ID-${dpi.idAssegnazione || dpi.id || 0}`
 				})) as DpiRegistro[];
 			});
 
@@ -75,14 +79,14 @@
 		}
 	});
 
-	function calcolaStato(dataScadenzaStr: string | undefined): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
+	function calcolaStato(dataScadenzaStr: string | undefined): 'OK' | 'WARNING' | 'DANGER' {
 		if (!dataScadenzaStr) return 'OK';
 		const oggi = new Date();
 		const scadenza = new Date(dataScadenzaStr);
 		const diffGiorni = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
 
-		if (diffGiorni < 0) return 'SCADUTO';
-		if (diffGiorni <= 30) return 'DA_REVISIONARE';
+		if (diffGiorni < 0) return 'DANGER';
+		if (diffGiorni <= 30) return 'WARNING';
 		return 'OK';
 	}
 
@@ -96,7 +100,9 @@
 		showDpiModal = true;
 	}
 
-	function openUpdateDpiModal(dpi: DpiRegistro) {
+	function openUpdateDpiModal(idDpi: number | string) {
+		const dpi = registro.find(d => d.idAssegnazione === idDpi || d.id === idDpi);
+		if (!dpi) return;
 		formDpi = {
 			idAssegnazione: dpi.idAssegnazione || dpi.id || null,
 			idDipendente: dpi.idDipendente,
@@ -129,7 +135,8 @@
 				...(savedDpi as any),
 				idDipendente: formDpi.idDipendente,
 				nomeCompletoDipendente: nomeCompleto,
-				statoDerivato: calcolaStato((savedDpi as any).dataScadenzaRevisione)
+				statoDerivato: calcolaStato((savedDpi as any).dataScadenzaRevisione),
+				matricola: (savedDpi as any).note || `ID-${(savedDpi as any).idAssegnazione || (savedDpi as any).id || 0}`
 			};
 
 			if (formDpi.idAssegnazione) {
@@ -150,13 +157,15 @@
 			registro.filter(d => {
 				const tipoSafe = d.tipo ? d.tipo.toString().toLowerCase() : '';
 				const nomeDpiSafe = d.nomeDpi ? d.nomeDpi.toLowerCase() : '';
+				const matricolaSafe = d.matricola ? d.matricola.toLowerCase() : '';
 				const matchSearch = d.nomeCompletoDipendente.toLowerCase().includes(searchQuery.toLowerCase()) ||
 						tipoSafe.includes(searchQuery.toLowerCase()) ||
+						matricolaSafe.includes(searchQuery.toLowerCase()) ||
 						nomeDpiSafe.includes(searchQuery.toLowerCase());
 				const matchFiltro = filtroAttivo === 'TUTTI' || d.statoDerivato === filtroAttivo;
 				return matchSearch && matchFiltro;
 			}).sort((a, b) => {
-				const priorita = { 'SCADUTO': 1, 'DA_REVISIONARE': 2, 'OK': 3 };
+				const priorita = { 'DANGER': 1, 'WARNING': 2, 'OK': 3 };
 				if (priorita[a.statoDerivato] !== priorita[b.statoDerivato]) {
 					return priorita[a.statoDerivato] - priorita[b.statoDerivato];
 				}
@@ -166,13 +175,25 @@
 			})
 	);
 
+	const groupedRegistro = $derived(
+			Object.values(
+					filteredRegistro.reduce((acc, dpi) => {
+						if (!acc[dpi.idDipendente]) {
+							acc[dpi.idDipendente] = { id: dpi.idDipendente, nome: dpi.nomeCompletoDipendente, dpis: [] };
+						}
+						acc[dpi.idDipendente].dpis.push(dpi);
+						return acc;
+					}, {} as Record<number, { id: number, nome: string, dpis: DpiRegistro[] }>)
+			).sort((a, b) => a.nome.localeCompare(b.nome))
+	);
+
 	const stats = $derived({
-		scaduti: registro.filter(d => d.statoDerivato === 'SCADUTO').length,
-		inScadenza: registro.filter(d => d.statoDerivato === 'DA_REVISIONARE').length
+		scaduti: registro.filter(d => d.statoDerivato === 'DANGER').length,
+		inScadenza: registro.filter(d => d.statoDerivato === 'WARNING').length
 	});
 </script>
 
-<div in:fade>
+<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-10">
 	<div class="mb-10 flex justify-between items-start">
 		<div>
 			<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Registro DPI</h1>
@@ -204,14 +225,15 @@
 			</button>
 		</div>
 	</div>
+
 	<div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
 		<div class="flex gap-2">
-			{#each ['TUTTI', 'OK', 'DA_REVISIONARE', 'SCADUTO'] as f (f)}
+			{#each ['TUTTI', 'OK', 'WARNING', 'DANGER'] as f (f)}
 				<button
 						onclick={() => (filtroAttivo = f)}
-						class="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all {filtroAttivo === f ? 'bg-[#1B4B6B] text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
+						class="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all {filtroAttivo === f ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 				>
-					{f.replace('_', ' ')}
+					{f === 'WARNING' ? 'IN SCADENZA' : f === 'DANGER' ? 'SCADUTO' : f}
 				</button>
 			{/each}
 		</div>
@@ -220,69 +242,62 @@
 			<input
 					bind:value={searchQuery}
 					type="text"
-					placeholder="Cerca dipendente o DPI..."
+					placeholder="Cerca dipendente o matricola..."
 					class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-2xl focus:ring-2 focus:ring-[#1B4B6B]/10 outline-none font-bold text-xs uppercase transition-all"
 			/>
 		</div>
 	</div>
-	<div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-		<div class="overflow-x-auto">
-			<table class="w-full text-left">
-				<thead class="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-				<tr>
-					<th class="px-8 py-5 text-center w-20">DPI</th>
-					<th class="px-6 py-5 text-center">Dipendente</th>
-					<th class="px-6 py-5 text-center">Tipo Dispositivo</th>
-					<th class="px-6 py-5 text-center">Data Consegna</th>
-					<th class="px-6 py-5 text-center">Revisione</th>
-					<th class="px-6 py-5 text-center">Stato</th>
-					<th class="px-6 py-5 text-right">Azioni</th>
-				</tr>
-				</thead>
-				<tbody class="divide-y divide-gray-50">
-				{#if isLoading}
-					<tr><td colspan="7" class="px-8 py-20 text-center text-gray-300 font-black uppercase text-xs tracking-widest"><Loader2 size={32} class="animate-spin mx-auto mb-2" />Sincronizzazione...</td></tr>
-				{:else}
-					{#each filteredRegistro as item (item.idAssegnazione || item.id)}
-						{@const nomeDpiReale = (item.tipo === 'ALTRO' && item.nomeDpi) ? item.nomeDpi : (item.tipo || 'NON DEFINITO').replace(/_/g, ' ')}
 
-						<tr class="hover:bg-white hover:shadow-xl hover:shadow-blue-900/5 transition-all group relative">
-							<td class="px-8 py-4 text-center">
-								<div class="h-12 w-12 mx-auto rounded-xl inline-flex items-center justify-center font-black transition-colors {
-                             item.statoDerivato === 'OK' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' :
-                             item.statoDerivato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white' :
-                             'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white'
-                         }">
-									<HardHat size={24} />
-								</div>
-							</td>
-							<td class="px-6 py-6 text-center"><span class="font-black text-[#1B4B6B] text-xs uppercase">{item.nomeCompletoDipendente}</span></td>
-							<td class="px-6 py-6 text-center">
-								<span class="font-bold text-[#1B4B6B] text-xs uppercase">{nomeDpiReale}</span>
-							</td>
-							<td class="px-6 py-6 text-xs text-gray-400 font-medium text-center">{formattaData(item.dataConsegna)}</td>
-							<td class="px-6 py-6 text-xs font-black text-[#1B4B6B] text-center">{formattaData(item.dataScadenzaRevisione)}</td>
-							<td class="px-6 py-6 text-center">
-								<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase {item.statoDerivato === 'OK' ? 'bg-green-50 text-green-600 border-green-100' : item.statoDerivato === 'DA_REVISIONARE' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' : 'bg-red-50 text-red-600 border-red-100'}">
-									{#if item.statoDerivato === 'OK'}<ShieldCheck size={12} />{:else if item.statoDerivato === 'DA_REVISIONARE'}<Clock size={12} />{:else}<AlertTriangle size={12} />{/if}
-									{item.statoDerivato.replace('_', ' ')}
-								</div>
-							</td>
-							<td class="px-6 py-6 text-right">
-								<button onclick={() => openUpdateDpiModal(item)} class="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-[#1B4B6B] border border-transparent rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-[#1B4B6B] hover:bg-white transition-all opacity-0 group-hover:opacity-100">
-									<RefreshCw size={14} /> Aggiorna
-								</button>
-							</td>
-						</tr>
-					{/each}
-					{#if filteredRegistro.length === 0}
-						<tr><td colspan="7" class="px-8 py-10 text-center text-gray-400 font-bold uppercase text-xs">Nessun DPI trovato nei registri.</td></tr>
-					{/if}
-				{/if}
-				</tbody>
-			</table>
+	{#if isLoading}
+		<div class="py-32 flex flex-col items-center justify-center gap-4">
+			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
+			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione registro DPI...</span>
 		</div>
-	</div>
+	{:else}
+		<div class="space-y-12">
+			{#each groupedRegistro as gruppo (gruppo.id)}
+				<div in:fade>
+					<div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
+						<div class="bg-[#1B4B6B] p-2.5 rounded-xl text-white shadow-sm">
+							<User size={20} />
+						</div>
+						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">{gruppo.nome}</h2>
+						<span class="ml-auto bg-gray-50 text-[#1B4B6B] text-[10px] font-black px-4 py-2 rounded-full border border-gray-200 uppercase">
+                      {gruppo.dpis.length} Dispositivi
+                   </span>
+					</div>
+
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						{#each gruppo.dpis as item (item.idAssegnazione || item.id)}
+							{@const nomeDpiReale = (item.tipo === 'ALTRO' && item.nomeDpi) ? item.nomeDpi : (item.tipo || 'DPI').replace(/_/g, ' ')}
+							<div in:scale={{duration: 300}}>
+								<DpiCard
+										ruolo="azienda"
+										dpi={{
+                               id: item.idAssegnazione || item.id || 0,
+                               nome: nomeDpiReale,
+                               matricola: item.matricola,
+                               stato: item.statoDerivato,
+                               dataRevisione: formattaData(item.dataScadenzaRevisione),
+                               dataConsegna: formattaData(item.dataConsegna)
+                            }}
+										onModifica={openUpdateDpiModal}
+								/>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		{#if filteredRegistro.length === 0}
+			<div class="py-20 bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm">
+				<HardHat size={48} class="text-gray-200 mb-4" />
+				<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun DPI trovato</h3>
+				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Nessuna corrispondenza nei registri per i criteri selezionati.</p>
+			</div>
+		{/if}
+	{/if}
 </div>
 
 {#if showDpiModal}

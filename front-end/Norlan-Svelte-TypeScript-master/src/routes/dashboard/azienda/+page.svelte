@@ -2,16 +2,16 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		ShieldCheck, ShieldOff, HardHat, MessageSquare, Clock,
+		ShieldCheck, ShieldOff, MessageSquare, Clock,
 		AlertTriangle, CheckCircle2, X, Send, Loader2, User, Users,
-		Building2, Briefcase, BellRing, FileText, ArrowRight, PlayCircle
+		Building2, Briefcase, BellRing, FileText, PlayCircle, ArrowRight
 	} from 'lucide-svelte';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
-	import { LavoratoreService, type DipendenteDTO, type AssegnazioneDPIDTO } from '$lib/services/LavoratoreService';
+	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
+	import { ChatService } from '$lib/services/ChatService';
 	import type { AziendaData } from '$lib/models/Azienda';
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
@@ -20,13 +20,6 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
-
-	interface DpiRegistro extends AssegnazioneDPIDTO {
-		nomeCompletoDipendente: string;
-		statoDerivato: 'OK' | 'DA_REVISIONARE' | 'SCADUTO';
-		tipo?: string;
-		dataScadenzaRevisione?: string;
-	}
 
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
@@ -41,7 +34,6 @@
 	let documentiScadenza = $state<Documento[]>([]);
 	let dipendenti = $state<DipendenteDTO[]>([]);
 	let prossimiCorsi = $state<CorsoFormazione[]>([]);
-	let dpiInScadenza = $state<DpiRegistro[]>([]);
 
 	const dataOggi = new Intl.DateTimeFormat('it-IT', {
 		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -54,27 +46,14 @@
 			})
 	);
 
-	const alertScadenzeDpi = $derived(
-			dpiInScadenza.filter(d => d.statoDerivato !== 'OK')
-	);
-
 	const infoStato = $derived(() => {
 		const haDocsScaduti = documentiScadenza.some(d => d.scaduto);
-		const haDpiScaduti = alertScadenzeDpi.some(d => d.statoDerivato === 'SCADUTO');
-		if (haDocsScaduti || haDpiScaduti) return { label: 'CRITICO', color: 'bg-red-500', icon: AlertTriangle, text: 'Azione Immediata Richiesta' };
-		if (alertScadenzeDocs.length > 0 || alertScadenzeDpi.length > 0) return { label: 'ATTENZIONE', color: 'bg-amber-400 text-[#1B4B6B]', icon: Clock, text: 'Scadenze Imminenti Rilevate' };
+		if (haDocsScaduti) return { label: 'CRITICO', color: 'bg-red-500', icon: AlertTriangle, text: 'Documenti Scaduti Rilevati' };
+		if (alertScadenzeDocs.length > 0) return { label: 'ATTENZIONE', color: 'bg-amber-400 text-[#1B4B6B]', icon: Clock, text: 'Scadenze Imminenti' };
 		return { label: 'A NORMA', color: 'bg-emerald-500', icon: ShieldCheck, text: 'Nessuna criticità rilevata' };
 	});
 
 	const status = $derived(infoStato());
-
-	function calcolaStatoDpi(dataScadenzaStr: string | undefined): 'OK' | 'DA_REVISIONARE' | 'SCADUTO' {
-		if (!dataScadenzaStr) return 'OK';
-		const diffGiorni = Math.ceil((new Date(dataScadenzaStr).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-		if (diffGiorni < 0) return 'SCADUTO';
-		if (diffGiorni <= 30) return 'DA_REVISIONARE';
-		return 'OK';
-	}
 
 	function formattaData(dateStr: string | undefined) {
 		if (!dateStr) return 'N.D.';
@@ -104,19 +83,9 @@
 			]);
 			documentiScadenza = docs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
 			dipendenti = lavoratori;
-			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato).slice(0, 2);
+			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato).slice(0, 4);
 			messaggiChat = cronologiaChat;
-			const dpiPromises = dipendenti.map(async (d) => {
-				try {
-					const dpiLav = await LavoratoreService.getDpiByLavoratore(d.idUtente);
-					return dpiLav.map((dpi: any) => ({
-						...dpi, nomeCompletoDipendente: `${d.nome} ${d.cognome}`,
-						statoDerivato: calcolaStatoDpi(dpi.dataScadenzaRevisione || dpi.dataScadenza)
-					})) as DpiRegistro[];
-				} catch { return []; }
-			});
-			const dpiResults = await Promise.all(dpiPromises);
-			dpiInScadenza = dpiResults.flat().filter(dpi => dpi.statoDerivato !== 'OK');
+
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
@@ -202,50 +171,34 @@
 				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
 					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
 						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<HardHat size={20} class="text-blue-500" /> Criticità DPI Dipendenti
+							<PlayCircle size={20} class="text-blue-500" /> Formazione in Evidenza
 						</h3>
-						<a href="/dashboard/azienda/dpi" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline flex items-center gap-1">Vedi Registro <ArrowRight size={12}/></a>
+						<a href="/dashboard/azienda/formazione" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline flex items-center gap-1">Gestisci Tutti <ArrowRight size={12}/></a>
 					</div>
-					<div class="space-y-3">
-						{#each alertScadenzeDpi.slice(0,5) as dpi}
-							<AlertCard titolo={dpi.nomeCompletoDipendente} sottotitolo={dpi.tipo ? dpi.tipo.replace(/_/g, ' ') : 'N.D.'} variante={dpi.statoDerivato === 'SCADUTO' ? 'danger' : 'warning'} icona={HardHat} stato={dpi.statoDerivato.replace('_', ' ')} data={formattaData(dpi.dataScadenzaRevisione)} href="/dashboard/azienda/dpi" />
-						{/each}
-						{#if alertScadenzeDpi.length === 0}
-							<div class="py-6 text-center">
-								<CheckCircle2 size={32} class="mx-auto text-emerald-400 mb-2 opacity-50" />
-								<p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Nessuna revisione DPI scaduta o imminente.</p>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-
-			<div class="space-y-8">
-				<div class="bg-gray-50 rounded-[2.5rem] border border-gray-100 p-8">
-					<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter mb-6 flex items-center gap-2">
-						<PlayCircle size={20} class="text-[#1B4B6B]" /> Formazione in Evidenza
-					</h3>
-					<div class="space-y-4">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						{#each prossimiCorsi as corso (corso.idCorso)}
 							<DashboardCorsoCard
 									ruolo="azienda"
 									corso={{
-                            id: corso.idCorso,
-                            titolo: corso.titolo,
-                            stato: 'DA_INIZIARE',
-                            dataSvolgimento: formattaData(corso.dataOrario),
-                            luogo: corso.luogoFisico
-                        }}
+									id: corso.idCorso,
+									titolo: corso.titolo,
+									stato: 'DA_INIZIARE',
+									dataSvolgimento: formattaData(corso.dataOrario),
+									luogo: corso.luogoFisico
+								}}
 									onAzioneCorso={() => scaricaReport(corso.idCorso)}
 							/>
 						{/each}
-						{#if prossimiCorsi.length === 0}
-							<p class="text-[10px] font-bold text-gray-400 uppercase italic text-center py-4">Nessun corso in programma.</p>
-						{/if}
-						<a href="/dashboard/azienda/formazione" class="w-full py-3 bg-white text-[#1B4B6B] rounded-xl font-black uppercase text-center block text-[10px] border border-gray-200 hover:bg-gray-100 transition-all mt-4">Gestisci Formazione</a>
 					</div>
+					{#if prossimiCorsi.length === 0}
+						<div class="py-10 text-center">
+							<p class="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Nessun corso in programma.</p>
+						</div>
+					{/if}
 				</div>
+			</div>
 
+			<div class="space-y-8">
 				<div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center">
 					<div class="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center mb-4 text-[#1B4B6B]"><Briefcase size={28} /></div>
 					<h4 class="text-sm font-black text-[#1B4B6B] uppercase">{utenteAzienda?.ragioneSociale}</h4>
