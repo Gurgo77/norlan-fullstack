@@ -184,11 +184,14 @@ class IscrizioneCorsoServiceTest {
 
     @Test
     void getPathAttestato_NessunDocumento_RitornaNull() {
-        when(iscrizioneRepository.findById(iscrizioneId)).thenReturn(Optional.of(iscrizione));
+        IscrizioneCorso iscrizioneSenzaDoc = new IscrizioneCorso();
+        iscrizioneSenzaDoc.setDocumentoAttestato(null);
 
-        String path = iscrizioneService.getPathAttestato(1, 10);
+        when(iscrizioneRepository.findById(any())).thenReturn(Optional.of(iscrizioneSenzaDoc));
 
-        assertNull(path);
+        String pathRisultante = iscrizioneService.getPathAttestato(1, 1);
+
+        assertNull(pathRisultante, "Il percorso dell'attestato deve essere null se non è presente un documento associato.");
     }
 
     @Test

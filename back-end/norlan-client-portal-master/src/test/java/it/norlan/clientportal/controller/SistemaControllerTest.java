@@ -1,6 +1,7 @@
 package it.norlan.clientportal.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.norlan.clientportal.dto.LogSincronizzazioneDTO;
 import it.norlan.clientportal.dto.NotificaDTO;
 import it.norlan.clientportal.model.LogSincronizzazione;
@@ -44,8 +45,14 @@ class SistemaControllerTest {
 
     @BeforeEach
     void setUp() {
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        this.objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
         mockMvc = MockMvcBuilders.standaloneSetup(sistemaController).build();
-        objectMapper = new ObjectMapper();
     }
 
     @Test

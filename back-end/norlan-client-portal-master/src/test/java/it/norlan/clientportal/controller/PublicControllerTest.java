@@ -108,8 +108,12 @@ class PublicControllerTest {
         mockMvc.perform(post("/api/public/contatto")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(result -> assertTrue(result.getResolvedException() instanceof RuntimeException))
-                .andExpect(result -> assertEquals("Sistema non configurato per la ricezione messaggi", result.getResolvedException().getMessage()));
+                .andExpect(status().isInternalServerError())
+                .andExpect(result -> {
+                    Exception ex = result.getResolvedException();
+                    assertTrue(ex instanceof RuntimeException);
+                    assertEquals("Sistema non configurato per la ricezione messaggi", ex.getMessage());
+                });
 
         verifyNoInteractions(notificaService);
     }

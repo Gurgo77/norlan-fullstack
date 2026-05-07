@@ -133,14 +133,17 @@ class AuthControllerTest {
         request.setVecchiaPassword("oldPass");
         request.setNuovaPassword("newPass");
 
-        // Per i metodi che richiedono Authentication (Principal), MockMvc standalone non lo inietta automaticamente
-        // a meno che non passiamo un Principal esplicito, oppure creiamo un CustomHandlerMethodArgumentResolver.
-        // Un modo più semplice in standalone è passare l'oggetto Principal direttamente nella request mockata.
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken principal =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "user@norlan.it",
+                        null,
+                        java.util.Collections.emptyList()
+                );
 
         mockMvc.perform(put("/api/auth/cambia-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
-                        .principal(() -> "user@norlan.it"))
+                        .principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Password aggiornata con successo."));
 
@@ -157,10 +160,17 @@ class AuthControllerTest {
         doThrow(new BadCredentialsException("La vecchia password non   corretta"))
                 .when(utenteService).cambiaPassword("user@norlan.it", "errata", "newPass");
 
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken principal =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "user@norlan.it",
+                        null,
+                        java.util.Collections.emptyList()
+                );
+
         mockMvc.perform(put("/api/auth/cambia-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
-                        .principal(() -> "user@norlan.it"))
+                        .principal(principal))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().string("La vecchia password non   corretta"));
     }
@@ -174,8 +184,12 @@ class AuthControllerTest {
         doThrow(new RuntimeException("Database error"))
                 .when(utenteService).cambiaPassword("user@norlan.it", "oldPass", "newPass");
 
-        mockMvc.perform(put("/api/auth/cambia-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+        UsernamePasswordAuthenticationToken principal =
+                new UsernamePasswordAuthenticationToken("utente@test.it", "password");
+
+        mockMvc.perform(put("/auth/cambia-password")
+                .principal(principal)
+                .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                         .principal(() -> "user@norlan.it"))
                 .andExpect(status().isInternalServerError())

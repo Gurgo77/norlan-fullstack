@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.util.List;
 import java.util.Optional;
@@ -55,10 +56,15 @@ class DocumentoControllerTest {
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        this.objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
         mockMvc = MockMvcBuilders.standaloneSetup(documentoController)
-                .setControllerAdvice(new GlobalExceptionHandler()) // Se vuoi testare l'handler globale, altrimenti l'handler interno
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
-        objectMapper = new ObjectMapper();
     }
 
     @Test

@@ -223,9 +223,12 @@ class AssegnazioneDPIServiceTest {
         dpi.setDipendente(dipendente);
         dpi.setTipo(AssegnazioneDPI.TipoDPI.ALTRO);
 
+        dpi.setDataScadenzaRevisione(null);
+
         AssegnazioneDPIDTO dto = assegnazioneDPIService.convertToDTO(dpi);
 
-        assertNull(dto.getDataScadenzaRevisione());
-        assertNull(dto.isDaRevisionare());
+        assertNull(dto.getDataScadenzaRevisione(), "La data di scadenza nel DTO deve essere null");
+
+        assertFalse(dto.isDaRevisionare(), "Il flag daRevisionare deve essere false se non c'è una data");
     }
 }

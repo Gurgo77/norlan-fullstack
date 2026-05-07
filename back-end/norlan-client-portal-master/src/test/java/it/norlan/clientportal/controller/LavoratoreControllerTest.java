@@ -1,6 +1,7 @@
 package it.norlan.clientportal.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.norlan.clientportal.dto.AssegnazioneDPIDTO;
 import it.norlan.clientportal.dto.DipendenteDTO;
 import it.norlan.clientportal.model.AssegnazioneDPI;
@@ -44,8 +45,13 @@ class LavoratoreControllerTest {
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        this.objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        this.objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
         mockMvc = MockMvcBuilders.standaloneSetup(lavoratoreController).build();
-        objectMapper = new ObjectMapper();
     }
 
     @Test

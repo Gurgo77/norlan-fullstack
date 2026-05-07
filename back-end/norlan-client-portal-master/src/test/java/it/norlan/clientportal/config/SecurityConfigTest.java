@@ -17,8 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-import jakarta.servlet.http.HttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -75,14 +75,22 @@ class SecurityConfigTest {
 
         UrlBasedCorsConfigurationSource urlSource = (UrlBasedCorsConfigurationSource) source;
 
-        HttpServletRequest requestMock = mock(HttpServletRequest.class);
-        when(requestMock.getRequestURI()).thenReturn("/api/test");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod("OPTIONS");
+        request.setRequestURI("/api/test");
 
-        CorsConfiguration config = urlSource.getCorsConfiguration(requestMock);
+        CorsConfiguration config = urlSource.getCorsConfiguration(request);
 
         assertNotNull(config, "Deve esistere una configurazione CORS per i percorsi API");
-        assertTrue(config.getAllowedOrigins().contains("http://localhost:5173"), "Il frontend Svelte deve essere autorizzato");
-        assertTrue(config.getAllowedMethods().containsAll(java.util.Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")), "Tutti i metodi HTTP necessari devono essere consentigli");
-        assertTrue(config.getAllowCredentials(), "L'invio di credenziali (es. cookie/token) deve essere permesso");
+
+        assertTrue(config.getAllowedOrigins().contains("http://localhost:5173"),
+                "Il frontend Svelte deve essere autorizzato");
+
+        assertTrue(config.getAllowedMethods().containsAll(
+                        java.util.Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")),
+                "Tutti i metodi HTTP necessari devono essere consentiti");
+
+        assertTrue(config.getAllowCredentials(),
+                "L'invio di credenziali (es. cookie/token) deve essere permesso");
     }
 }
