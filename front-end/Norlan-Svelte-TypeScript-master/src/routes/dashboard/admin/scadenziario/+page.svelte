@@ -1,157 +1,217 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
+	import { goto } from '$app/navigation';
 	import {
-		FileText, Trash2, Search,
-		AlertCircle, CheckCircle, Clock, Download, ShieldAlert, FileCheck
+		FileText, Search, ShieldAlert, Clock,
+		AlertTriangle, X, Loader2, Trash2
 	} from 'lucide-svelte';
 
 	import { Documento } from '$lib/models/Documento';
-	import { TipoDocumento, StatoDocumento } from '$lib/models/Enums';
+	import { TipoDocumento } from '$lib/models/Enums';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
-	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import DocCard from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
 
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
+	let showDeleteModal = $state(false);
+	let isDeleting = $state(false);
+	let docDaEliminare = $state<Documento | null>(null);
+	let errorMessage = $state('');
+
 	onMount(async () => {
 		try {
 			documenti = await DocumentoService.getAllDocumenti();
 		} catch (error) {
-			console.error("Errore durante il caricamento dei dati dello scadenziario:", error);
+			console.error("Errore caricamento:", error);
 		} finally {
 			isLoading = false;
 		}
 	});
 
-	async function eliminaDocumento(idDocumento: number) {
-		if (!confirm("Sei sicuro di voler eliminare questo documento in modo permanente?")) return;
-
-		try {
-			await DocumentoService.deleteDocumento(idDocumento);
-			documenti = documenti.filter(d => d.idDocumento !== idDocumento);
-		} catch (error) {
-			console.error("Errore durante la procedura di eliminazione:", error);
-			alert("Si è verificato un errore durante l'eliminazione del documento.");
+	function vaiAdAzienda(idAzienda: number | undefined) {
+		if (!idAzienda) {
+			console.error("ID Azienda mancante nel documento");
+			return;
 		}
+		goto(`/dashboard/admin/aziende?id=${idAzienda}`);
 	}
 
-	async function handleDownload(idDocumento: number, filename: string) {
+	function preparaEliminazione(doc: Documento) {
+		docDaEliminare = doc;
+		errorMessage = '';
+		showDeleteModal = true;
+	}
+
+	async function confermaEliminazione() {
+		if (!docDaEliminare) return;
+		isDeleting = true;
+		errorMessage = '';
+
 		try {
-			const blob = await DocumentoService.downloadDocumento(idDocumento);
-			if (!blob || blob.size === 0) {
-				throw new Error("Il file restituito dal server è vuoto o corrotto.");
+			await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
+			documenti = documenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
+			showDeleteModal = false;
+			docDaEliminare = null;
+		} catch (error: any) {
+			console.error("Errore eliminazione:", error);
+			if (error.response?.status === 409) {
+				errorMessage = "Impossibile eliminare: questo documento è collegato a un corso o a un'assegnazione attiva.";
+			} else {
+				errorMessage = "Si è verificato un errore tecnico durante l'eliminazione.";
 			}
-
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-
-			const nomePulito = filename.replace(/\s+/g, '_');
-			a.download = nomePulito.toLowerCase().endsWith('.pdf') ? nomePulito : `${nomePulito}.pdf`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			window.URL.revokeObjectURL(url);
-		} catch (error) {
-			console.error("Errore durante il download del documento:", error);
-			alert("Impossibile procedere con il download. Verificare la disponibilità del file sul server.");
+		} finally {
+			isDeleting = false;
 		}
-	}
-
-	function getStatoScadenza(dataScadenza: string) {
-		const oggi = new Date();
-		const scadenza = new Date(dataScadenza);
-		const diffTempo = scadenza.getTime() - oggi.getTime();
-		const giorniRimanenti = Math.ceil(diffTempo / (1000 * 3600 * 24));
-
-		if (giorniRimanenti < 0) return { colore: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Scaduto', IconaDef: AlertCircle };
-		if (giorniRimanenti <= 30) return { colore: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', label: `In scadenza (${giorniRimanenti}gg)`, IconaDef: Clock };
-		return { colore: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Valido', IconaDef: CheckCircle };
 	}
 
 	const filteredDocumenti = $derived(
 			documenti.filter(d => {
 				if (d.tipologia === TipoDocumento.ATTESTATO_CORSO) return false;
-				const oggi = new Date().getTime();
-				const scadenza = new Date(d.dataScadenza).getTime();
-				const giorniRimanenti = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
-				if (giorniRimanenti > 30) return false;
-				const matchRicerca = d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						d.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
 
-				return matchRicerca;
+				const oggi = new Date();
+				oggi.setHours(0, 0, 0, 0);
+				const scadenza = new Date(d.dataScadenza);
+
+				const giorniRimanenti = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
+				if (giorniRimanenti > 30) return false;
+
+				return d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						d.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
 			}).sort((a, b) => new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime())
 	);
 
 	const statistiche = $derived({
 		inScadenza: filteredDocumenti.filter(d => {
-			const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+			const diff = new Date(d.dataScadenza).getTime() - new Date().getTime();
+			const giorni = Math.ceil(diff / (1000 * 3600 * 24));
 			return giorni >= 0 && giorni <= 30;
 		}).length,
 		scaduti: filteredDocumenti.filter(d => {
-			const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-			return giorni < 0;
-		}).length,
-		inAttesa: filteredDocumenti.filter(d => d.stato === StatoDocumento.IN_ATTESA_FIRMA).length
+			const diff = new Date(d.dataScadenza).getTime() - new Date().getTime();
+			return Math.ceil(diff / (1000 * 3600 * 24)) < 0;
+		}).length
 	});
+
+	async function scarica(id: number, filename: string) {
+		try {
+			const blob = await DocumentoService.downloadDocumento(id);
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename + ".pdf";
+			a.click();
+		} catch { alert("Errore nel download"); }
+	}
 </script>
 
-<div in:fade>
-	<div class="mb-10 flex justify-between items-start">
+<div in:fade class="max-w-7xl mx-auto p-6 space-y-8">
+	<div class="flex flex-col md:flex-row justify-between items-start gap-6">
 		<div>
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">SCADENZIARIO</h1>
-			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Monitoraggio pratiche in scadenza.</p>
+			<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">SCADENZIARIO</h1>
+			<p class="text-gray-500 font-bold uppercase text-[10px] tracking-widest mt-1">Monitoraggio pratiche in scadenza.</p>
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-		<StatCard titolo="Pratiche in Scadenza" valore={statistiche.inScadenza} icona={FileText} />
-		<StatCard titolo="Pratiche Scadute" valore={statistiche.scaduti} icona={ShieldAlert} bgIcona="bg-red-50" testoIcona="text-red-600" hoverBgIcona="group-hover:bg-red-600" />
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		<StatCard
+				titolo="Pratiche in Scadenza"
+				valore={statistiche.inScadenza}
+				icona={Clock}
+				bgIcona="bg-orange-50"
+				testoIcona="text-orange-600"
+				hoverBgIcona="group-hover:bg-orange-600"
+		/>
+		<StatCard
+				titolo="Pratiche Scadute"
+				valore={statistiche.scaduti}
+				icona={ShieldAlert}
+				bgIcona="bg-red-50"
+				testoIcona="text-red-600"
+				hoverBgIcona="group-hover:bg-red-600"
+		/>
 	</div>
 
-	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-		<div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-			<div class="relative w-96">
-				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-				<input
-						bind:value={searchQuery}
-						type="text"
-						placeholder="Filtra per azienda o tipo documento..."
-						class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase"
-				/>
+	<div class="relative w-full max-w-md">
+		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
+		<input
+				bind:value={searchQuery}
+				type="text"
+				placeholder="Cerca azienda o documento..."
+				class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+		/>
+	</div>
+
+	{#if isLoading}
+		<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
+	{:else if filteredDocumenti.length === 0}
+		<div class="py-24 text-center bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200">
+			<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessuna criticità</h3>
+		</div>
+	{:else}
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			{#each filteredDocumenti as doc (doc.idDocumento)}
+				<div in:scale>
+					<DocCard
+							documento={{
+                            id: doc.idDocumento,
+                            titolo: doc.tipologia.replace(/_/g, ' '),
+                            sottotitolo: doc.ragioneSocialeAzienda,
+                            stato: (Math.ceil((new Date(doc.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24))) < 0 ? 'DANGER' : 'WARNING',
+                            dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT')
+                        }}
+							ruolo="admin"
+							onDownload={() => scarica(doc.idDocumento, doc.ragioneSocialeAzienda)}
+							onDelete={() => preparaEliminazione(doc)}
+							onManage={() => vaiAdAzienda(doc.idAzienda || doc.idUtente)}
+					/>
+				</div>
+			{/each}
+		</div>
+	{/if}
+</div>
+
+{#if showDeleteModal}
+	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4" transition:fade>
+		<div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden" in:scale>
+			<div class="p-8 text-center">
+				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+					<Trash2 size={40}/>
+				</div>
+				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Elimina Documento?</h2>
+				<p class="text-sm text-gray-400 mb-6">Stai per rimuovere definitivamente: <br>
+					<span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span>
+				</p>
+
+				{#if errorMessage}
+					<div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 text-left">
+						<AlertTriangle size={18} class="text-red-600 shrink-0 mt-0.5" />
+						<p class="text-[11px] font-bold text-red-600 uppercase leading-tight">{errorMessage}</p>
+					</div>
+				{/if}
+
+				<div class="flex flex-col gap-3">
+					<button
+							onclick={confermaEliminazione}
+							disabled={isDeleting}
+							class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700 disabled:opacity-50"
+					>
+						{#if isDeleting}<Loader2 size={14} class="animate-spin mx-auto"/>{:else}Sì, elimina definitivamente{/if}
+					</button>
+					<button
+							onclick={() => { showDeleteModal = false; }}
+							class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600"
+					>
+						No, annulla
+					</button>
+				</div>
 			</div>
 		</div>
-
-		<div class="p-6 space-y-4">
-			{#if isLoading}
-				<div class="py-12 text-center text-gray-400 font-bold uppercase text-xs">Caricamento database NorLan...</div>
-			{:else if filteredDocumenti.length === 0}
-				<div class="py-12 text-center text-gray-400 font-bold uppercase text-xs">Tutti i documenti aziendali sono attualmente in regola.</div>
-			{:else}
-				{#each filteredDocumenti as doc (doc.idDocumento)}
-					{@const statoInfo = getStatoScadenza(doc.dataScadenza)}
-					<div class="group relative">
-						<AlertCard
-								titolo={doc.ragioneSocialeAzienda}
-								sottotitolo="{doc.tipologia.replace(/_/g, ' ')} - {doc.modulo}"
-								variante={statoInfo.label === 'Scaduto' ? 'danger' : 'warning'}
-								icona={FileCheck}
-								stato={doc.stato.replace(/_/g, ' ')}
-								data="Scadenza: {new Date(doc.dataScadenza).toLocaleDateString('it-IT')}"
-						/>
-						<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-1.5 rounded-xl shadow-sm border border-gray-100">
-							<button onclick={() => handleDownload(doc.idDocumento, `${doc.ragioneSocialeAzienda}_${doc.tipologia}`)} class="p-2 text-[#1B4B6B] hover:bg-blue-50 rounded-lg transition-colors"><Download size={16} /></button>
-							<button onclick={() => eliminaDocumento(doc.idDocumento)} class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
-						</div>
-					</div>
-				{/each}
-			{/if}
-		</div>
 	</div>
-</div>
+{/if}
 
 <style>
 	:global(body) { background-color: #F9FAFB; }

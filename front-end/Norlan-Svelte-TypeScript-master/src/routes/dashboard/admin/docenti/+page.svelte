@@ -12,7 +12,9 @@
     import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
     import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
     import { FormazioneService } from '$lib/services/FormazioneService';
-    import {resolveRoute} from "$app/paths";
+    import { resolveRoute } from "$app/paths";
+    import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
+    import DocenteCard from '$lib/Components/Features/Anagrafica/DocenteDashboardCard.svelte';
 
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
@@ -193,38 +195,11 @@
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {#each filteredDocenti as d (d.idUtente)}
-                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group relative flex flex-col h-full overflow-hidden hover:border-[#1B4B6B]/30" in:scale>
-                        <div role="button" tabindex="0" onclick={() => apriDettaglio(d)} onkeydown={(e) => e.key === 'Enter' && apriDettaglio(d)} class="p-6 pb-4 cursor-pointer flex-1">
-                            <button
-                                    onclick={(e) => { e.stopPropagation(); preparaEliminazione(d); }}
-                                    class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 hover:bg-red-50 rounded-lg"
-                            >
-                                <Trash2 size={18} />
-                            </button>
-
-                            <div class="flex items-center gap-4 mb-5">
-                                <div class="w-14 h-14 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl flex items-center justify-center font-black text-lg group-hover:bg-[#1B4B6B] group-hover:text-white transition-all">
-                                    {d.nome[0]}{d.cognome[0]}
-                                </div>
-                                <div>
-                                    <h3 class="font-extrabold text-[#1B4B6B] text-lg uppercase leading-tight">{d.nome} {d.cognome}</h3>
-                                    <p class="text-[10px] text-gray-400 font-bold uppercase mt-1 flex items-center gap-1"><GraduationCap size={12}/> Formatore</p>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3 pt-4 border-t border-gray-50">
-                                <div>
-                                    <p class="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Specializzazione</p>
-                                    <p class="text-[11px] font-black text-[#1B4B6B] uppercase leading-tight truncate">{d.specializzazioneTecnica || 'Non specificata'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button onclick={() => apriDettaglio(d)} class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-                            <div class="flex items-center gap-2"><BookOpen size={16} class="text-[#1B4B6B]"/><span class="text-[10px] font-bold text-gray-400 uppercase italic">Vedi Scheda</span></div>
-                            <ChevronRight size={20} class="text-[#1B4B6B]" />
-                        </button>
-                    </div>
+                    <DocenteCard
+                            docente={d}
+                            onclick={() => apriDettaglio(d)}
+                            onDelete={() => preparaEliminazione(d)}
+                    />
                 {/each}
             </div>
         {/if}
@@ -232,47 +207,19 @@
         <div in:fade>
             <button onclick={() => (selectedDocente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco docenti</button>
 
-            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
-                <div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
-                    <div class="flex items-center gap-6">
-                        <div class="w-24 h-24 bg-white text-[#1B4B6B] rounded-3xl flex items-center justify-center font-black text-4xl shadow-lg">
-                            {selectedDocente.nome[0]}{selectedDocente.cognome[0]}
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-white/20 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><GraduationCap size={12}/> Docente Specializzato</span>
-                            </div>
-                            <h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedDocente.nome} {selectedDocente.cognome}</h1>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <button onclick={apriModaleModifica} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
-                            <Edit3 size={16} /> Modifica Dati
-                        </button>
-                        <button onclick={() => apreGmail(selectedDocente?.email || '')} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
-                            <Mail size={16} /> Manda Mail
-                        </button>
-                        <button onclick={() => vaiInChat(selectedDocente?.idUtente)} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
-                            <MessageSquare size={16} /> Contatta
-                        </button>
-                        <button onclick={() => preparaEliminazione(selectedDocente)} class="flex items-center gap-2 bg-red-600 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-red-500/20 shadow-xl hover:bg-red-700 hover:scale-105">
-                            <Trash2 size={16} /> Rimuovi
-                        </button>
-                    </div>
-                </div>
-
-                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/30">
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><BookOpen size={12}/> Specializzazione</p>
-                        <p class="text-lg font-extrabold text-[#1B4B6B] uppercase tracking-wide">{selectedDocente.specializzazioneTecnica || 'Non specificata'}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><Mail size={12}/> Account di Accesso</p>
-                        <p class="text-lg font-bold text-[#1B4B6B] lowercase">{selectedDocente.email}</p>
-                    </div>
-                </div>
-            </div>
+            <DettagliCard
+                    nome={selectedDocente.nome}
+                    cognome={selectedDocente.cognome}
+                    sottotitolo="Docente Formatore"
+                    onEdit={apriModaleModifica}
+                    onMail={() => apreGmail(selectedDocente?.email || '')}
+                    onContact={() => vaiInChat(selectedDocente?.idUtente)}
+                    onDelete={() => preparaEliminazione(selectedDocente)}
+                    items={[
+                    { label: 'Specializzazione', value: selectedDocente.specializzazioneTecnica || 'Non specificata', icon: BookOpen },
+                    { label: 'Account di Accesso', value: selectedDocente.email, icon: Mail }
+                ]}
+            />
 
             <div in:slide class="space-y-6">
                 <div class="flex items-center gap-3 mb-6">

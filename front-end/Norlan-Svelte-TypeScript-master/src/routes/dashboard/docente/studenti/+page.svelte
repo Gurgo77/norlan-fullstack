@@ -2,18 +2,28 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		Users, Search, Filter, BookOpen, Loader2, GraduationCap
+		Users, Search, Filter, BookOpen, Loader2, GraduationCap, ChevronLeft, IdCard, Mail
 	} from 'lucide-svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
+	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { StatoCorso } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
+	import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
 
 	interface StudenteDettaglio {
 		idUtente: number;
 		emailUtente: string;
+	}
+
+	interface StudenteCompleto {
+		idUtente: number;
+		email: string;
+		nome: string;
+		cognome: string;
+		codiceFiscale: string;
 	}
 
 	interface CorsoRaggruppato {
@@ -23,10 +33,13 @@
 	}
 
 	let isLoading = $state(true);
+	let isLoadingDettaglio = $state(false);
 	let corsiRaggruppati = $state<CorsoRaggruppato[]>([]);
 	let queryRicerca = $state('');
 	let filtroCorso = $state('');
 	let totaleStudentiUnici = $state(0);
+
+	let selectedStudente = $state<StudenteCompleto | null>(null);
 
 	onMount(async () => {
 		const session = AuthService.getSession();
@@ -79,97 +92,158 @@
 					})
 					.filter(corso => corso.studenti.length > 0)
 	);
+
+	async function apriDettaglioStudente(studente: StudenteDettaglio) {
+		isLoadingDettaglio = true;
+
+		selectedStudente = {
+			idUtente: studente.idUtente,
+			email: studente.emailUtente,
+			nome: 'Caricamento...',
+			cognome: '',
+			codiceFiscale: '...'
+		};
+
+		try {
+			const datiReali = await LavoratoreService.getById(studente.idUtente);
+			if (datiReali) {
+				selectedStudente = {
+					idUtente: studente.idUtente,
+					email: datiReali.email || studente.emailUtente,
+					nome: datiReali.nome || 'Nome N.D.',
+					cognome: datiReali.cognome || '',
+					codiceFiscale: datiReali.codiceFiscale || 'Non specificato'
+				};
+			}
+		} catch (error) {
+			console.warn("Impossibile caricare i dati completi dello studente", error);
+			selectedStudente.nome = 'Studente';
+			selectedStudente.cognome = 'Non Trovato';
+			selectedStudente.codiceFiscale = 'N.D.';
+		} finally {
+			isLoadingDettaglio = false;
+		}
+	}
 </script>
 
 <div in:fade class="space-y-8 max-w-7xl mx-auto pb-20">
-	<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-		<div>
-			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei Studenti</h1>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Classi e allievi dei corsi attivi</p>
+	{#if !selectedStudente}
+		<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+			<div>
+				<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei Studenti</h1>
+				<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Classi e allievi dei corsi attivi</p>
+			</div>
+			<div class="w-full md:w-auto">
+				<StatCard
+						titolo="Iscritti Unici"
+						valore={totaleStudentiUnici}
+						icona={Users}
+						bgIcona="bg-blue-50"
+						testoIcona="text-[#1B4B6B]"
+				/>
+			</div>
 		</div>
-		<div class="w-full md:w-auto">
-			<StatCard
-					titolo="Iscritti Unici"
-					valore={totaleStudentiUnici}
-					icona={Users}
-					bgIcona="bg-blue-50"
-					testoIcona="text-[#1B4B6B]"
-			/>
+
+		<div class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4">
+			<div class="relative flex-1 group">
+				<Search class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
+				<input
+						bind:value={queryRicerca}
+						type="text"
+						placeholder="CERCA STUDENTE..."
+						class="w-full bg-gray-50 border-none rounded-2xl py-5 pl-16 pr-6 text-xs font-bold text-[#1B4B6B] focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all uppercase outline-none"
+				/>
+			</div>
+			<div class="relative min-w-[300px]">
+				<Filter class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+				<select
+						bind:value={filtroCorso}
+						class="w-full bg-gray-50 border-none rounded-2xl py-5 pl-16 pr-10 text-xs font-bold text-[#1B4B6B] focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all uppercase outline-none appearance-none cursor-pointer"
+				>
+					<option value="">FILTRA PER CORSO (TUTTI)</option>
+					{#each corsiRaggruppati as corso (corso.idCorso)}
+						<option value={corso.idCorso.toString()}>{corso.titoloCorso}</option>
+					{/each}
+				</select>
+			</div>
 		</div>
-	</div>
-	<div class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4">
-		<div class="relative flex-1 group">
-			<Search class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
-			<input
-					bind:value={queryRicerca}
-					type="text"
-					placeholder="CERCA STUDENTE..."
-					class="w-full bg-gray-50 border-none rounded-2xl py-5 pl-16 pr-6 text-xs font-bold text-[#1B4B6B] focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all uppercase outline-none"
-			/>
-		</div>
-		<div class="relative min-w-[300px]">
-			<Filter class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-			<select
-					bind:value={filtroCorso}
-					class="w-full bg-gray-50 border-none rounded-2xl py-5 pl-16 pr-10 text-xs font-bold text-[#1B4B6B] focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all uppercase outline-none appearance-none cursor-pointer"
-			>
-				<option value="">FILTRA PER CORSO (TUTTI)</option>
-				{#each corsiRaggruppati as corso (corso.idCorso)}
-					<option value={corso.idCorso.toString()}>{corso.titoloCorso}</option>
+
+		{#if isLoading}
+			<div class="py-32 flex flex-col items-center justify-center gap-4">
+				<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
+				<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento elenco corsi...</span>
+			</div>
+		{:else if corsiFiltrati.length === 0}
+			<div class="py-32 bg-white rounded-[2.5rem] border border-gray-100 border-dashed flex flex-col items-center justify-center text-center">
+				<GraduationCap size={64} class="text-gray-200 mb-6" />
+				<h3 class="font-black text-[#1B4B6B] uppercase text-2xl">Nessun risultato</h3>
+				<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2">Non ci sono studenti che corrispondono ai criteri di ricerca</p>
+			</div>
+		{:else}
+			<div class="space-y-10">
+				{#each corsiFiltrati as corso (corso.idCorso)}
+					<div in:scale={{duration: 300}} class="bg-white rounded-[2.5rem] border border-[#1B4B6B]/10 shadow-sm overflow-hidden flex flex-col">
+						<div class="bg-gray-50/80 p-8 border-b border-gray-100 flex items-center justify-between">
+							<div class="flex items-center gap-4">
+								<div class="p-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-2xl shadow-sm">
+									<BookOpen size={24} />
+								</div>
+								<div>
+									<h2 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tight leading-none">{corso.titoloCorso}</h2>
+									<p class="text-[10px] font-bold text-gray-500 uppercase mt-2 tracking-widest flex items-center gap-2">
+										<Users size={12}/> {corso.studenti.length} iscritti in questa classe
+									</p>
+								</div>
+							</div>
+						</div>
+						<div class="p-8">
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+								{#each corso.studenti as studente (studente.idUtente)}
+									<DipendenteCard
+											idUtente={studente.idUtente}
+											nome={studente.emailUtente}
+											cognome=""
+											ruolo="Studente"
+											canEdit={false}
+											canDelete={false}
+											canContact={true}
+											canViewDetails={true}
+											onViewDetails={() => apriDettaglioStudente(studente)}
+											onContact={() => window.location.href = `/dashboard/docente/messaggi?chatId=${studente.idUtente}`}
+									/>
+								{/each}
+							</div>
+						</div>
+					</div>
 				{/each}
-			</select>
-		</div>
-	</div>
-	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
-			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
-			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento elenco corsi...</span>
-		</div>
-	{:else if corsiFiltrati.length === 0}
-		<div class="py-32 bg-white rounded-[2.5rem] border border-gray-100 border-dashed flex flex-col items-center justify-center text-center">
-			<GraduationCap size={64} class="text-gray-200 mb-6" />
-			<h3 class="font-black text-[#1B4B6B] uppercase text-2xl">Nessun risultato</h3>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2">Non ci sono studenti che corrispondono ai criteri di ricerca</p>
-		</div>
+			</div>
+		{/if}
 	{:else}
-		<div class="space-y-10">
-			{#each corsiFiltrati as corso (corso.idCorso)}
-				<div in:scale={{duration: 300}} class="bg-white rounded-[2.5rem] border border-[#1B4B6B]/10 shadow-sm overflow-hidden flex flex-col">
-					<div class="bg-gray-50/80 p-8 border-b border-gray-100 flex items-center justify-between">
-						<div class="flex items-center gap-4">
-							<div class="p-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-2xl shadow-sm">
-								<BookOpen size={24} />
-							</div>
-							<div>
-								<h2 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tight leading-none">{corso.titoloCorso}</h2>
-								<p class="text-[10px] font-bold text-gray-500 uppercase mt-2 tracking-widest flex items-center gap-2">
-									<Users size={12}/> {corso.studenti.length} iscritti in questa classe
-								</p>
-							</div>
-						</div>
-					</div>
-					<div class="p-8">
-						<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-							{#each corso.studenti as studente (studente.idUtente)}
-								<DipendenteCard
-										idUtente={studente.idUtente}
-										nome={studente.emailUtente}
-										cognome=""
-										ruolo="Studente"
-										canEdit={false}
-										canDelete={false}
-										canContact={true}
-										canViewDetails={false}
-										onContact={() => window.location.href = `/dashboard/docente/messaggi?chatId=${studente.idUtente}`}
-								/>
-							{/each}
-						</div>
-					</div>
+		<div in:fade>
+			<button onclick={() => (selectedStudente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all">
+				<ChevronLeft size={16} /> Torna all'elenco dei corsi
+			</button>
+
+			{#if isLoadingDettaglio}
+				<div class="py-20 flex flex-col items-center justify-center gap-4">
+					<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
+					<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recupero dati studente...</span>
 				</div>
-			{/each}
+			{:else}
+				<DettagliCard
+						nome={selectedStudente.nome}
+						cognome={selectedStudente.cognome}
+						sottotitolo="Studente / Corsista"
+						items={[
+                        { label: 'Codice Fiscale', value: selectedStudente.codiceFiscale, icon: IdCard, isMono: true },
+                        { label: 'Email di Contatto', value: selectedStudente.email, icon: Mail }
+                    ]}
+				/>
+			{/if}
 		</div>
 	{/if}
 </div>
+
 <style>
 	:global(body) { background-color: #F9FAFB; }
 </style>

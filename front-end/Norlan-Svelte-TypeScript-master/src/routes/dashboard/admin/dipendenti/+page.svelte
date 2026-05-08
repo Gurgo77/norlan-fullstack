@@ -17,6 +17,9 @@
     import { Documento } from '$lib/models/Documento';
     import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
     import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
+    import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
+    import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
+    import { FormazioneService } from '$lib/services/FormazioneService';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -169,11 +172,22 @@
         selectedDipendente = lavoratore;
         isLoadingDettaglio = true;
         try {
-            const [resDocs, resDpis] = await Promise.all([
-                DocumentoService.getDocumentiByAzienda(lavoratore.idUtente),
-                LavoratoreService.getDpiByLavoratore(lavoratore.idUtente)
+            const [resIscrizioni, resDpis] = await Promise.all([
+                FormazioneService.getIscrizioniUtente(lavoratore.idUtente as number),
+                LavoratoreService.getDpiByLavoratore(lavoratore.idUtente as number)
             ]);
-            documentiCorrenti = resDocs;
+            documentiCorrenti = resIscrizioni
+                .filter(i => i.idDocumento != null)
+                .map(i => ({
+                    idDocumento: i.idDocumento!,
+                    modulo: i.titoloCorso || 'Corso di Formazione',
+                    tipologia: 'ATTESTATO_CORSO',
+                    dataScadenza: i.dataOrarioCorso,
+                    filePath: '',
+                    stato: 'APPROVATO',
+                    scaduto: false
+                } as Documento));
+
             dpiCorrenti = resDpis as unknown as DpiEsteso[];
         } catch (error) {
             console.error("Errore durante il caricamento dei dettagli del dipendente:", error);
@@ -446,47 +460,20 @@
         <div in:fade>
             <button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
 
-            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12">
-                <div class="bg-[#1B4B6B] p-10 text-white flex justify-between items-end relative">
-                    <div class="flex items-center gap-6">
-                        <div class="w-24 h-24 bg-white text-[#1B4B6B] rounded-3xl flex items-center justify-center font-black text-4xl shadow-lg">
-                            {selectedDipendente.nome[0]}{selectedDipendente.cognome[0]}
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-white/20 border border-white/20 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase flex items-center gap-2"><Building2 size={12}/> {selectedDipendente.nomeAzienda}</span>
-                            </div>
-                            <h1 class="text-5xl font-extrabold uppercase tracking-tighter">{selectedDipendente.nome} {selectedDipendente.cognome}</h1>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <button onclick={apriModaleModifica} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
-                            <Edit3 size={16} /> Modifica Dati
-                        </button>
-                        <button onclick={() => apreGmail(selectedDipendente?.email || '')} class="flex items-center gap-2 bg-white text-[#1B4B6B] px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-gray-100 hover:scale-105">
-                            <Mail size={16} /> Manda Mail
-                        </button>
-                        <button onclick={() => vaiInChat(selectedDipendente?.idUtente)} class="flex items-center gap-2 bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
-                            <MessageSquare size={16} /> Contatta
-                        </button>
-                        <button onclick={() => preparaEliminazione(selectedDipendente)} class="flex items-center gap-2 bg-red-600/90 text-white px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] border border-white/10 shadow-xl hover:bg-red-700 hover:scale-105">
-                            <Trash2 size={16} /> Rimuovi
-                        </button>
-                    </div>
-                </div>
-
-                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/30">
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><IdCard size={12}/> Codice Fiscale</p>
-                        <p class="text-lg font-mono font-extrabold text-[#1B4B6B] tracking-widest">{selectedDipendente.codiceFiscale}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><Mail size={12}/> Email Contatto</p>
-                        <p class="text-lg font-bold text-[#1B4B6B] lowercase">{selectedDipendente.email || 'Nessuna email fornita'}</p>
-                    </div>
-                </div>
-            </div>
+            <DettagliCard
+                    nome={selectedDipendente.nome}
+                    cognome={selectedDipendente.cognome}
+                    sottotitolo={selectedDipendente.nomeAzienda}
+                    onEdit={apriModaleModifica}
+                    onMail={() => apreGmail(selectedDipendente?.email || '')}
+                    onContact={() => vaiInChat(selectedDipendente?.idUtente)}
+                    onDelete={() => preparaEliminazione(selectedDipendente)}
+                    items={[
+                    { label: 'Codice Fiscale', value: selectedDipendente.codiceFiscale, icon: IdCard, isMono: true },
+                    { label: 'Email di Contatto', value: selectedDipendente.email || 'Nessuna email fornita', icon: Mail },
+                    { label: 'Posizione', value: 'Dipendente Operativo', icon: Building2 }
+                ]}
+            />
 
             {#if isLoadingDettaglio}
                 <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
@@ -504,35 +491,14 @@
                         {#if sortedDocumentiCorrenti.length > 0}
                             <div class="space-y-4">
                                 {#each sortedDocumentiCorrenti as doc (doc.idDocumento)}
-                                    {@const stato = getStatoScadenza(doc.dataScadenza)}
-                                    {@const IconaStato = stato.IconaDef}
-                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {stato.peso === 1 ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <div class="flex items-center gap-3">
-                                                <div class="p-2 rounded-xl {stato.bgBadge} {stato.colore}">
-                                                    <FileText size={16} />
-                                                </div>
-                                                <div>
-                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {stato.peso === 1 ? 'text-red-700' : 'text-[#1B4B6B]'}">{doc.tipologia.replace(/_/g, ' ')}</h4>
-                                                    <p class="text-[9px] text-gray-400 font-bold uppercase mt-0.5">{doc.modulo}</p>
-                                                </div>
-                                            </div>
-                                            <div class="flex gap-1">
-                                                <button onclick={() => scaricaDoc(doc)} class="p-1.5 text-gray-400 hover:text-[#1B4B6B] transition-all bg-white rounded-lg hover:bg-gray-100 shadow-sm"><Download size={14} /></button>
-                                                <button onclick={() => preparaEliminaDoc(doc)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all bg-white rounded-lg hover:bg-red-50 shadow-sm"><Trash2 size={14} /></button>
-                                            </div>
-                                        </div>
-                                        <div class="flex items-center justify-between pt-3 border-t {stato.peso === 1 ? 'border-red-100' : 'border-gray-50'}">
-                                            <div class="flex items-center gap-1.5 text-gray-400">
-                                                <Calendar size={10} />
-                                                <span class="text-[9px] font-bold uppercase">Scad: {new Date(doc.dataScadenza).toLocaleDateString()}</span>
-                                            </div>
-                                            <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.borderBadge} {stato.bgBadge} {stato.colore}">
-                                                <IconaStato size={12} />
-                                                <span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <DettagliDocCard
+                                            tipo="ATTESTATO"
+                                            titolo={doc.tipologia.replace(/_/g, ' ')}
+                                            sottotitolo={doc.modulo}
+                                            dataScadenza={doc.dataScadenza}
+                                            onDownload={() => scaricaDoc(doc)}
+                                            onDelete={() => preparaEliminaDoc(doc)}
+                                    />
                                 {/each}
                             </div>
                         {:else}
@@ -555,65 +521,37 @@
                                 {#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || Math.random())}
                                     {@const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ')}
                                     {@const stato = getStatoScadenza(dpi.dataScadenzaRevisione)}
-                                    {@const IconaStato = stato.IconaDef}
+                                    <div class="flex flex-col gap-2">
+                                        <DettagliDocCard
+                                                tipo="DPI"
+                                                titolo={nomeDpiReale}
+                                                dataScadenza={dpi.dataScadenzaRevisione}
+                                                dataSecondaria={dpi.dataConsegna}
+                                                labelDataSecondaria="Consegnato"
+                                                onDelete={() => preparaEliminaDPI(dpi)}
+                                        />
 
-                                    <div class="p-5 rounded-2xl border shadow-sm transition-all {stato.peso === 1 ? 'bg-red-50/50 border-red-200' : 'bg-white border-gray-100 hover:shadow-md'}">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <div class="flex items-center gap-3">
-                                                <div class="p-2 rounded-xl {stato.bgBadge} {stato.colore}">
-                                                    <ShieldCheck size={16} />
-                                                </div>
-                                                <div>
-                                                    <h4 class="font-extrabold uppercase text-xs leading-tight {stato.peso === 1 ? 'text-red-700' : 'text-[#1B4B6B]'}">
-                                                        {nomeDpiReale}
-                                                    </h4>
+                                        {#if stato.peso === 1}
+                                            <div class="bg-red-50/50 border border-red-100 rounded-xl p-3 shadow-sm">
+                                                <p class="text-[8px] font-black uppercase text-red-500 mb-2 text-center tracking-tighter">
+                                                    Invia sollecito a {selectedDipendente.nomeAzienda}:
+                                                </p>
+                                                <div class="flex gap-2">
+                                                    <button
+                                                            onclick={() => sollecitaViaEmail(dpi)}
+                                                            class="flex-1 py-2 bg-red-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm hover:bg-red-700 transition-colors"
+                                                    >
+                                                        <Mail size={12} /> Email
+                                                    </button>
+                                                    <button
+                                                            onclick={() => sollecitaViaChat(dpi)}
+                                                            class="flex-1 py-2 bg-[#1B4B6B] text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#1B4B6B]/90 transition-colors"
+                                                    >
+                                                        <MessageSquare size={12} /> Chat
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <button onclick={() => preparaEliminaDPI(dpi)} class="p-1.5 text-gray-400 hover:text-red-600 transition-all rounded-lg {stato.peso === 1 ? 'hover:bg-red-100 bg-white' : 'hover:bg-red-50 bg-gray-50'}">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-
-                                        <div class="flex flex-col gap-2 pt-3 border-t {stato.peso === 1 ? 'border-red-100' : 'border-gray-50'}">
-                                            <div class="flex items-center gap-1.5 {stato.peso === 1 ? 'text-red-400' : 'text-gray-400'}">
-                                                <Calendar size={10} />
-                                                <span class="text-[9px] font-bold uppercase">Consegnato: {formattaScadenza(dpi.dataConsegna)}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center gap-1.5 {stato.peso === 1 ? 'text-red-600 font-black' : 'text-gray-400'}">
-                                                    <AlertTriangle size={10} />
-                                                    <span class="text-[9px] font-bold uppercase">
-                                                        {stato.peso === 1 ? 'Scaduto il:' : 'Scadenza:'} {formattaScadenza(dpi.dataScadenzaRevisione)}
-                                                    </span>
-                                                </div>
-                                                <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border {stato.borderBadge} {stato.bgBadge} {stato.colore}">
-                                                    <IconaStato size={12} />
-                                                    <span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>
-                                                </div>
-                                            </div>
-
-                                            {#if stato.peso === 1}
-                                                <div class="mt-2 pt-2 border-t border-red-100 border-dashed">
-                                                    <p class="text-[8px] font-black uppercase text-red-400 mb-1.5 text-center tracking-tighter">
-                                                        Invia sollecito a {selectedDipendente.nomeAzienda}:
-                                                    </p>
-                                                    <div class="flex gap-2">
-                                                        <button
-                                                                onclick={() => sollecitaViaEmail(dpi)}
-                                                                class="flex-1 py-2 bg-red-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm hover:bg-red-700 transition-colors"
-                                                        >
-                                                            <Mail size={12} /> Email
-                                                        </button>
-                                                        <button
-                                                                onclick={() => sollecitaViaChat(dpi)}
-                                                                class="flex-1 py-2 bg-[#1B4B6B] text-white rounded-lg text-[9px] font-black uppercase flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#1B4B6B]/90 transition-colors"
-                                                        >
-                                                            <MessageSquare size={12} /> Chat
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            {/if}
-                                        </div>
+                                        {/if}
                                     </div>
                                 {/each}
                             </div>
