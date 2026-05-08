@@ -15,6 +15,7 @@
     import { resolveRoute } from "$app/paths";
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DocenteCard from '$lib/Components/Features/Anagrafica/DocenteDashboardCard.svelte';
+    import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
@@ -249,101 +250,98 @@
         </div>
     {/if}
 
-    {#if showAddModal}
-        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-                <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
-                        {#if isEditing}
-                            <Edit3 size={20}/> Modifica Formatore
-                        {:else}
-                            <GraduationCap size={20}/> Registra Docente
-                        {/if}
-                    </h2>
-                    <button onclick={() => (showAddModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
+    <ModalCard bind:isOpen={showAddModal} maxWidth="max-w-lg">
+        {#snippet title()}
+            {#if isEditing}
+                <Edit3 size={20}/> <span class="font-black uppercase tracking-tighter">Modifica Formatore</span>
+            {:else}
+                <GraduationCap size={20}/> <span class="font-black uppercase tracking-tighter">Registra Docente</span>
+            {/if}
+        {/snippet}
+
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
+                    <input bind:value={formDocente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                 </div>
-                <div class="p-8 space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
-                            <input bind:value={formDocente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
-                            <input bind:value={formDocente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        </div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Specializzazione *</label>
-                        <input bind:value={formDocente.specializzazioneTecnica} placeholder="Es: Sicurezza sul Lavoro" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email *</label>
-                        <input bind:value={formDocente.email} placeholder="docente@norlan.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                    </div>
-
-                    {#if !isEditing}
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
-                            <input bind:value={formDocente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                            <div class="mt-2 flex items-start gap-2">
-                                <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
-                                <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
-                                    Nota: Il docente dovrà obbligatoriamente cambiare questa password al suo primo accesso.
-                                </p>
-                            </div>
-                        </div>
-                    {:else}
-                        <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl mt-4">
-                            <p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
-                            <p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">
-                                Per motivi di sicurezza, la password può essere modificata solo dal docente tramite il suo pannello.
-                            </p>
-                        </div>
-                    {/if}
-                </div>
-                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
-                    <button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-                    <button
-                            onclick={salvaDocente}
-                            disabled={!isFormValid || isSaving}
-                            class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-[#153a54] disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {#if isSaving}
-                            <Loader2 size={14} class="animate-spin"/>
-                        {:else if isEditing}
-                            <Edit3 size={14}/>
-                        {:else}
-                            <GraduationCap size={14}/>
-                        {/if}
-                        {isEditing ? 'Aggiorna Dati' : 'Registra Docente'}
-                    </button>
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
+                    <input bind:value={formDocente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                 </div>
             </div>
-        </div>
-    {/if}
 
-    {#if showDeleteModal}
-        <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" in:scale>
-                <div class="p-8 text-center">
-                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere Docente?</h2>
-                    <p class="text-sm text-gray-400 mb-8">
-                        Il docente <span class="font-bold text-[#1B4B6B]">{docenteDaEliminare?.nome} {docenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.
+            <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Specializzazione *</label>
+                <input bind:value={formDocente.specializzazioneTecnica} placeholder="Es: Sicurezza sul Lavoro" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email *</label>
+                <input bind:value={formDocente.email} placeholder="docente@norlan.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+            </div>
+
+            {#if !isEditing}
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password Temporanea *</label>
+                    <input bind:value={formDocente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+                    <div class="mt-2 flex items-start gap-2">
+                        <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+                        <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+                            Nota: Il docente dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+                        </p>
+                    </div>
+                </div>
+            {:else}
+                <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl mt-4">
+                    <p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
+                    <p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">
+                        Per motivi di sicurezza, la password può essere modificata solo dal docente tramite il suo pannello.
                     </p>
-                    <div class="flex flex-col gap-3">
-                        <button onclick={confermaEliminazione} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
-                            Sì, elimina definitivamente
-                        </button>
-                        <button onclick={() => (showDeleteModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
-                            No, annulla l'operazione
-                        </button>
-                    </div>
                 </div>
-            </div>
+            {/if}
         </div>
-    {/if}
+
+        {#snippet footer()}
+            <button onclick={() => (showAddModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
+            <button
+                    onclick={salvaDocente}
+                    disabled={!isFormValid || isSaving}
+                    class="flex-1 bg-[#1B4B6B] text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-[#153a54] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+                {#if isSaving}
+                    <Loader2 size={14} class="animate-spin"/>
+                {:else if isEditing}
+                    <Edit3 size={14}/>
+                {:else}
+                    <GraduationCap size={14}/>
+                {/if}
+                {isEditing ? 'Aggiorna Dati' : 'Registra Docente'}
+            </button>
+        {/snippet}
+    </ModalCard>
+
+    <ModalCard bind:isOpen={showDeleteModal} maxWidth="max-w-md" headerClass="bg-red-600">
+        {#snippet title()}
+            <Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Rimuovere Docente?</span>
+        {/snippet}
+
+        <div class="text-center py-4">
+            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+            <p class="text-sm text-gray-400 mb-8">
+                Il docente <span class="font-bold text-[#1B4B6B]">{docenteDaEliminare?.nome} {docenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.
+            </p>
+        </div>
+
+        {#snippet footer()}
+            <div class="flex flex-col w-full gap-3">
+                <button onclick={confermaEliminazione} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
+                    Sì, elimina definitivamente
+                </button>
+                <button onclick={() => (showDeleteModal = false)} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
+                    No, annulla l'operazione
+                </button>
+            </div>
+        {/snippet}
+    </ModalCard>
 </div>

@@ -20,6 +20,7 @@
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import { FormazioneService } from '$lib/services/FormazioneService';
+    import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -568,129 +569,132 @@
         </div>
     {/if}
 
-    {#if showAddModal}
-        <div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden" in:scale>
-                <div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-                    <h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
-                        {#if isEditing}<Edit3 size={20}/> Modifica Dati Lavoratore{:else}<UserPlus size={20}/> Registra Lavoratore{/if}
-                    </h2>
-                    <button onclick={() => (showAddModal = false)} class="hover:rotate-90 transition-transform duration-300"><X size={24}/></button>
+    <ModalCard bind:isOpen={showAddModal} maxWidth="max-w-2xl">
+        {#snippet title()}
+            {#if isEditing}
+                <Edit3 size={20}/> <span class="font-black uppercase tracking-tighter">Modifica Dati Lavoratore</span>
+            {:else}
+                <UserPlus size={20}/> <span class="font-black uppercase tracking-tighter">Registra Lavoratore</span>
+            {/if}
+        {/snippet}
+
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Azienda di Appartenenza *</label>
+                <select bind:value={formDipendente.idAzienda} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold">
+                    <option value="">Seleziona azienda...</option>
+                    {#each aziende as a (a.idUtente)}
+                        <option value={a.idUtente}>{a.ragioneSociale}</option>
+                    {/each}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
+                    <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                 </div>
-
-                <div class="p-8 space-y-4">
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Azienda di Appartenenza *</label>
-                        <select bind:value={formDipendente.idAzienda} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none font-bold">
-                            <option value="">Seleziona azienda...</option>
-                            {#each aziende as a (a.idUtente)}
-                                <option value={a.idUtente}>{a.ragioneSociale}</option>
-                            {/each}
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
-                            <input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
-                            <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
-                            <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none uppercase" />
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso *</label>
-                            <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                        </div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password di Accesso *</label>
-                        {#if !isEditing}
-                            <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-                            <div class="mt-2 flex items-start gap-2">
-                                <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
-                                <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
-                                    Nota: Il lavoratore dovrà obbligatoriamente cambiare questa password al suo primo accesso.
-                                </p>
-                            </div>
-                        {:else}
-                            <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                                <p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
-                                <p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password.</p>
-                            </div>
-                        {/if}
-                    </div>
-                </div>
-
-                <div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
-                    <button onclick={() => (showAddModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-                    <button
-                            onclick={salvaDipendente}
-                            disabled={!isFormValid || isSaving}
-                            class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#153a54] transition-colors"
-                    >
-                        {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else if isEditing}<Edit3 size={14}/>{:else}<UserPlus size={14}/>{/if}
-                        {isEditing ? 'Aggiorna Dati' : 'Registra Dipendente'}
-                    </button>
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Cognome *</label>
+                    <input bind:value={formDipendente.cognome} placeholder="Es: Rossi" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                 </div>
             </div>
-        </div>
-    {/if}
 
-    {#if showDeleteModal}
-        <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
-                <div class="p-8 text-center">
-                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40}/></div>
-                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere dipendente?</h2>
-                    <p class="text-sm text-gray-400 mb-8">Il lavoratore <span class="font-bold text-[#1B4B6B]">{dipendenteDaEliminare?.nome} {dipendenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.</p>
-                    <div class="flex flex-col gap-3">
-                        <button onclick={confermaEliminazione} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Sì, elimina definitivamente</button>
-                        <button onclick={() => (showDeleteModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla l'operazione</button>
-                    </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
+                    <input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none uppercase" />
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Email Accesso *</label>
+                    <input bind:value={formDipendente.email} type="email" placeholder="m.rossi@email.it" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
                 </div>
             </div>
-        </div>
-    {/if}
 
-    {#if showDeleteDocModal}
-        <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
-                <div class="p-8 text-center">
-                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare l'attestato?</h2>
-                    <p class="text-sm text-gray-400 mb-8">Stai per rimuovere definitivamente: <br><span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span></p>
-                    <div class="flex flex-col gap-3">
-                        <button onclick={confermaEliminaDoc} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Eliminazione</button>
-                        <button onclick={() => (showDeleteDocModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+            <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase tracking-tight">Password di Accesso *</label>
+                {#if !isEditing}
+                    <input bind:value={formDipendente.password} type="password" placeholder="••••••••" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
+                    <div class="mt-2 flex items-start gap-2">
+                        <div class="mt-0.5 text-orange-500"><AlertTriangle size={12}/></div>
+                        <p class="text-[8px] text-gray-400 font-bold uppercase leading-tight">
+                            Nota: Il lavoratore dovrà obbligatoriamente cambiare questa password al suo primo accesso.
+                        </p>
                     </div>
-                </div>
+                {:else}
+                    <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <p class="text-[10px] font-bold text-blue-800 uppercase leading-tight">Nota di Sicurezza</p>
+                        <p class="text-[9px] text-blue-600 uppercase mt-1 leading-relaxed">Per motivi di privacy, la password può essere modificata solo dal dipendente tramite il proprio pannello o reset password.</p>
+                    </div>
+                {/if}
             </div>
         </div>
-    {/if}
 
-    {#if showDeleteDpiModal}
-        <div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[130] p-4" transition:fade>
-            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" in:scale>
-                <div class="p-8 text-center">
-                    <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-                    <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Rimuovere DPI?</h2>
-                    <p class="text-sm text-gray-400 mb-8">Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo?.replace(/_/g, ' ')}</span></p>
-                    <div class="flex flex-col gap-3">
-                        <button onclick={confermaEliminaDPI} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Rimozione</button>
-                        <button onclick={() => (showDeleteDpiModal = false)} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
-                    </div>
-                </div>
-            </div>
+        {#snippet footer()}
+            <button onclick={() => (showAddModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
+            <button
+                    onclick={salvaDipendente}
+                    disabled={!isFormValid || isSaving}
+                    class="flex-1 bg-[#1B4B6B] text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-[#153a54] transition-colors"
+            >
+                {#if isSaving}<Loader2 size={14} class="animate-spin"/>{:else if isEditing}<Edit3 size={14}/>{:else}<UserPlus size={14}/>{/if}
+                {isEditing ? 'Aggiorna Dati' : 'Registra Dipendente'}
+            </button>
+        {/snippet}
+    </ModalCard>
+
+    <ModalCard bind:isOpen={showDeleteModal} maxWidth="max-w-md" headerClass="bg-red-600">
+        {#snippet title()}
+            <AlertTriangle size={20}/> <span class="font-black uppercase tracking-tighter">Rimuovere dipendente?</span>
+        {/snippet}
+
+        <div class="text-center py-4">
+            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40}/></div>
+            <p class="text-sm text-gray-400">Il lavoratore <span class="font-bold text-[#1B4B6B]">{dipendenteDaEliminare?.nome} {dipendenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.</p>
         </div>
-    {/if}
+
+        {#snippet footer()}
+            <div class="flex flex-col w-full gap-3">
+                <button onclick={confermaEliminazione} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Sì, elimina definitivamente</button>
+                <button onclick={() => (showDeleteModal = false)} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla l'operazione</button>
+            </div>
+        {/snippet}
+    </ModalCard>
+
+    <ModalCard bind:isOpen={showDeleteDocModal} maxWidth="max-w-md" headerClass="bg-red-600">
+        {#snippet title()}
+            <Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Eliminare l'attestato?</span>
+        {/snippet}
+
+        <div class="text-center py-4">
+            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+            <p class="text-sm text-gray-400">Stai per rimuovere definitivamente: <br><span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span></p>
+        </div>
+
+        {#snippet footer()}
+            <div class="flex flex-col w-full gap-3">
+                <button onclick={confermaEliminaDoc} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Eliminazione</button>
+                <button onclick={() => (showDeleteDocModal = false)} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+            </div>
+        {/snippet}
+    </ModalCard>
+
+    <ModalCard bind:isOpen={showDeleteDpiModal} maxWidth="max-w-md" headerClass="bg-red-600">
+        {#snippet title()}
+            <Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Rimuovere DPI?</span>
+        {/snippet}
+
+        <div class="text-center py-4">
+            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+            <p class="text-sm text-gray-400">Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo?.replace(/_/g, ' ')}</span></p>
+        </div>
+
+        {#snippet footer()}
+            <div class="flex flex-col w-full gap-3">
+                <button onclick={confermaEliminaDPI} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">Conferma Rimozione</button>
+                <button onclick={() => (showDeleteDpiModal = false)} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">Annulla</button>
+            </div>
+        {/snippet}
+    </ModalCard>
 
 </div>

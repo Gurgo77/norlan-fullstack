@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, slide } from 'svelte/transition';
 	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, X, Send, Trash2, User } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -10,6 +10,7 @@
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
+	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
 	interface CorsoStato { idCorso: number; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
 	interface DipendenteFormazione { id: number; nomeCompleto: string; ruolo: string; corsi: CorsoStato[]; tuttiIdCorsiIscritto: number[]; }
@@ -204,52 +205,67 @@
 	{/if}
 </div>
 
-{#if showModalIscrizione}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden relative" in:scale>
-			{#if enrollSuccess}
-				<div class="absolute inset-0 z-[60] bg-white flex flex-col items-center justify-center p-8 text-center" in:fade><CheckCircle2 size={80} class="text-emerald-500 mb-4" /><h2 class="text-2xl font-black text-[#1B4B6B] uppercase">Iscrizione Completata</h2></div>
-			{/if}
-			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center shrink-0">
-				<h2 class="text-lg font-extrabold uppercase">Iscrizione Formativa</h2><button onclick={() => showModalIscrizione = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={24} /></button>
-			</div>
-			<div class="p-8 flex-1 bg-gray-50/50 space-y-6">
-				<div class="space-y-2">
-					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Dipendente *</label>
-					<select bind:value={idDipendenteSelezionato} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all">
-						<option value="" disabled>-- Seleziona --</option>
-						{#each dipendenti as dip (dip.id)}<option value={dip.id}>{dip.nomeCompleto}</option>{/each}
-					</select>
-				</div>
-				<div class="space-y-2">
-					<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Corso *</label>
-					<select bind:value={idCorsoSelezionato} disabled={idDipendenteSelezionato === ''} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all disabled:opacity-50">
-						<option value="" disabled>{idDipendenteSelezionato === '' ? '-- Seleziona prima un dipendente --' : '-- Seleziona corso --'}</option>
-						{#each corsiSelezionabili as corso (corso.idCorso)}<option value={corso.idCorso}>{corso.titolo} - {formattaData(corso.dataOrario)}</option>{/each}
-					</select>
-				</div>
-			</div>
-			<div class="p-6 border-t border-gray-100 flex gap-4 bg-white">
-				<button onclick={() => showModalIscrizione = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 uppercase text-[10px] transition-all">Annulla</button>
-				<button onclick={confermaIscrizione} disabled={!idDipendenteSelezionato || !idCorsoSelezionato || isEnrolling} class="flex-1 px-6 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl hover:bg-blue-800 transition-all uppercase text-[10px] disabled:opacity-50 flex justify-center items-center gap-2">{#if isEnrolling}<Loader2 size={16} class="animate-spin" />{:else}<Send size={16} />{/if} Conferma</button>
-			</div>
-		</div>
-	</div>
-{/if}
+<ModalCard bind:isOpen={showModalIscrizione} maxWidth="max-w-lg">
+	{#snippet title()}
+		<BookPlus size={20}/> <span class="font-black uppercase tracking-tighter">Iscrizione Formativa</span>
+	{/snippet}
 
-{#if showDeleteIscrizioneModal && iscrizioneDaRimuovere}
-	<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 text-center" in:scale>
-			<div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40} /></div>
-			<h2 class="text-2xl font-black text-[#1B4B6B] uppercase mb-2">Annullare Iscrizione?</h2>
-			<p class="text-sm text-gray-500 mb-8">Stai per rimuovere il dipendente dal corso: <br><span class="font-bold text-[#1B4B6B]">{iscrizioneDaRimuovere.nomeCorso}</span>.</p>
-			<div class="flex flex-col gap-3">
-				<button onclick={confermaRimozioneIscrizione} disabled={isActionLoading} class="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] transition-all hover:bg-orange-700 flex justify-center items-center gap-2">{#if isActionLoading}<Loader2 size={16} class="animate-spin" />{/if} <Trash2 size={16} /> Sì, Annulla</button>
-				<button onclick={() => {showDeleteIscrizioneModal = false; iscrizioneDaRimuovere = null;}} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">No, Mantieni</button>
+	<div class="relative">
+		{#if enrollSuccess}
+			<div class="absolute inset-0 z-[60] bg-white flex flex-col items-center justify-center p-8 text-center" in:fade>
+				<CheckCircle2 size={80} class="text-emerald-500 mb-4" />
+				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase">Iscrizione Completata</h2>
+			</div>
+		{/if}
+		<div class="space-y-6">
+			<div class="space-y-2">
+				<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Dipendente *</label>
+				<select bind:value={idDipendenteSelezionato} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all">
+					<option value="" disabled>-- Seleziona --</option>
+					{#each dipendenti as dip (dip.id)}<option value={dip.id}>{dip.nomeCompleto}</option>{/each}
+				</select>
+			</div>
+			<div class="space-y-2">
+				<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Corso *</label>
+				<select bind:value={idCorsoSelezionato} disabled={idDipendenteSelezionato === ''} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all disabled:opacity-50">
+					<option value="" disabled>{idDipendenteSelezionato === '' ? '-- Seleziona prima un dipendente --' : '-- Seleziona corso --'}</option>
+					{#each corsiSelezionabili as corso (corso.idCorso)}<option value={corso.idCorso}>{corso.titolo} - {formattaData(corso.dataOrario)}</option>{/each}
+				</select>
 			</div>
 		</div>
 	</div>
-{/if}
+
+	{#snippet footer()}
+		<button onclick={() => showModalIscrizione = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 uppercase text-[10px] transition-all">Annulla</button>
+		<button onclick={confermaIscrizione} disabled={!idDipendenteSelezionato || !idCorsoSelezionato || isEnrolling} class="flex-1 px-6 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl hover:bg-blue-800 transition-all uppercase text-[10px] disabled:opacity-50 flex justify-center items-center gap-2">
+			{#if isEnrolling}<Loader2 size={16} class="animate-spin" />{:else}<Send size={16} />{/if} Conferma
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showDeleteIscrizioneModal} maxWidth="max-w-md" headerClass="bg-orange-600">
+	{#snippet title()}
+		<AlertTriangle size={20}/> <span class="font-black uppercase tracking-tighter">Annullare Iscrizione?</span>
+	{/snippet}
+
+	<div class="text-center py-4">
+		<div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<AlertTriangle size={40} />
+		</div>
+		<p class="text-sm text-gray-500 mb-8">Stai per rimuovere il dipendente dal corso: <br><span class="font-bold text-[#1B4B6B]">{iscrizioneDaRimuovere?.nomeCorso}</span>.</p>
+	</div>
+
+	{#snippet footer()}
+		<div class="flex flex-col w-full gap-3">
+			<button onclick={confermaRimozioneIscrizione} disabled={isActionLoading} class="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] transition-all hover:bg-orange-700 flex justify-center items-center gap-2">
+				{#if isActionLoading}<Loader2 size={16} class="animate-spin" />{/if} <Trash2 size={16} /> Sì, Annulla
+			</button>
+			<button onclick={() => {showDeleteIscrizioneModal = false; iscrizioneDaRimuovere = null;}} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+				No, Mantieni
+			</button>
+		</div>
+	{/snippet}
+</ModalCard>
 
 <style>
 	:global(body) { background-color: #f9fafb; }

@@ -4,7 +4,7 @@
 	import {
 		Mail, BookOpen, IdCard, Lock,
 		Save, Loader2,
-		Award, GraduationCap
+		Award, GraduationCap, Eye, EyeOff
 	} from 'lucide-svelte';
 
 	import type { DocenteData } from '$lib/models/Docente';
@@ -14,9 +14,15 @@
 	let isLoading = $state(true);
 	let docente = $state<DocenteData | null>(null);
 	let isPasswordFormVisible = $state(false);
+
 	let vecchiaPassword = $state('');
 	let nuovaPassword = $state('');
 	let confermaPassword = $state('');
+
+	let showVecchia = $state(false);
+	let showNuova = $state(false);
+	let showConferma = $state(false);
+
 	let passwordError = $state('');
 	let passwordSuccessMessage = $state('');
 	let isChangingPassword = $state(false);
@@ -56,6 +62,9 @@
 			vecchiaPassword = '';
 			nuovaPassword = '';
 			confermaPassword = '';
+			showVecchia = false;
+			showNuova = false;
+			showConferma = false;
 
 			setTimeout(() => {
 				isPasswordFormVisible = false;
@@ -136,16 +145,31 @@
 								<div class="space-y-4">
 									<div class="space-y-2">
 										<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Vecchia Password</label>
-										<input type="password" bind:value={vecchiaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+										<div class="relative">
+											<input type={showVecchia ? "text" : "password"} bind:value={vecchiaPassword} class="w-full bg-white border border-gray-200 rounded-2xl pl-5 pr-12 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+											<button type="button" onclick={() => showVecchia = !showVecchia} class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
+												{#if showVecchia}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
+											</button>
+										</div>
 									</div>
 									<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 										<div class="space-y-2">
 											<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nuova Password</label>
-											<input type="password" bind:value={nuovaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+											<div class="relative">
+												<input type={showNuova ? "text" : "password"} bind:value={nuovaPassword} class="w-full bg-white border border-gray-200 rounded-2xl pl-5 pr-12 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+												<button type="button" onclick={() => showNuova = !showNuova} class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
+													{#if showNuova}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
+												</button>
+											</div>
 										</div>
 										<div class="space-y-2">
 											<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Conferma Nuova</label>
-											<input type="password" bind:value={confermaPassword} class="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+											<div class="relative">
+												<input type={showConferma ? "text" : "password"} bind:value={confermaPassword} class="w-full bg-white border border-gray-200 rounded-2xl pl-5 pr-12 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B]" />
+												<button type="button" onclick={() => showConferma = !showConferma} class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
+													{#if showConferma}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
+												</button>
+											</div>
 										</div>
 									</div>
 								</div>

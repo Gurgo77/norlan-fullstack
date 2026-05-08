@@ -12,6 +12,7 @@
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DocCard from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
+	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
@@ -174,44 +175,45 @@
 	{/if}
 </div>
 
-{#if showDeleteModal}
-	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4" transition:fade>
-		<div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden" in:scale>
-			<div class="p-8 text-center">
-				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-					<Trash2 size={40}/>
-				</div>
-				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Elimina Documento?</h2>
-				<p class="text-sm text-gray-400 mb-6">Stai per rimuovere definitivamente: <br>
-					<span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span>
-				</p>
+<ModalCard bind:isOpen={showDeleteModal} maxWidth="max-w-md" headerClass="bg-red-600">
+	{#snippet title()}
+		<Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Elimina Documento?</span>
+	{/snippet}
 
-				{#if errorMessage}
-					<div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 text-left">
-						<AlertTriangle size={18} class="text-red-600 shrink-0 mt-0.5" />
-						<p class="text-[11px] font-bold text-red-600 uppercase leading-tight">{errorMessage}</p>
-					</div>
-				{/if}
-
-				<div class="flex flex-col gap-3">
-					<button
-							onclick={confermaEliminazione}
-							disabled={isDeleting}
-							class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700 disabled:opacity-50"
-					>
-						{#if isDeleting}<Loader2 size={14} class="animate-spin mx-auto"/>{:else}Sì, elimina definitivamente{/if}
-					</button>
-					<button
-							onclick={() => { showDeleteModal = false; }}
-							class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600"
-					>
-						No, annulla
-					</button>
-				</div>
-			</div>
+	<div class="text-center py-4">
+		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<Trash2 size={40}/>
 		</div>
+		<p class="text-sm text-gray-400 mb-6">Stai per rimuovere definitivamente: <br>
+			<span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span>
+		</p>
+
+		{#if errorMessage}
+			<div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 text-left">
+				<AlertTriangle size={18} class="text-red-600 shrink-0 mt-0.5" />
+				<p class="text-[11px] font-bold text-red-600 uppercase leading-tight">{errorMessage}</p>
+			</div>
+		{/if}
 	</div>
-{/if}
+
+	{#snippet footer()}
+		<div class="flex flex-col w-full gap-3">
+			<button
+					onclick={confermaEliminazione}
+					disabled={isDeleting}
+					class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700 disabled:opacity-50 flex items-center justify-center"
+			>
+				{#if isDeleting}<Loader2 size={14} class="animate-spin mr-2"/>{/if} Sì, elimina definitivamente
+			</button>
+			<button
+					onclick={() => { showDeleteModal = false; errorMessage = ''; }}
+					class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600"
+			>
+				No, annulla
+			</button>
+		</div>
+	{/snippet}
+</ModalCard>
 
 <style>
 	:global(body) { background-color: #F9FAFB; }

@@ -8,6 +8,7 @@
 	import { FeedbackService } from '$lib/services/FeedbackService';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
+	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
 	interface MaterialeDidatticoDTO {
 		idMateriale: number;
@@ -221,8 +222,8 @@
 		<div class="flex flex-col items-center justify-center gap-4 py-32">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
 			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">
-				Sincronizzazione registro corsi...
-			</span>
+             Sincronizzazione registro corsi...
+          </span>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -231,16 +232,16 @@
 					<DashboardCorsoCard
 							ruolo="dipendente"
 							corso={{
-							id: iscrizione.idCorso,
-							titolo: iscrizione.titoloCorso,
-							stato: iscrizione.statoCorso === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE',
-							dataSvolgimento: formatDataSoloGiorno(iscrizione.dataOrarioCorso),
-							luogo: 'Sede NorLan / Aula Virtuale',
-							materiali: iscrizione.materiali.map((m) => ({
-								id: m.idMateriale,
-								titolo: m.titoloDocumento
-							}))
-						}}
+                      id: iscrizione.idCorso,
+                      titolo: iscrizione.titoloCorso,
+                      stato: iscrizione.statoCorso === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE',
+                      dataSvolgimento: formatDataSoloGiorno(iscrizione.dataOrarioCorso),
+                      luogo: 'Sede NorLan / Aula Virtuale',
+                      materiali: iscrizione.materiali.map((m) => ({
+                         id: m.idMateriale,
+                         titolo: m.titoloDocumento
+                      }))
+                   }}
 							onDownloadMateriale={(id, titolo) => scaricaMateriale(id, titolo)}
 					/>
 				</div>
@@ -263,113 +264,103 @@
 	{/if}
 </div>
 
-{#if showModalFeedback && selectedCorsoPerFeedback}
-	<div
-			class="fixed inset-0 z-[100] flex items-center justify-center bg-[#1B4B6B]/40 p-4 backdrop-blur-sm"
-			transition:fade
-	>
-		<div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-3xl" in:scale>
-			{#if feedbackSuccess}
-				<div
-						class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white p-8 text-center"
-						in:fade
-				>
-					<CheckCircle2 size={80} class="mb-4 text-green-500" />
-					<h2 class="text-2xl font-black uppercase text-[#1B4B6B]">Grazie!</h2>
-					<p class="mt-2 text-xs font-bold uppercase text-gray-500">
-						Il tuo feedback è stato salvato nei nostri sistemi.
-					</p>
-				</div>
-			{/if}
-			<div class="flex items-center justify-between bg-purple-600 p-6 text-white">
-				<h2 class="flex items-center gap-2 text-lg font-black uppercase tracking-tighter">
-					<MessageSquare size={20} /> Valutazione Qualitativa
-				</h2>
-				<button onclick={() => (showModalFeedback = false)} class="hover:text-purple-300 transition-colors">
-					<X size={24} />
-				</button>
+<ModalCard bind:isOpen={showModalFeedback} maxWidth="max-w-md">
+	{#snippet title()}
+		<MessageSquare size={20} /> <span class="font-black uppercase tracking-tighter">Valutazione Qualitativa</span>
+	{/snippet}
+
+	<div class="relative">
+		{#if feedbackSuccess}
+			<div
+					class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white p-8 text-center rounded-b-3xl"
+					in:fade
+			>
+				<CheckCircle2 size={80} class="mb-4 text-green-500" />
+				<h2 class="text-2xl font-black uppercase text-[#1B4B6B]">Grazie!</h2>
+				<p class="mt-2 text-xs font-bold uppercase text-gray-500">
+					Il tuo feedback è stato salvato nei nostri sistemi.
+				</p>
 			</div>
-			<div class="space-y-6 p-8">
-				<div>
-					<p class="mb-1 text-[10px] font-black uppercase tracking-widest text-purple-600">
-						Corso Terminato
-					</p>
-					<h3 class="text-sm font-extrabold uppercase leading-tight text-[#1B4B6B]">
-						{selectedCorsoPerFeedback.titoloCorso}
-					</h3>
-				</div>
-				<div class="space-y-2">
-					<label class="block text-[10px] font-black uppercase tracking-widest text-gray-400"
-					>Preparazione Docente *</label
-					>
-					<div class="flex justify-between gap-2 px-4">
-						{#each [1, 2, 3, 4, 5] as star}
-							<button
-									type="button"
-									onclick={() => (ratingDocenza = star)}
-									class="text-4xl transition-colors focus:outline-none {ratingDocenza >= star
-									? 'text-yellow-400'
-									: 'text-gray-200 hover:text-yellow-200'}"
-							>
-								★
-							</button>
-						{/each}
-					</div>
-				</div>
-				<div class="space-y-2 border-t border-gray-50 pt-4">
-					<label class="block text-[10px] font-black uppercase tracking-widest text-gray-400"
-					>Qualità dei Contenuti *</label
-					>
-					<div class="flex justify-between gap-2 px-4">
-						{#each [1, 2, 3, 4, 5] as star}
-							<button
-									type="button"
-									onclick={() => (ratingContenuti = star)}
-									class="text-4xl transition-colors focus:outline-none {ratingContenuti >= star
-									? 'text-yellow-400'
-									: 'text-gray-200 hover:text-yellow-200'}"
-							>
-								★
-							</button>
-						{/each}
-					</div>
-				</div>
-				<div class="space-y-1 border-t border-gray-50 pt-4">
-					<label class="block text-[10px] font-black uppercase tracking-widest text-gray-400"
-					>Note o Suggerimenti (Opzionale)</label
-					>
-					<textarea
-							bind:value={commentoFeedback}
-							rows="3"
-							maxlength="1000"
-							placeholder="Lascia un commento..."
-							class="w-full resize-none rounded-xl bg-gray-50 p-3 text-sm font-medium outline-none border-none focus:ring-2 focus:ring-purple-600"
-					></textarea>
+		{/if}
+
+		<div class="space-y-6 p-8">
+			<div>
+				<p class="mb-1 text-[10px] font-black uppercase tracking-widest text-[#1B4B6B]">
+					Corso Terminato
+				</p>
+				<h3 class="text-sm font-extrabold uppercase leading-tight text-[#1B4B6B]">
+					{selectedCorsoPerFeedback?.titoloCorso}
+				</h3>
+			</div>
+			<div class="space-y-2">
+				<label class="block text-[10px] font-black uppercase tracking-widest text-gray-400"
+				>Preparazione Docente *</label>
+				<div class="flex justify-between gap-2 px-4">
+					{#each [1, 2, 3, 4, 5] as star}
+						<button
+								type="button"
+								onclick={() => (ratingDocenza = star)}
+								class="text-4xl transition-colors focus:outline-none {ratingDocenza >= star
+                                ? 'text-yellow-400'
+                                : 'text-gray-200 hover:text-yellow-200'}"
+						>
+							★
+						</button>
+					{/each}
 				</div>
 			</div>
-			<div class="flex items-center justify-between border-t border-gray-100 bg-gray-50 p-6">
-				<button
-						onclick={() => (showModalFeedback = false)}
-						class="text-[10px] font-black uppercase text-gray-400 transition-colors hover:text-gray-600"
-				>
-					Annulla
-				</button>
-				<button
-						onclick={submitFeedback}
-						disabled={isSubmittingFeedback || ratingDocenza === 0 || ratingContenuti === 0}
-						class="flex items-center gap-2 rounded-xl bg-purple-600 px-8 py-3 text-[10px] font-black uppercase text-white shadow-lg transition-all hover:bg-purple-700 disabled:grayscale disabled:opacity-50"
-				>
-					{#if isSubmittingFeedback}
-						<Loader2 size={14} class="animate-spin" />
-					{:else}
-						<Send size={14} />
-					{/if}
-					Invia Valutazione
-				</button>
+			<div class="space-y-2 border-t border-gray-50 pt-4">
+				<label class="block text-[10px] font-black uppercase tracking-widest text-gray-400"
+				>Qualità dei Contenuti *</label>
+				<div class="flex justify-between gap-2 px-4">
+					{#each [1, 2, 3, 4, 5] as star}
+						<button
+								type="button"
+								onclick={() => (ratingContenuti = star)}
+								class="text-4xl transition-colors focus:outline-none {ratingContenuti >= star
+                                ? 'text-yellow-400'
+                                : 'text-gray-200 hover:text-yellow-200'}"
+						>
+							★
+						</button>
+					{/each}
+				</div>
+			</div>
+			<div class="space-y-1 border-t border-gray-50 pt-4">
+				<label class="block text-[10px] font-black uppercase tracking-widest text-gray-400"
+				>Note o Suggerimenti (Opzionale)</label>
+				<textarea
+						bind:value={commentoFeedback}
+						rows="3"
+						maxlength="1000"
+						placeholder="Lascia un commento..."
+						class="w-full resize-none rounded-xl bg-gray-50 p-3 text-sm font-medium outline-none border-none focus:ring-2 focus:ring-[#1B4B6B]"
+				></textarea>
 			</div>
 		</div>
 	</div>
-{/if}
+
+	{#snippet footer()}
+		<button
+				onclick={() => (showModalFeedback = false)}
+				class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors"
+		>
+			Annulla
+		</button>
+		<button
+				onclick={submitFeedback}
+				disabled={isSubmittingFeedback || ratingDocenza === 0 || ratingContenuti === 0}
+				class="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#1B4B6B] px-8 py-3 text-[10px] font-black uppercase text-white shadow-lg transition-all hover:bg-[#153a54] disabled:grayscale disabled:opacity-50"
+		>
+			{#if isSubmittingFeedback}
+				<Loader2 size={14} class="animate-spin" />
+			{:else}
+				<Send size={14} />
+			{/if}
+			Invia Valutazione
+		</button>
+	{/snippet}
+</ModalCard>
 
 <style>
 	:global(body) {

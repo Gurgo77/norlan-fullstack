@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, slide } from 'svelte/transition';
 	import { Plus, X, Trash2, Search, Calendar, MapPin, Loader2, User, CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users, BarChart, Star, BookOpen } from 'lucide-svelte';
 
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
@@ -16,6 +16,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
+	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
 	interface FeedbackStatsDTO {
 		idCorso: number;
@@ -438,253 +439,221 @@
 	{/if}
 </div>
 
-{#if showModalNuovo}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
-			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
-				<h2 class="text-lg font-extrabold uppercase">Programma Nuovo Corso</h2>
-				<button onclick={() => showModalNuovo = false} class="text-white hover:rotate-90 transition-all duration-300">
-					<X size={24} />
-				</button>
+<ModalCard bind:isOpen={showModalNuovo} maxWidth="max-w-xl">
+	{#snippet title()}
+		<Plus size={20}/> <span class="font-black uppercase tracking-tighter">Programma Nuovo Corso</span>
+	{/snippet}
+
+	<div class="flex flex-col gap-6">
+		<div class="space-y-2">
+			<label class="text-[10px] font-bold text-gray-400 uppercase">Titolo del Corso *</label>
+			<input bind:value={formCorso.titolo} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs outline-none focus:border-[#1B4B6B]" />
+		</div>
+		<div class="space-y-2">
+			<label class="text-[10px] font-bold text-gray-400 uppercase">Data di Inizio *</label>
+			<input bind:value={formCorso.dataOrario} type="date" max="9999-12-31" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-xs outline-none focus:border-[#1B4B6B]" />
+		</div>
+		<div class="space-y-2">
+			<label class="text-[10px] font-bold text-gray-400 uppercase">Luogo Di Svolgimento *</label>
+			<input bind:value={formCorso.luogoFisico} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs outline-none focus:border-[#1B4B6B]" />
+		</div>
+		<div class="space-y-2">
+			<label class="text-[10px] font-bold text-gray-400 uppercase">Assegnazione Docente *</label>
+			<select bind:value={formCorso.idDocente} class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs cursor-pointer outline-none focus:border-[#1B4B6B]">
+				<option value={undefined} disabled>-- Seleziona un docente --</option>
+				{#each docenti as docente (docente.idUtente)}
+					<option value={docente.idUtente}>{docente.nome} {docente.cognome}</option>
+				{/each}
+			</select>
+		</div>
+	</div>
+
+	{#snippet footer()}
+		<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">
+			Annulla
+		</button>
+		<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50 transition-colors">
+			{isSaving ? 'Creazione...' : 'Salva Corso'}
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showModalPresenze} maxWidth="max-w-2xl">
+	{#snippet title()}
+		<CheckSquare size={20}/> <span class="font-black uppercase tracking-tighter">Validazione Presenze: {selectedCorso?.titolo}</span>
+	{/snippet}
+
+	{#if isActionLoading}
+		<div class="py-10 text-center">
+			<Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} />
+		</div>
+	{:else}
+		<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i partecipanti.</p>
+		<div class="space-y-2">
+			{#each iscrizioniAttuali as isc (isc.idUtente)}
+				<label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-[#1B4B6B] transition-colors">
+					<div class="flex items-center gap-4">
+						<input type="checkbox" checked={presenzeSelezionate.includes(isc.idUtente)} onchange={() => togglePresenza(isc.idUtente)} class="w-5 h-5 accent-[#1B4B6B] rounded border-gray-300">
+						<div>
+							<p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{isc.emailUtente}</p>
+						</div>
+					</div>
+					<span class="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 bg-gray-100 rounded">ID #{isc.idUtente}</span>
+				</label>
+			{/each}
+		</div>
+	{/if}
+
+	{#snippet footer()}
+		<button onclick={confermaPresenze} disabled={isActionLoading} class="w-full py-4 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-xs shadow-lg shadow-blue-900/20 disabled:opacity-50">
+			Chiudi Registro e Invia a Docente
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showModalUpload} maxWidth="max-w-3xl" headerClass="bg-emerald-600">
+	{#snippet title()}
+		<UploadCloud size={20}/> <span class="font-black uppercase tracking-tighter">Distribuzione Attestati Aziendali</span>
+	{/snippet}
+
+	{#if isActionLoading && aziendeCoinvolte.length === 0}
+		<div class="py-10 text-center">
+			<Loader2 class="animate-spin mx-auto text-emerald-600" size={32} />
+		</div>
+	{:else}
+		<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda.</p>
+
+		{#if aziendeCoinvolte.length === 0}
+			<div class="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
+				<p class="text-amber-700 font-bold uppercase text-xs">Attenzione: Nessuna azienda valida rilevata.</p>
 			</div>
-			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				<div class="flex flex-col gap-6">
-					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase">Titolo del Corso *</label>
-						<input bind:value={formCorso.titolo} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs outline-none focus:border-[#1B4B6B]" />
+		{/if}
+
+		<div class="space-y-4 mt-4">
+			{#each aziendeCoinvolte as azienda (azienda.idAzienda)}
+				<div class="p-5 bg-white border border-gray-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+					<div class="flex items-start gap-4">
+						<div class="p-3 bg-gray-100 rounded-xl text-gray-500">
+							<Building2 size={20} />
+						</div>
+						<div>
+							<h3 class="text-sm font-extrabold text-[#1B4B6B] uppercase">{azienda.ragioneSociale}</h3>
+							<p class="text-[10px] font-bold text-emerald-600 flex items-center gap-1.5 mt-1 uppercase">
+								<Users size={12} /> {azienda.count} dipendente/i
+							</p>
+						</div>
 					</div>
-					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase">Data di Inizio *</label>
-						<input bind:value={formCorso.dataOrario} type="date" max="9999-12-31" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-xs outline-none focus:border-[#1B4B6B]" />
+					<div class="shrink-0">
+						<input
+								type="file"
+								accept="application/pdf"
+								onchange={(e) => handleFileChange(e, azienda.idAzienda)}
+								class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-extrabold file:uppercase file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-colors"
+						/>
 					</div>
-					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase">Luogo Di Svolgimento *</label>
-						<input bind:value={formCorso.luogoFisico} type="text" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs outline-none focus:border-[#1B4B6B]" />
+				</div>
+			{/each}
+		</div>
+	{/if}
+
+	{#snippet footer()}
+		<button onclick={confermaDistribuzioneAttestati} disabled={isActionLoading || aziendeCoinvolte.length === 0} class="w-full py-4 bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 uppercase text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 flex justify-center items-center gap-2">
+			{#if isActionLoading}
+				<Loader2 class="animate-spin" size={16} /> Elaborazione...
+			{:else}
+				Invia Documenti alle Aziende
+			{/if}
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showModalFeedback} maxWidth="max-w-2xl">
+	{#snippet title()}
+		<div class="flex items-center gap-3">
+			<BarChart size={24}/>
+			<div class="flex flex-col">
+				<span class="font-black uppercase tracking-tighter text-lg leading-none">Analisi Qualità Corso</span>
+				<span class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso?.titolo}</span>
+			</div>
+		</div>
+	{/snippet}
+
+	{#if isLoadingFeedback}
+		<div class="py-20 text-center flex flex-col items-center gap-4">
+			<Loader2 class="animate-spin text-[#1B4B6B]" size={48} />
+			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Analisi in corso...</span>
+		</div>
+	{:else if statsFeedback}
+		{#if statsFeedback.totaleFeedback === 0}
+			<div class="py-20 text-center border-2 border-dashed border-gray-200 rounded-3xl bg-white">
+				<Star size={48} class="mx-auto text-gray-200 mb-4" />
+				<p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Nessun feedback rilasciato.</p>
+			</div>
+		{:else}
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+				<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Docenza</p>
+					<div class="flex items-baseline justify-center gap-1">
+						<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
+						<span class="text-xl font-bold text-gray-300">/5</span>
 					</div>
-					<div class="space-y-2">
-						<label class="text-[10px] font-bold text-gray-400 uppercase">Assegnazione Docente *</label>
-						<select bind:value={formCorso.idDocente} class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold uppercase text-xs cursor-pointer outline-none focus:border-[#1B4B6B]">
-							<option value={undefined} disabled>-- Seleziona un docente --</option>
-							{#each docenti as docente (docente.idUtente)}
-								<option value={docente.idUtente}>{docente.nome} {docente.cognome}</option>
-							{/each}
-						</select>
+				</div>
+				<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Contenuti</p>
+					<div class="flex items-baseline justify-center gap-1">
+						<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaContenuti.toFixed(1)}</span>
+						<span class="text-xl font-bold text-gray-300">/5</span>
 					</div>
 				</div>
 			</div>
-			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4">
-				<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">
-					Annulla
-				</button>
-				<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50 transition-colors">
-					{isSaving ? 'Creazione...' : 'Salva Corso'}
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
 
-{#if showModalPresenze}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
-			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center rounded-t-3xl">
-				<h2 class="text-lg font-extrabold uppercase">Validazione Presenze: {selectedCorso?.titolo}</h2>
-				<button onclick={() => showModalPresenze = false} class="text-white hover:rotate-90 transition-all duration-300">
-					<X size={24} />
-				</button>
+			<div class="flex items-center justify-between mb-6">
+				<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti</h3>
+				<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
+                    {statsFeedback.totaleFeedback} Risposte
+                </span>
 			</div>
-			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				{#if isActionLoading}
-					<div class="py-10 text-center">
-						<Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} />
-					</div>
-				{:else}
-					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i partecipanti.</p>
-					<div class="space-y-2">
-						{#each iscrizioniAttuali as isc (isc.idUtente)}
-							<label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-[#1B4B6B] transition-colors">
-								<div class="flex items-center gap-4">
-									<input type="checkbox" checked={presenzeSelezionate.includes(isc.idUtente)} onchange={() => togglePresenza(isc.idUtente)} class="w-5 h-5 accent-[#1B4B6B] rounded border-gray-300">
-									<div>
-										<p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{isc.emailUtente}</p>
-									</div>
-								</div>
-								<span class="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 bg-gray-100 rounded">ID #{isc.idUtente}</span>
-							</label>
-						{/each}
-					</div>
-				{/if}
-			</div>
-			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100">
-				<button onclick={confermaPresenze} disabled={isActionLoading} class="w-full py-4 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-xs shadow-lg shadow-blue-900/20 disabled:opacity-50">
-					Chiudi Registro e Invia a Docente
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
 
-{#if showModalUpload}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" in:fade>
-		<div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]" in:scale>
-			<div class="bg-emerald-600 p-6 text-white flex justify-between items-center rounded-t-3xl">
-				<h2 class="text-lg font-extrabold uppercase">Distribuzione Attestati Aziendali</h2>
-				<button onclick={() => showModalUpload = false} class="text-white hover:rotate-90 transition-all duration-300">
-					<X size={24} />
-				</button>
-			</div>
-			<div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				{#if isActionLoading && aziendeCoinvolte.length === 0}
-					<div class="py-10 text-center">
-						<Loader2 class="animate-spin mx-auto text-emerald-600" size={32} />
-					</div>
-				{:else}
-					<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda.</p>
-
-					{#if aziendeCoinvolte.length === 0}
-						<div class="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
-							<p class="text-amber-700 font-bold uppercase text-xs">Attenzione: Nessuna azienda valida rilevata.</p>
+			<div class="space-y-4">
+				{#each statsFeedback.commenti as commento (commento)}
+					<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
+						<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0">
+							<User size={16}/>
 						</div>
-					{/if}
-
-					<div class="space-y-4 mt-4">
-						{#each aziendeCoinvolte as azienda (azienda.idAzienda)}
-							<div class="p-5 bg-white border border-gray-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-								<div class="flex items-start gap-4">
-									<div class="p-3 bg-gray-100 rounded-xl text-gray-500">
-										<Building2 size={20} />
-									</div>
-									<div>
-										<h3 class="text-sm font-extrabold text-[#1B4B6B] uppercase">{azienda.ragioneSociale}</h3>
-										<p class="text-[10px] font-bold text-emerald-600 flex items-center gap-1.5 mt-1 uppercase">
-											<Users size={12} /> {azienda.count} dipendente/i
-										</p>
-									</div>
-								</div>
-								<div class="shrink-0">
-									<input
-											type="file"
-											accept="application/pdf"
-											onchange={(e) => handleFileChange(e, azienda.idAzienda)}
-											class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-extrabold file:uppercase file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-colors"
-									/>
-								</div>
-							</div>
-						{/each}
+						<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
 					</div>
-				{/if}
+				{/each}
 			</div>
-			<div class="p-6 bg-white rounded-b-3xl border-t border-gray-100 flex gap-4">
-				<button onclick={confermaDistribuzioneAttestati} disabled={isActionLoading || aziendeCoinvolte.length === 0} class="w-full py-4 bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 uppercase text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 flex justify-center items-center gap-2">
-					{#if isActionLoading}
-						<Loader2 class="animate-spin" size={16} /> Elaborazione...
-					{:else}
-						Invia Documenti alle Aziende
-					{/if}
-				</button>
-			</div>
+		{/if}
+	{/if}
+
+	{#snippet footer()}
+		<button onclick={() => showModalFeedback = false} class="w-full py-4 bg-gray-900 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-colors shadow-lg">
+			Chiudi Analisi
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showModalElimina} maxWidth="max-w-md" headerClass="bg-red-600">
+	{#snippet title()}
+		<Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Eliminare il corso?</span>
+	{/snippet}
+
+	<div class="text-center py-4">
+		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<Trash2 size={40}/>
 		</div>
+		<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva.</p>
 	</div>
-{/if}
 
-{#if showModalFeedback && selectedCorso}
-	<div class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" transition:fade>
-		<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" transition:scale>
-			<div class="bg-[#1B4B6B] p-8 text-white flex justify-between items-center">
-				<div>
-					<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-3">
-						<BarChart size={24}/> Analisi Qualità Corso
-					</h2>
-					<p class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso.titolo}</p>
-				</div>
-				<button onclick={() => showModalFeedback = false} class="text-white hover:rotate-90 transition-all duration-300">
-					<X size={28} />
-				</button>
-			</div>
-
-			<div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
-				{#if isLoadingFeedback}
-					<div class="py-20 text-center flex flex-col items-center gap-4">
-						<Loader2 class="animate-spin text-[#1B4B6B]" size={48} />
-						<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Analisi in corso...</span>
-					</div>
-				{:else if statsFeedback}
-					{#if statsFeedback.totaleFeedback === 0}
-						<div class="py-20 text-center border-2 border-dashed border-gray-200 rounded-3xl bg-white">
-							<Star size={48} class="mx-auto text-gray-200 mb-4" />
-							<p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Nessun feedback rilasciato.</p>
-						</div>
-					{:else}
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
-								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Docenza</p>
-								<div class="flex items-baseline justify-center gap-1">
-									<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
-									<span class="text-xl font-bold text-gray-300">/5</span>
-								</div>
-							</div>
-							<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
-								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Contenuti</p>
-								<div class="flex items-baseline justify-center gap-1">
-									<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaContenuti.toFixed(1)}</span>
-									<span class="text-xl font-bold text-gray-300">/5</span>
-								</div>
-							</div>
-						</div>
-
-						<div class="flex items-center justify-between mb-6">
-							<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti</h3>
-							<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
-                                {statsFeedback.totaleFeedback} Risposte
-                            </span>
-						</div>
-
-						<div class="space-y-4">
-							{#each statsFeedback.commenti as commento (commento)}
-								<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
-									<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0">
-										<User size={16}/>
-									</div>
-									<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				{/if}
-			</div>
-
-			<div class="p-8 bg-white border-t border-gray-100">
-				<button onclick={() => showModalFeedback = false} class="w-full py-4 bg-gray-900 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-colors shadow-lg">
-					Chiudi Analisi
-				</button>
-			</div>
+	{#snippet footer()}
+		<div class="flex flex-col w-full gap-3">
+			<button onclick={confermaEliminaCorso} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
+				Sì, elimina definitivamente
+			</button>
+			<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
+				No, annulla
+			</button>
 		</div>
-	</div>
-{/if}
-
-{#if showModalElimina}
-	<div class="fixed inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-[200] p-4" transition:fade>
-		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" in:scale>
-			<div class="p-8 text-center">
-				<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-					<Trash2 size={40}/>
-				</div>
-				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Eliminare il corso?</h2>
-				<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva.</p>
-				<div class="flex flex-col gap-3">
-					<button onclick={confermaEliminaCorso} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
-						Sì, elimina definitivamente
-					</button>
-					<button onclick={() => { showModalElimina = false; idCorsoDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
-						No, annulla
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
-{/if}
-
-<style>
-	.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-</style>
+	{/snippet}
+</ModalCard>

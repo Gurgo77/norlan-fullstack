@@ -10,7 +10,8 @@
 		AlertCircle,
 		Clock,
 		FileDown,
-		Loader2
+		Loader2,
+		AlertTriangle
 	} from 'lucide-svelte';
 
 	import { DocumentoService } from '$lib/services/DocumentoService';
@@ -19,11 +20,16 @@
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroCategoria = $state<ModuloServizio | 'TUTTI'>('TUTTI');
 	let documenti = $state<Documento[]>([]);
+
+	// Stati per il modale di errore
+	let showErrorModal = $state(false);
+	let errorMessage = $state('');
 
 	onMount(async () => {
 		const session = AuthService.getSession();
@@ -50,8 +56,18 @@
 			a.click();
 			window.URL.revokeObjectURL(url);
 		} catch (error) {
-			console.error('Si è verificato un problema tecnico durante il download del file selezionato:', error);
+			console.error(error);
+			errorMessage = 'Si è verificato un problema tecnico durante il download del file selezionato. Riprova più tardi.';
+			showErrorModal = true;
 		}
+	}
+
+	function getStatoDocumento(doc: Documento): 'VALIDO' | 'IN_SCADENZA' | 'SCADUTO' {
+		if (doc.scaduto) return 'SCADUTO';
+		const scadenza = new Date(doc.dataScadenza);
+		const diff = Math.ceil((scadenza.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+		if (diff < 0) return 'SCADUTO';
+		return diff <= 30 ? 'IN_SCADENZA' : 'VALIDO';
 	}
 
 	const filteredDocs = $derived(
@@ -59,27 +75,39 @@
 				const matchSearch = doc.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
 				const matchCat = filtroCategoria === 'TUTTI' || doc.modulo === filtroCategoria;
 				return matchSearch && matchCat;
+			}).sort((a, b) => {
+				const getPesoStato = (d: Documento) => {
+					const stato = getStatoDocumento(d);
+					if (stato === 'SCADUTO') return 1;
+					if (stato === 'IN_SCADENZA') return 2;
+					return 3; // VALIDO
+				};
+
+				const pesoA = getPesoStato(a);
+				const pesoB = getPesoStato(b);
+
+				// Prima ordina per stato di gravità
+				if (pesoA !== pesoB) return pesoA - pesoB;
+
+				// A parità di stato, ordina per data di scadenza (la più imminente prima)
+				return new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime();
 			})
 	);
+
+	// Ricalcolo delle statistiche usando getStatoDocumento per essere precisi
 	const stats = $derived({
 		totali: documenti.length,
-		scaduti: documenti.filter((d) => d.scaduto).length,
-		validi: documenti.filter((d) => !d.scaduto).length
+		validi: documenti.filter((d) => getStatoDocumento(d) === 'VALIDO').length,
+		inScadenza: documenti.filter((d) => getStatoDocumento(d) === 'IN_SCADENZA').length,
+		scaduti: documenti.filter((d) => getStatoDocumento(d) === 'SCADUTO').length
 	});
-
-	function getStatoDocumento(doc: Documento): 'VALIDO' | 'IN_SCADENZA' | 'SCADUTO' {
-		if (doc.scaduto) return 'SCADUTO';
-		const scadenza = new Date(doc.dataScadenza);
-		const diff = Math.ceil((scadenza.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-		return diff <= 30 ? 'IN_SCADENZA' : 'VALIDO';
-	}
 
 	const getStatusStyle = (stato: string) => {
 		switch (stato) {
 			case 'VALIDO':
 				return 'bg-green-50 text-green-600 border-green-100';
 			case 'IN_SCADENZA':
-				return 'bg-yellow-50 text-yellow-600 border-yellow-100';
+				return 'bg-orange-50 text-orange-600 border-orange-100';
 			case 'SCADUTO':
 				return 'bg-red-50 text-red-600 border-red-100';
 			default:
@@ -88,20 +116,22 @@
 	};
 </script>
 
-<div in:fade>
-	<div class="mb-10 flex flex-col items-end justify-between gap-6 md:flex-row">
-		<div>
+<div in:fade class="pb-20">
+	<div class="mb-10 flex flex-col items-end justify-between gap-6 lg:flex-row">
+		<div class="w-full lg:w-auto">
 			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">I MIEI DOCUMENTI</h1>
 			<p class="text-xs font-bold uppercase tracking-tighter text-gray-500">
 				Archivio digitale e scadenziario documentale NorLan.
 			</p>
 		</div>
 
-		<div class="flex gap-4">
+		<div class="flex flex-wrap gap-4 w-full lg:w-auto">
 			<StatCard titolo="A Norma" valore={stats.validi} icona={ShieldCheck} bgIcona="bg-transparent" testoIcona="text-green-500"/>
+			<StatCard titolo="In Scadenza" valore={stats.inScadenza} icona={Clock} bgIcona="bg-transparent" testoIcona="text-orange-500"/>
 			<StatCard titolo="Scaduti" valore={stats.scaduti} icona={AlertCircle} bgIcona="bg-transparent" testoIcona="text-red-500"/>
 		</div>
 	</div>
+
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
 		<div class="flex flex-wrap gap-3">
 			<button
@@ -155,7 +185,7 @@
 			{#each filteredDocs as doc (doc.idDocumento)}
 				{@const status = getStatoDocumento(doc)}
 				<div class="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl" in:scale>
-					<div class="h-1.5 w-full {status === 'VALIDO' ? 'bg-green-500' : status === 'IN_SCADENZA' ? 'bg-yellow-500' : 'bg-red-500'}"></div>
+					<div class="h-1.5 w-full {status === 'VALIDO' ? 'bg-green-500' : status === 'IN_SCADENZA' ? 'bg-orange-500' : 'bg-red-500'}"></div>
 					<div class="flex-1 p-8">
 						<div class="mb-6 flex items-start justify-between">
 							<div class="rounded-2xl bg-gray-50 p-3 text-[#1B4B6B] transition-all group-hover:bg-[#1B4B6B] group-hover:text-white">
@@ -201,6 +231,25 @@
 		/>
 	</div>
 </div>
+
+<ModalCard bind:isOpen={showErrorModal} maxWidth="max-w-sm" headerClass="bg-red-600">
+	{#snippet title()}
+		<AlertTriangle size={20}/> <span class="font-black uppercase tracking-tighter">Errore Download</span>
+	{/snippet}
+
+	<div class="text-center py-4">
+		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<AlertTriangle size={40}/>
+		</div>
+		<p class="text-sm font-bold text-gray-500">{errorMessage}</p>
+	</div>
+
+	{#snippet footer()}
+		<button onclick={() => showErrorModal = false} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
+			Chiudi
+		</button>
+	{/snippet}
+</ModalCard>
 
 <style>
 	:global(body) {

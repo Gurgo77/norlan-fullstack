@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { Send, MessageSquare, Loader2, User, Clock, ShieldCheck, Users } from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, User, Clock, ShieldCheck, Users, Search } from 'lucide-svelte';
 
 	import { ChatService } from '$lib/services/ChatService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -25,7 +25,15 @@
 	let messaggi: Messaggio[] = $state([]);
 	let newMessage: string = $state('');
 	let isLoading: boolean = $state(true);
+	let searchQuery: string = $state('');
 	const STAFF_ID = 1;
+
+	const filteredContatti = $derived(
+			contatti.filter(c =>
+					c.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					c.sottotitolo.toLowerCase().includes(searchQuery.toLowerCase())
+			)
+	);
 
 	onMount(async () => {
 		currentUser = AuthService.getSession();
@@ -121,12 +129,24 @@
 <div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
 	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
-		<div class="p-8 border-b border-gray-100 bg-white">
-			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
-				<Users size={22} class="text-[#1B4B6B]" />
-				RUBRICA CONTATTI
-			</h2>
-			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff NorLan e Dipendenti</p>
+		<div class="p-8 border-b border-gray-100 bg-white flex flex-col gap-5">
+			<div>
+				<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
+					<Users size={22} class="text-[#1B4B6B]" />
+					RUBRICA CONTATTI
+				</h2>
+				<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff NorLan e Dipendenti</p>
+			</div>
+
+			<div class="relative w-full group">
+				<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={16} />
+				<input
+						bind:value={searchQuery}
+						type="text"
+						placeholder="Cerca un contatto..."
+						class="w-full bg-gray-50 border border-transparent pl-10 pr-4 py-3 rounded-xl text-xs font-bold uppercase tracking-tight focus:bg-white focus:border-gray-200 focus:ring-2 focus:ring-[#1B4B6B]/10 outline-none transition-all placeholder:text-gray-400"
+				/>
+			</div>
 		</div>
 
 		<div class="flex-1 overflow-y-auto custom-scrollbar">
@@ -135,8 +155,12 @@
 					<Loader2 class="animate-spin text-[#1B4B6B]" size={32} />
 					<p class="text-[9px] font-black text-gray-300 uppercase tracking-widest">Sincronizzazione contatti...</p>
 				</div>
+			{:else if filteredContatti.length === 0}
+				<div class="p-10 text-center">
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nessun contatto trovato</p>
+				</div>
 			{:else}
-				{#each contatti as contatto (contatto.id)}
+				{#each filteredContatti as contatto (contatto.id)}
 					<button
 							onclick={() => selectContact(contatto)}
 							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.id === contatto.id ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"

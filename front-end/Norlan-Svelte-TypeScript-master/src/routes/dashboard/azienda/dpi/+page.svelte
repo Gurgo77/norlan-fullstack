@@ -9,6 +9,7 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
+	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
 	interface DpiRegistro {
 		idAssegnazione?: number;
@@ -300,66 +301,63 @@
 	{/if}
 </div>
 
-{#if showDpiModal}
-	<div class="fixed inset-0 bg-[#1B4B6B]/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4" transition:fade>
-		<div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" in:scale>
-			<div class="bg-[#1B4B6B] p-6 text-white flex justify-between items-center">
-				<h2 class="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
-					<ShieldCheck size={20}/> {formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}
-				</h2>
-				<button onclick={() => (showDpiModal = false)} class="text-white hover:rotate-90 transition-all duration-300"><X size={24}/></button>
+<ModalCard bind:isOpen={showDpiModal} maxWidth="max-w-lg">
+	{#snippet title()}
+		<ShieldCheck size={20}/> <span class="font-black uppercase tracking-tighter">{formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}</span>
+	{/snippet}
+
+	<div class="space-y-6">
+		<div>
+			<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Seleziona Dipendente *</label>
+			<select bind:value={formDpi.idDipendente} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
+				<option value="" disabled>-- Scegli dipendente --</option>
+				{#each dipendentiList as dip}
+					<option value={dip.idUtente}>{dip.nome} {dip.cognome}</option>
+				{/each}
+			</select>
+		</div>
+		<div>
+			<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia DPI *</label>
+			<select bind:value={formDpi.tipo} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
+				<option value="">Seleziona DPI...</option>
+				<option value="ELMETTO">Elmetto</option>
+				<option value="GUANTI">Guanti</option>
+				<option value="SCARPE_ANTINFORTUNISTICHE">Scarpe Antinfortunistiche</option>
+				<option value="OCCHIALI">Occhiali</option>
+				<option value="ALTRO">Altro</option>
+			</select>
+		</div>
+		{#if formDpi.tipo === 'ALTRO'}
+			<div class="space-y-1" transition:slide>
+				<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
+				<input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
 			</div>
-			<div class="p-8 space-y-6">
-				<div>
-					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Seleziona Dipendente *</label>
-					<select bind:value={formDpi.idDipendente} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
-						<option value="" disabled>-- Scegli dipendente --</option>
-						{#each dipendentiList as dip}
-							<option value={dip.idUtente}>{dip.nome} {dip.cognome}</option>
-						{/each}
-					</select>
-				</div>
-				<div>
-					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia DPI *</label>
-					<select bind:value={formDpi.tipo} disabled={!!formDpi.idAssegnazione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50">
-						<option value="">Seleziona DPI...</option>
-						<option value="ELMETTO">Elmetto</option>
-						<option value="GUANTI">Guanti</option>
-						<option value="SCARPE_ANTINFORTUNISTICHE">Scarpe Antinfortunistiche</option>
-						<option value="OCCHIALI">Occhiali</option>
-						<option value="ALTRO">Altro</option>
-					</select>
-				</div>
-				{#if formDpi.tipo === 'ALTRO'}
-					<div class="space-y-1" transition:slide>
-						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome DPI Personalizzato *</label>
-						<input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
-					</div>
-				{/if}
-				<div class="grid grid-cols-2 gap-4 mt-4">
-					<div>
-						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
-						<input type="date" max="9999-12-31" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-					</div>
-					<div>
-						<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Scadenza Revisione *</label>
-						<input type="date" max="9999-12-31" bind:value={formDpi.dataScadenzaRevisione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
-					</div>
-				</div>
+		{/if}
+		<div class="grid grid-cols-2 gap-4 mt-4">
+			<div>
+				<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
+				<input type="date" max="9999-12-31" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 			</div>
-			<div class="p-8 bg-gray-50 flex justify-end gap-4 border-t border-gray-100">
-				<button onclick={() => (showDpiModal = false)} class="px-6 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">Annulla</button>
-				<button
-						onclick={salvaDPI}
-						disabled={isSavingDpi || !formDpi.idDipendente || !formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataConsegna || !formDpi.dataScadenzaRevisione}
-						class="bg-[#1B4B6B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors"
-				>
-					{#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{:else}<Save size={14} />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
-				</button>
+			<div>
+				<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Scadenza Revisione *</label>
+				<input type="date" max="9999-12-31" bind:value={formDpi.dataScadenzaRevisione} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
 			</div>
 		</div>
 	</div>
-{/if}
+
+	{#snippet footer()}
+		<button onclick={() => (showDpiModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+			Annulla
+		</button>
+		<button
+				onclick={salvaDPI}
+				disabled={isSavingDpi || !formDpi.idDipendente || !formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataConsegna || !formDpi.dataScadenzaRevisione}
+				class="flex-1 bg-[#1B4B6B] text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors"
+		>
+			{#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{:else}<Save size={14} />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
+		</button>
+	{/snippet}
+</ModalCard>
 
 <style>
 	:global(body) { background-color: #F9FAFB; }
