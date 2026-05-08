@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { Send, MessageSquare, Loader2, User, Clock, ShieldCheck, Users, Search } from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, User, ShieldCheck, Search } from 'lucide-svelte';
 
 	import { ChatService } from '$lib/services/ChatService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -9,12 +9,15 @@
 	import { page } from '$app/stores';
 
 	import { Messaggio } from '$lib/models/Messaggio';
+	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
+	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
 
 	interface Contatto {
 		id: number;
 		nome: string;
 		sottotitolo: string;
 		isStaff: boolean;
+		icona: any;
 	}
 
 	let chatService: ChatService | null = null;
@@ -46,11 +49,12 @@
 					id: d.idUtente,
 					nome: `${d.nome} ${d.cognome}`,
 					sottotitolo: d.email,
-					isStaff: false
+					isStaff: false,
+					icona: User
 				}));
 
 				contatti = [
-					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Consulenza", isStaff: true },
+					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Consulenza", isStaff: true, icona: ShieldCheck },
 					...listaDipendenti
 				];
 
@@ -63,7 +67,7 @@
 				}
 
 			} catch (error) {
-				console.error("Si è verificato un errore durante il recupero dei contatti aziendali:", error);
+				console.error("Errore durante il recupero dei contatti aziendali:", error);
 			} finally {
 				isLoading = false;
 			}
@@ -75,7 +79,7 @@
 							scrollToBottom();
 						}
 					},
-					(err: string) => console.error("Errore critico durante la comunicazione in tempo reale (WebSocket):", err)
+					(err: string) => console.error("Errore critico WebSocket:", err)
 			);
 			chatService.connect(token, currentUser.idUtente);
 		}
@@ -132,7 +136,7 @@
 		<div class="p-8 border-b border-gray-100 bg-white flex flex-col gap-5">
 			<div>
 				<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
-					<Users size={22} class="text-[#1B4B6B]" />
+					<User size={22} class="text-[#1B4B6B]" />
 					RUBRICA CONTATTI
 				</h2>
 				<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff NorLan e Dipendenti</p>
@@ -161,25 +165,13 @@
 				</div>
 			{:else}
 				{#each filteredContatti as contatto (contatto.id)}
-					<button
-							onclick={() => selectContact(contatto)}
-							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.id === contatto.id ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
-					>
-						<div class="flex items-center gap-4">
-							<div class="p-3 rounded-2xl transition-all {activeContact?.id === contatto.id ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : (contatto.isStaff ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400') }">
-								{#if contatto.isStaff} <ShieldCheck size={20} /> {:else} <User size={20} /> {/if}
-							</div>
-
-							<div class="overflow-hidden">
-								<h3 class="{contatto.isStaff ? 'font-black text-blue-900' : 'font-bold text-[#1B4B6B]'} text-xs uppercase truncate tracking-tight">
-									{contatto.nome}
-								</h3>
-								<div class="flex items-center gap-1 mt-0.5">
-									<p class="text-[9px] text-gray-400 font-bold uppercase truncate tracking-tighter">{contatto.sottotitolo}</p>
-								</div>
-							</div>
-						</div>
-					</button>
+					<ContattoRubrica
+							nomeCompleto={contatto.nome}
+							sottotitolo={contatto.sottotitolo}
+							icona={contatto.icona}
+							selezionato={activeContact?.id === contatto.id}
+							onClick={() => selectContact(contatto)}
+					/>
 				{/each}
 			{/if}
 		</div>
@@ -190,7 +182,7 @@
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
 				<div class="flex items-center gap-5">
 					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20">
-						{#if activeContact.isStaff} <ShieldCheck size={24} /> {:else} <User size={24} /> {/if}
+						<svelte:component this={activeContact.icona} size={24} />
 					</div>
 					<div>
 						<h2 class="font-black text-[#1B4B6B] text-2xl uppercase tracking-tighter">{activeContact.nome}</h2>
@@ -206,16 +198,13 @@
 
 			<div id="chat-scroll-container" class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
-					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
-						<div class="max-w-[65%] shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-blue-900/10' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4'}">
-							<p class="text-sm font-bold leading-relaxed">{msg.testo}</p>
-							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
-								<Clock size={10} />
-								<span class="text-[9px] font-black uppercase tracking-widest">
-                            {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                         </span>
-							</div>
-						</div>
+					<div in:scale={{duration: 200, start: 0.95}}>
+						<ChatBubble
+								testo={msg.testo}
+								data={new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+								inviatoDaMe={msg.idMittente === currentUser?.idUtente}
+								letto={msg.letto}
+						/>
 					</div>
 				{/each}
 			</div>
@@ -225,7 +214,7 @@
 					<input
 							bind:value={newMessage}
 							type="text"
-							placeholder="Scrivi un messaggio ufficiale..."
+							placeholder="Scrivi a {activeContact.nome}..."
 							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
 					/>
 					<button

@@ -13,7 +13,10 @@
 	import { Docente, type DocenteData } from '$lib/models/Docente';
 	import { Dipendente, type DipendenteData } from '$lib/models/Dipendente';
 
-	interface ContattoRubrica {
+	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
+	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
+
+	interface ContattoRubricaData {
 		idUtente: number;
 		nomeVisualizzato: string;
 		sottotitolo: string;
@@ -23,8 +26,8 @@
 	}
 
 	interface GruppoAzienda {
-		azienda: ContattoRubrica;
-		dipendenti: ContattoRubrica[];
+		azienda: ContattoRubricaData;
+		dipendenti: ContattoRubricaData[];
 		espansa: boolean;
 	}
 
@@ -32,8 +35,8 @@
 	let currentUser: UserSession | null = $state(null);
 	let token: string = $state('');
 	let gruppiAziende: GruppoAzienda[] = $state([]);
-	let docentiRubrica: ContattoRubrica[] = $state([]);
-	let activeContact: ContattoRubrica | null = $state(null);
+	let docentiRubrica: ContattoRubricaData[] = $state([]);
+	let activeContact: ContattoRubricaData | null = $state(null);
 	let messaggi: Messaggio[] = $state([]);
 	let newMessage: string = $state('');
 	let isLoading: boolean = $state(true);
@@ -177,7 +180,7 @@
 		}
 	}
 
-	async function selectContact(contatto: ContattoRubrica) {
+	async function selectContact(contatto: ContattoRubricaData) {
 		activeContact = contatto;
 		messaggi = [];
 		if (currentUser && activeContact) {
@@ -251,58 +254,27 @@
 
 				{#each filteredGruppiAziende as gruppo (gruppo.azienda.idUtente)}
 					<div class="border-b border-gray-50">
-						<div class="flex w-full {activeContact?.idUtente === gruppo.azienda.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent hover:bg-white transition-colors'}">
-
-							<button
-									onclick={() => toggleAzienda(gruppo.azienda.idUtente)}
-									disabled={gruppo.dipendenti.length === 0}
-									class="p-4 pr-1 text-gray-400 hover:text-[#1B4B6B] disabled:opacity-30 disabled:cursor-not-allowed"
-							>
-								{#if gruppo.espansa}
-									<ChevronDown size={16} />
-								{:else}
-									<ChevronRight size={16} />
-								{/if}
-							</button>
-
-							<button
-									onclick={() => selectContact(gruppo.azienda)}
-									class="flex-1 p-4 pl-2 text-left group"
-							>
-								<div class="flex items-center gap-3">
-									<div class="p-2 rounded-xl transition-all {activeContact?.idUtente === gruppo.azienda.idUtente ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-[#1B4B6B] group-hover:text-white'}">
-										<Building2 size={18} />
-									</div>
-									<div class="overflow-hidden">
-										<h3 class="font-black text-[#1B4B6B] text-xs uppercase truncate tracking-tight">{gruppo.azienda.nomeVisualizzato}</h3>
-										<div class="flex items-center gap-1 mt-0.5">
-											<Users size={10} class="text-gray-300" />
-											<p class="text-[9px] text-gray-400 font-bold uppercase truncate tracking-tighter">
-												{gruppo.dipendenti.length} Dipendenti
-											</p>
-										</div>
-									</div>
-								</div>
-							</button>
-						</div>
+						<ContattoRubrica
+								nomeCompleto={gruppo.azienda.nomeVisualizzato}
+								sottotitolo={`${gruppo.dipendenti.length} Dipendenti`}
+								icona={gruppo.azienda.icona}
+								selezionato={activeContact?.idUtente === gruppo.azienda.idUtente}
+								onClick={() => {
+                            selectContact(gruppo.azienda);
+                            if (gruppo.dipendenti.length > 0) toggleAzienda(gruppo.azienda.idUtente);
+                        }}
+						/>
 
 						{#if gruppo.espansa && gruppo.dipendenti.length > 0}
-							<div transition:slide class="bg-gray-100/50 border-t border-gray-50 pl-10">
+							<div transition:slide class="bg-gray-100/50 border-t border-gray-50 pl-6 border-l-2 border-[#1B4B6B]/10">
 								{#each gruppo.dipendenti as dipendente (dipendente.idUtente)}
-									<button
-											onclick={() => selectContact(dipendente)}
-											class="w-full p-3 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.idUtente === dipendente.idUtente ? 'bg-white border-l-2 border-l-[#1B4B6B]' : 'border-l-2 border-l-transparent'}"
-									>
-										<div class="flex items-center gap-3">
-											<div class="w-6 h-6 rounded-lg flex items-center justify-center transition-all {activeContact?.idUtente === dipendente.idUtente ? 'bg-[#1B4B6B] text-white' : 'bg-white text-gray-400 group-hover:text-[#1B4B6B] shadow-sm'}">
-												<User size={12} />
-											</div>
-											<div class="overflow-hidden">
-												<h3 class="font-bold text-gray-700 text-[11px] uppercase truncate group-hover:text-[#1B4B6B]">{dipendente.nomeVisualizzato}</h3>
-												<p class="text-[8px] text-gray-400 font-black uppercase truncate">{dipendente.sottotitolo}</p>
-											</div>
-										</div>
-									</button>
+									<ContattoRubrica
+											nomeCompleto={dipendente.nomeVisualizzato}
+											sottotitolo={dipendente.sottotitolo}
+											icona={dipendente.icona}
+											selezionato={activeContact?.idUtente === dipendente.idUtente}
+											onClick={() => selectContact(dipendente)}
+									/>
 								{/each}
 							</div>
 						{/if}
@@ -318,20 +290,13 @@
 						<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Docenti</h3>
 					</div>
 					{#each filteredDocenti as docente (docente.idUtente)}
-						<button
-								onclick={() => selectContact(docente)}
-								class="w-full p-4 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.idUtente === docente.idUtente ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
-						>
-							<div class="flex items-center gap-4">
-								<div class="p-2 rounded-xl transition-all {activeContact?.idUtente === docente.idUtente ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-[#1B4B6B] group-hover:text-white'}">
-									<GraduationCap size={18} />
-								</div>
-								<div class="overflow-hidden">
-									<h3 class="font-black text-[#1B4B6B] text-xs uppercase truncate tracking-tight">{docente.nomeVisualizzato}</h3>
-									<p class="text-[9px] text-gray-400 font-bold uppercase truncate tracking-tighter">{docente.sottotitolo}</p>
-								</div>
-							</div>
-						</button>
+						<ContattoRubrica
+								nomeCompleto={docente.nomeVisualizzato}
+								sottotitolo={docente.sottotitolo}
+								icona={docente.icona}
+								selezionato={activeContact?.idUtente === docente.idUtente}
+								onClick={() => selectContact(docente)}
+						/>
 					{/each}
 				{/if}
 
@@ -358,16 +323,13 @@
 
 			<div id="comunicazionicomunicazioni-container" class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
-					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
-						<div class="max-w-[65%] {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-sm' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4 shadow-sm'}">
-							<p class="text-sm font-bold leading-relaxed">{msg.testo}</p>
-							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
-								<Clock size={10} />
-								<span class="text-[9px] font-black uppercase tracking-widest">
-                            {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                         </span>
-							</div>
-						</div>
+					<div in:scale={{duration: 200, start: 0.95}}>
+						<ChatBubble
+								testo={msg.testo}
+								data={new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+								inviatoDaMe={msg.idMittente === currentUser?.idUtente}
+								letto={msg.letto}
+						/>
 					</div>
 				{/each}
 			</div>

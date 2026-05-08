@@ -11,11 +11,15 @@
 	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { StatoCorso } from '$lib/models/Enums';
 
+	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
+	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
+
 	interface Contatto {
 		id: number;
 		nome: string;
 		sottotitolo: string;
 		ruolo: 'ADMIN' | 'STUDENTE';
+		icona: any;
 	}
 
 	let chatService = $state<ChatService | null>(null);
@@ -76,11 +80,12 @@
 					id: s.idUtente,
 					nome: `${s.nome} ${s.cognome}`,
 					sottotitolo: s.email,
-					ruolo: 'STUDENTE'
+					ruolo: 'STUDENTE',
+					icona: GraduationCap
 				}));
 
 				contatti = [
-					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Direzione", ruolo: 'ADMIN' },
+					{ id: STAFF_ID, nome: "STAFF NORLAN", sottotitolo: "Supporto Tecnico & Direzione", ruolo: 'ADMIN', icona: ShieldCheck },
 					...listaStudenti
 				];
 				chatService = new ChatService(
@@ -182,6 +187,7 @@
 				/>
 			</div>
 		</div>
+
 		<div class="flex-1 overflow-y-auto custom-scrollbar">
 			{#if isLoading}
 				<div class="flex flex-col items-center justify-center p-20 gap-4">
@@ -194,69 +200,50 @@
 				</div>
 			{:else}
 				{#each filteredContatti as contatto (contatto.id)}
-					<button
-							onclick={() => selectContact(contatto)}
-							class="w-full p-6 text-left border-b border-gray-50 hover:bg-white transition-all group {activeContact?.id === contatto.id ? 'bg-white border-l-4 border-l-[#1B4B6B] shadow-inner' : 'border-l-4 border-l-transparent'}"
-					>
-						<div class="flex items-center gap-4">
-							<div class="p-3 rounded-2xl transition-all {activeContact?.id === contatto.id ? 'bg-[#1B4B6B] text-white shadow-lg shadow-blue-900/20' : (contatto.ruolo === 'ADMIN' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400') }">
-								{#if contatto.ruolo === 'ADMIN'}
-									<ShieldCheck size={20} />
-								{:else}
-									<GraduationCap size={20} />
-								{/if}
-							</div>
-							<div class="overflow-hidden flex-1">
-								<h3 class="{contatto.ruolo === 'ADMIN' ? 'font-black text-blue-900' : 'font-bold text-[#1B4B6B]'} text-xs uppercase truncate tracking-tight">
-									{contatto.nome}
-								</h3>
-								<div class="flex items-center gap-1 mt-0.5">
-									<p class="text-[9px] text-gray-400 font-bold uppercase truncate tracking-tighter">{contatto.sottotitolo}</p>
-								</div>
-							</div>
-						</div>
-					</button>
+					<ContattoRubrica
+							nomeCompleto={contatto.nome}
+							sottotitolo={contatto.sottotitolo}
+							icona={contatto.icona}
+							selezionato={activeContact?.id === contatto.id}
+							onClick={() => selectContact(contatto)}
+					/>
 				{/each}
 			{/if}
 		</div>
 	</div>
+
 	<div class="flex-1 flex flex-col bg-white">
 		{#if activeContact}
 			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
 				<div class="flex items-center gap-5 min-w-0">
 					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20 shrink-0">
-						{#if activeContact.ruolo === 'ADMIN'}
-							<ShieldCheck size={24} />
-						{:else}
-							<GraduationCap size={24} />
-						{/if}
+						<svelte:component this={activeContact.icona} size={24} />
 					</div>
 					<div class="min-w-0">
 						<h2 class="font-black text-[#1B4B6B] text-2xl uppercase tracking-tighter truncate">{activeContact.nome}</h2>
 						<div class="flex items-center gap-4 mt-1">
 							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shrink-0"></span>
 							<span class="text-[9px] font-black text-green-600 uppercase tracking-widest truncate">
-                                {activeContact.ruolo === 'ADMIN' ? 'Staff NorLan Disponibile' : 'Studente Iscritto'}
-                            </span>
+                          {activeContact.ruolo === 'ADMIN' ? 'Staff NorLan Disponibile' : 'Studente Iscritto'}
+                      </span>
 						</div>
 					</div>
 				</div>
 			</div>
+
 			<div bind:this={chatScrollContainer} class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
-					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}" in:scale={{duration: 200, start: 0.95}}>
-						<div class="max-w-[65%] shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-[24px] rounded-br-none px-6 py-4 shadow-blue-900/10' : 'bg-white border border-gray-100 text-[#1B4B6B] rounded-[24px] rounded-bl-none px-6 py-4'}">
-							<p class="text-sm font-bold leading-relaxed whitespace-pre-wrap break-words">{msg.testo}</p>
-							<div class="flex items-center gap-1.5 mt-2 opacity-40 {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
-								<Clock size={10} />
-								<span class="text-[9px] font-black uppercase tracking-widest">
-                                    {new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </span>
-							</div>
-						</div>
+					<div in:scale={{duration: 200, start: 0.95}}>
+						<ChatBubble
+								testo={msg.testo}
+								data={new Date(msg.timestampInvio).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+								inviatoDaMe={msg.idMittente === currentUser?.idUtente}
+								letto={msg.letto}
+						/>
 					</div>
 				{/each}
 			</div>
+
 			<div class="p-8 border-t border-gray-100 bg-white shrink-0">
 				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input

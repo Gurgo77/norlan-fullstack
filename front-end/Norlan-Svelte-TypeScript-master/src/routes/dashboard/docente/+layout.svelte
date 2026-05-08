@@ -12,6 +12,7 @@
 	import { SistemaService } from '$lib/services/SistemaService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import type { Notifica } from '$lib/models/Notifica';
+	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
 
 	interface DocenteRaw {
 		nome?: string;
@@ -179,15 +180,7 @@
 									</div>
 								{:else if listaNotifiche.length > 0}
 									{#each listaNotifiche as notifica (notifica.idNotifica)}
-										<div class="p-4 border-b border-gray-50 hover:bg-blue-50/50 transition-colors cursor-pointer group" onclick={() => handleLeggiNotifica(notifica.idNotifica)}>
-											<div class="flex items-start gap-3">
-												<div class="w-2 h-2 rounded-full bg-[#1B4B6B] mt-1.5 shrink-0"></div>
-												<div>
-													<p class="text-xs font-bold text-gray-700 leading-tight mb-1 group-hover:text-[#1B4B6B] transition-colors">{notifica.messaggio}</p>
-													<p class="text-[9px] font-black text-gray-400 uppercase tracking-wide">{new Date(notifica.dataInvio).toLocaleString('it-IT')}</p>
-												</div>
-											</div>
-										</div>
+										<NotificaItem {notifica} onLeggi={handleLeggiNotifica} />
 									{/each}
 								{:else}
 									<div class="p-8 text-center text-gray-400">
