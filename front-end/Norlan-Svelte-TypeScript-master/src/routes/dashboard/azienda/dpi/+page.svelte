@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
-		Search, Plus, ShieldCheck, AlertTriangle, Loader2, X, Save, HardHat, User
+		Search, Plus, ShieldCheck, AlertTriangle, Loader2, Save, HardHat, User, AlertCircle
 	} from 'lucide-svelte';
 
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -39,16 +39,21 @@
 	let filtroAttivo = $state('TUTTI');
 	let registro = $state<DpiRegistro[]>([]);
 	let dipendentiList = $state<any[]>([]);
+
+	// Stato Modale Inserimento
 	let showDpiModal = $state(false);
 	let isSavingDpi = $state(false);
 	let formDpi = $state<FormDPI>({
-		idAssegnazione: null,
-		idDipendente: '',
-		tipo: '',
-		nomeDpi: '',
-		dataConsegna: '',
-		dataScadenzaRevisione: ''
+		idAssegnazione: null, idDipendente: '', tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: ''
 	});
+
+	// Stato Modale Errore
+	let showErrorModal = $state(false);
+	let errorMessage = $state('');
+
+	// Stato Modale Conferma Eliminazione
+	let showConfirmModal = $state(false);
+	let dpiToDelete = $state<number | string | null>(null);
 
 	onMount(async () => {
 		const session = AuthService.getSession();
@@ -72,9 +77,8 @@
 
 			const risultati = await Promise.all(promises);
 			registro = risultati.flat();
-
 		} catch (error) {
-			console.error("Si è verificato un errore durante il caricamento del registro DPI aziendale:", error);
+			console.error("Errore caricamento registro DPI aziendale:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -85,7 +89,6 @@
 		const oggi = new Date();
 		const scadenza = new Date(dataScadenzaStr);
 		const diffGiorni = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
-
 		if (diffGiorni < 0) return 'DANGER';
 		if (diffGiorni <= 30) return 'WARNING';
 		return 'OK';
@@ -95,6 +98,32 @@
 		if (!dateStr) return 'N.D.';
 		return new Date(dateStr).toLocaleDateString('it-IT');
 	}
+
+	function mostraErrore(messaggio: string) {
+		errorMessage = messaggio;
+		showErrorModal = true;
+	}
+
+	// --- NUOVA LOGICA ELIMINAZIONE CON MODALE ---
+	function richiediEliminazione(idDpi: number | string) {
+		dpiToDelete = idDpi;
+		showConfirmModal = true;
+	}
+
+	async function confermaEliminazione() {
+		if (!dpiToDelete) return;
+		try {
+			await LavoratoreService.deleteDpi(Number(dpiToDelete));
+			registro = registro.filter(d => d.idAssegnazione !== dpiToDelete && d.id !== dpiToDelete);
+			showConfirmModal = false;
+			dpiToDelete = null;
+		} catch (error) {
+			console.error(error);
+			showConfirmModal = false;
+			mostraErrore("Impossibile eliminare il DPI. Riprovare o contattare l'assistenza.");
+		}
+	}
+	// --------------------------------------------
 
 	function openNewDpiModal() {
 		formDpi = { idAssegnazione: null, idDipendente: '', tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
@@ -148,7 +177,7 @@
 
 			showDpiModal = false;
 		} catch {
-			alert("Impossibile completare l'operazione di salvataggio del dispositivo. Riprovare o contattare il supporto tecnico.");
+			mostraErrore("Impossibile completare l'operazione di salvataggio del dispositivo. Riprovare o contattare il supporto tecnico.");
 		} finally {
 			isSavingDpi = false;
 		}
@@ -283,6 +312,7 @@
                                dataConsegna: formattaData(item.dataConsegna)
                             }}
 										onModifica={openUpdateDpiModal}
+										onElimina={richiediEliminazione}
 								/>
 							</div>
 						{/each}
@@ -355,6 +385,47 @@
 				class="flex-1 bg-[#1B4B6B] text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors"
 		>
 			{#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{:else}<Save size={14} />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showConfirmModal} headerClass="bg-red-500" maxWidth="max-w-md">
+	{#snippet title()}
+		<AlertTriangle size={20} /> <span class="font-black uppercase tracking-tighter">Attenzione</span>
+	{/snippet}
+
+	<div class="text-center py-4">
+		<div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+			<AlertTriangle size={32} />
+		</div>
+		<p class="text-sm font-bold text-gray-600 leading-relaxed">
+			Sei sicuro di voler eliminare definitivamente questo dispositivo dal registro?<br>
+			L'operazione non può essere annullata.
+		</p>
+	</div>
+
+	{#snippet footer()}
+		<button onclick={() => (showConfirmModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+			Annulla
+		</button>
+		<button onclick={confermaEliminazione} class="flex-1 bg-red-500 text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-red-600 transition-colors">
+			Sì, Elimina
+		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showErrorModal} headerClass="bg-red-500" maxWidth="max-w-sm">
+	{#snippet title()}
+		<AlertCircle size={20} /> <span class="font-black uppercase tracking-tighter">Errore</span>
+	{/snippet}
+
+	<div class="py-2 text-center">
+		<p class="text-sm font-bold text-gray-600">{errorMessage}</p>
+	</div>
+
+	{#snippet footer()}
+		<button onclick={() => (showErrorModal = false)} class="w-full bg-red-500 text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-red-600 transition-colors">
+			Chiudi
 		</button>
 	{/snippet}
 </ModalCard>

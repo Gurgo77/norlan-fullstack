@@ -22,6 +22,7 @@
 	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 	import AziendaCard from '$lib/Components/Features/Anagrafica/AziendaCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
@@ -250,17 +251,11 @@
 		}
 	}
 
-	async function scaricaDoc(idDocumento: number | string) {
-		try {
-			const doc = documentiCorrenti.find(d => d.idDocumento === idDocumento);
-			const b = await DocumentoService.downloadDocumento(Number(idDocumento));
-			const u = URL.createObjectURL(b);
-			const a = document.createElement('a');
-			a.href = u;
-			a.download = doc?.filePath?.split('/').pop() || 'doc.pdf';
-			a.click();
-			URL.revokeObjectURL(u);
-		} catch { alert("Errore durante il download del documento."); }
+	function scaricaDoc(idDocumento: number | string) {
+		const doc = documentiCorrenti.find(d => d.idDocumento === idDocumento);
+		const nomeFile = doc?.filePath?.split('/').pop() || 'documento.pdf';
+
+		gestisciDownloadStandard(DocumentoService.downloadDocumento(Number(idDocumento)), nomeFile);
 	}
 
 	function apriModaleRegistrazione() {

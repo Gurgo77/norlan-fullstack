@@ -69,7 +69,7 @@
 
             {#if onMail}
                 <button onclick={onMail} class="flex items-center gap-2 bg-white/20 text-white border border-white/20 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105">
-                    <Mail size={16} /> Manda Mail
+                    <Mail size={16} /> Mail
                 </button>
             {/if}
 

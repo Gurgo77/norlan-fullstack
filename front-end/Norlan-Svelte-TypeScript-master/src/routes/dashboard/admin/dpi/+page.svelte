@@ -176,7 +176,7 @@
                                     <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest ml-2 hidden sm:inline-block">C.F: {dip.codiceFiscale}</span>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                                     {#each dip.dpis as dpi (dpi._uniqueKey)}
                                         <DpiCard ruolo="admin" dpi={{
                                             id: dpi._uniqueKey,

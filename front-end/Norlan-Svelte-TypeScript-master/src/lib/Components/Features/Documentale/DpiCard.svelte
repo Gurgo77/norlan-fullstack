@@ -1,103 +1,87 @@
 <script lang="ts">
-    import { HardHat, CheckCircle2, Clock, AlertTriangle, Calendar, RefreshCw, ShieldAlert, Edit3, Mail, MessageSquare } from 'lucide-svelte';
-
-    export type DpiStato = 'OK' | 'WARNING' | 'DANGER';
-    export type RuoloUtente = 'dipendente' | 'azienda' | 'admin';
-
-    export interface DpiInfo {
-        id: number | string;
-        nome: string;
-        matricola?: string;
-        stato: DpiStato;
-        dataRevisione?: string;
-        dataConsegna?: string;
-    }
+    import { HardHat, AlertTriangle, CheckCircle2, ShieldAlert, PenBox, Trash2 } from 'lucide-svelte';
 
     interface Props {
-        dpi: DpiInfo;
-        ruolo?: RuoloUtente;
-        onRichiediSostituzione?: (id: number | string) => void;
+        ruolo: 'azienda' | 'dipendente' | 'admin';
+        dpi: {
+            id: number | string;
+            nome: string;
+            matricola?: string;
+            stato: 'OK' | 'WARNING' | 'DANGER';
+            dataRevisione: string;
+            dataConsegna?: string;
+        };
         onModifica?: (id: number | string) => void;
-        onEmail?: (id: number | string) => void;
-        onChat?: (id: number | string) => void;
+        onElimina?: (id: number | string) => void;
     }
 
-    let { dpi, ruolo = 'dipendente', onRichiediSostituzione, onModifica, onEmail, onChat }: Props = $props();
+    let { ruolo, dpi, onModifica, onElimina }: Props = $props();
 
-    const getStatoConfig = (stato: DpiStato) => {
-        switch (stato) {
-            case 'OK':
-                return { label: 'Conforme', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle2 };
-            case 'WARNING':
-                return { label: 'In Scadenza', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: Clock };
-            case 'DANGER':
-                return { label: 'Scaduto/Anomalo', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertTriangle };
-            default:
-                return { label: 'Sconosciuto', text: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200', icon: ShieldAlert };
-        }
-    };
-
-    let sc = $derived(getStatoConfig(dpi.stato));
+    let configStato = $derived({
+        'OK': { colore: 'text-green-500', bg: 'bg-green-50', icona: CheckCircle2, label: 'REGOLARE' },
+        'WARNING': { colore: 'text-amber-500', bg: 'bg-amber-50', icona: AlertTriangle, label: 'IN SCADENZA' },
+        'DANGER': { colore: 'text-red-500', bg: 'bg-red-50', icona: ShieldAlert, label: 'SCADUTO' }
+    }[dpi.stato]);
 </script>
 
-<div class="group flex h-full flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#1B4B6B]/30 hover:shadow-xl relative">
+<div class="bg-white rounded-3xl p-6 border-2 {dpi.stato === 'DANGER' ? 'border-red-100 shadow-red-900/5' : 'border-gray-50 hover:border-gray-100'} shadow-sm hover:shadow-xl transition-all group flex flex-col h-full relative overflow-hidden">
+
     {#if dpi.stato === 'DANGER'}
         <div class="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
     {/if}
+    {#if dpi.stato === 'WARNING'}
+        <div class="absolute top-0 left-0 w-full h-1 bg-amber-400"></div>
+    {/if}
 
-    <div class="relative flex items-start gap-4 p-6 pb-4">
-        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#1B4B6B]/10 text-[#1B4B6B] transition-colors group-hover:bg-[#1B4B6B] group-hover:text-white">
-            <HardHat size={20} />
-        </div>
-        <div class="flex-1 pr-2">
-            <h3 class="line-clamp-2 text-lg font-extrabold uppercase leading-tight text-[#1B4B6B] break-all" style="hyphens: auto;" title={dpi.nome}>{dpi.nome}</h3>
-            {#if ruolo !== 'admin' && dpi.matricola}
-                <p class="mt-1 text-[10px] font-black uppercase text-gray-400">MATRICOLA: {dpi.matricola}</p>
-            {/if}
-        </div>
-    </div>
-
-    <div class="flex flex-1 flex-col justify-start px-6 pb-4">
-        <div class="mb-4 inline-flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 {sc.bg} {sc.border} {sc.text}">
-            <svelte:component this={sc.icon} size={14} />
-            <span class="text-[10px] font-black uppercase tracking-wider">{sc.label}</span>
+    <div class="flex justify-between items-start mb-5">
+        <div class="bg-gray-50 p-3 rounded-2xl text-gray-400 group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
+            <HardHat size={24} />
         </div>
 
-        <div class="space-y-2 mb-2">
-            {#if dpi.dataRevisione}
-                <div class="flex items-center gap-2 text-[10px] font-bold uppercase {dpi.stato === 'DANGER' ? 'text-red-500' : 'text-gray-500'}">
-                    <Calendar size={14} class={dpi.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B] shrink-0'} />
-                    <span class="truncate">Scadenza: {dpi.dataRevisione}</span>
-                </div>
-            {/if}
-            {#if dpi.dataConsegna}
-                <div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-400">
-                    <CheckCircle2 size={14} class="text-gray-300 shrink-0" />
-                    <span class="truncate">Consegnato: {dpi.dataConsegna}</span>
-                </div>
-            {/if}
-        </div>
-    </div>
+        <div class="flex items-center gap-2">
+            <span class="{configStato.bg} {configStato.colore} flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest">
+                <svelte:component this={configStato.icona} size={12} />
+                {configStato.label}
+            </span>
 
-    {#if ruolo !== 'admin'}
-        <div class="mt-auto flex items-center justify-between gap-2 border-t border-gray-50 bg-gray-50/50 p-4">
-            {#if ruolo === 'dipendente'}
-                {#if dpi.stato === 'DANGER' || dpi.stato === 'WARNING'}
-                    <button onclick={() => onRichiediSostituzione?.(dpi.id)} class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[10px] font-bold uppercase text-red-600 transition-all hover:bg-red-100 hover:border-red-300">
-                        <RefreshCw size={14} /> Richiedi Sostituzione
-                    </button>
-                {:else}
-                    <div class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 bg-white px-4 py-2.5 text-[10px] font-bold uppercase text-gray-400">
-                        <CheckCircle2 size={14} /> DPI Regolare
-                    </div>
-                {/if}
-            {/if}
-
-            {#if ruolo === 'azienda'}
-                <button onclick={() => onModifica?.(dpi.id)} class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1B4B6B] px-4 py-2.5 text-[10px] font-bold uppercase text-white shadow-md transition-all hover:bg-[#1B4B6B]/90">
-                    <Edit3 size={14} /> Aggiorna Revisione
+            {#if ruolo === 'azienda' || ruolo === 'admin'}
+                <button
+                        onclick={() => onElimina && onElimina(dpi.id)}
+                        class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Elimina DPI"
+                >
+                    <Trash2 size={16} />
                 </button>
             {/if}
         </div>
+    </div>
+
+    <div class="flex-1">
+        <h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter leading-tight mb-1">{dpi.nome}</h3>
+        {#if dpi.matricola}
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <span class="opacity-50">Note:</span> {dpi.matricola}
+            </p>
+        {/if}
+    </div>
+
+    <div class="mt-6 pt-5 border-t border-gray-50 grid grid-cols-2 gap-4">
+        <div>
+            <p class="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Consegna</p>
+            <p class="text-xs font-bold text-gray-600 uppercase tracking-tighter">{dpi.dataConsegna || 'N.D.'}</p>
+        </div>
+        <div>
+            <p class="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Revisione</p>
+            <p class="text-xs font-bold {dpi.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B]'} uppercase tracking-tighter">{dpi.dataRevisione}</p>
+        </div>
+    </div>
+
+    {#if ruolo === 'azienda' || ruolo === 'admin'}
+        <button
+                onclick={() => onModifica && onModifica(dpi.id)}
+                class="mt-5 w-full bg-gray-50 hover:bg-[#1B4B6B] text-gray-400 hover:text-white py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all"
+        >
+            <PenBox size={14} /> Aggiorna Revisione
+        </button>
     {/if}
 </div>
