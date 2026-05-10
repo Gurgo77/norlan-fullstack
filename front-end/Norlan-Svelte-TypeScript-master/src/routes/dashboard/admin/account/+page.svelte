@@ -9,6 +9,7 @@
     import type { AdminData } from '$lib/models/Admin';
     import { AuthService } from '$lib/services/AuthService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
+    import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
     let isLoading = $state(true);
     let admin = $state<AdminData | null>(null);
@@ -54,10 +55,12 @@
 
         isChangingPassword = true;
 
-        try {
-            await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
-            passwordSuccessMessage = 'Password aggiornata con successo!';
+        const res = await cambiaPasswordUniversale(vecchiaPassword, nuovaPassword);
 
+        if (res.error) {
+            passwordError = res.msg;
+        } else {
+            passwordSuccessMessage = res.msg;
             vecchiaPassword = '';
             nuovaPassword = '';
             confermaPassword = '';
@@ -69,12 +72,9 @@
                 isPasswordFormVisible = false;
                 passwordSuccessMessage = '';
             }, 2500);
-        } catch (error) {
-            const err = error as { response?: { data?: string } };
-            passwordError = err.response?.data || 'Errore di sicurezza. Verifica la password attuale.';
-        } finally {
-            isChangingPassword = false;
         }
+
+        isChangingPassword = false;
     }
 </script>
 

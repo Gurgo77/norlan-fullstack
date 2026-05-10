@@ -10,6 +10,7 @@
 	import type { DocenteData } from '$lib/models/Docente';
 	import { AuthService } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
 	let isLoading = $state(true);
 	let docente = $state<DocenteData | null>(null);
@@ -42,39 +43,32 @@
 	async function handlePasswordChange() {
 		passwordError = '';
 		passwordSuccessMessage = '';
-
 		if (!vecchiaPassword || !nuovaPassword || !confermaPassword) {
 			passwordError = 'Compila tutti i campi obbligatori.';
 			return;
 		}
-
 		if (nuovaPassword !== confermaPassword) {
 			passwordError = 'Le nuove password non coincidono.';
 			return;
 		}
-
 		isChangingPassword = true;
-
-		try {
-			await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
-			passwordSuccessMessage = 'Password aggiornata con successo!';
-
+		const res = await cambiaPasswordUniversale(vecchiaPassword, nuovaPassword);
+		if (res.error) {
+			passwordError = res.msg;
+		} else {
+			passwordSuccessMessage = res.msg;
 			vecchiaPassword = '';
 			nuovaPassword = '';
 			confermaPassword = '';
 			showVecchia = false;
 			showNuova = false;
 			showConferma = false;
-
 			setTimeout(() => {
 				isPasswordFormVisible = false;
 				passwordSuccessMessage = '';
 			}, 2500);
-		} catch (error: any) {
-			passwordError = error.response?.data || 'Errore. Controlla la password attuale.';
-		} finally {
-			isChangingPassword = false;
 		}
+		isChangingPassword = false;
 	}
 </script>
 
@@ -192,7 +186,6 @@
 							</div>
 						{/if}
 					</div>
-
 				</div>
 			</div>
 		</div>

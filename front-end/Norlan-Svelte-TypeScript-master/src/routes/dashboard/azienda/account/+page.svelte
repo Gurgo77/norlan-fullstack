@@ -10,6 +10,7 @@
     import type { AziendaData } from '$lib/models/Azienda';
     import { AuthService } from '$lib/services/AuthService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
+    import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
     interface ServerError {
         response?: {
@@ -65,6 +66,7 @@
     async function handlePasswordChange() {
         passwordError = '';
         passwordSuccessMessage = '';
+
         if (!vecchiaPassword || !nuovaPassword || !confermaPassword) {
             passwordError = 'Tutti i campi sono obbligatori.';
             return;
@@ -73,11 +75,15 @@
             passwordError = 'La nuova password e la conferma non corrispondono.';
             return;
         }
-        isChangingPassword = true;
-        try {
-            await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
-            passwordSuccessMessage = 'Credenziali aggiornate correttamente.';
 
+        isChangingPassword = true;
+
+        const res = await cambiaPasswordUniversale(vecchiaPassword, nuovaPassword);
+
+        if (res.error) {
+            passwordError = res.msg;
+        } else {
+            passwordSuccessMessage = res.msg;
             vecchiaPassword = '';
             nuovaPassword = '';
             confermaPassword = '';
@@ -85,14 +91,13 @@
             showNuova = false;
             showConferma = false;
 
-            setTimeout(() => { isPasswordFormVisible = false; passwordSuccessMessage = ''; }, 2500);
-        } catch (error) {
-            const err = error as ServerError;
-            console.error("Si è verificato un errore durante la procedura di aggiornamento della password:", err);
-            passwordError = err.response?.data || "Errore durante l'aggiornamento. Verificare che la password attuale sia corretta.";
-        } finally {
-            isChangingPassword = false;
+            setTimeout(() => {
+                isPasswordFormVisible = false;
+                passwordSuccessMessage = '';
+            }, 2500);
         }
+
+        isChangingPassword = false;
     }
 </script>
 

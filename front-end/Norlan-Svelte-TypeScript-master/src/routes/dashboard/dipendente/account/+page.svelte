@@ -9,6 +9,7 @@
 	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
+	import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
 	let isLoading = $state(true);
 	let utente = $state<DipendenteData | null>(null);
@@ -55,10 +56,12 @@
 
 		isChangingPassword = true;
 
-		try {
-			await AuthService.cambiaPassword(vecchiaPassword, nuovaPassword);
-			passwordSuccessMessage = 'Password aggiornata con successo!';
+		const res = await cambiaPasswordUniversale(vecchiaPassword, nuovaPassword);
 
+		if (res.error) {
+			passwordError = res.msg;
+		} else {
+			passwordSuccessMessage = res.msg;
 			vecchiaPassword = '';
 			nuovaPassword = '';
 			confermaPassword = '';
@@ -70,11 +73,9 @@
 				isPasswordFormVisible = false;
 				passwordSuccessMessage = '';
 			}, 2500);
-		} catch (error: any) {
-			passwordError = error.response?.data || 'Errore. Verifica la password attuale.';
-		} finally {
-			isChangingPassword = false;
 		}
+
+		isChangingPassword = false;
 	}
 </script>
 
@@ -207,3 +208,9 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	:global(body) {
+		background-color: #F9FAFB;
+	}
+</style>
