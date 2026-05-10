@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { base, resolveRoute } from '$app/paths';
+	import { base } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, HardHat, MessageSquare, BookOpen,
@@ -12,7 +11,8 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
-	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte.ts';
+	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
+	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
 	let { children } = $props();
 
@@ -31,22 +31,8 @@
 	];
 
 	onMount(async () => {
-		const session = AuthService.getSession();
-
-		if (!session) {
-			goto(resolveRoute('/login'), { replaceState: true });
-			return;
-		}
-
-		if (session.richiedeCambioPassword) {
-			goto(resolveRoute('/dashboard/cambio-obbligatorio'), { replaceState: true });
-			return;
-		}
-
-		if (session.ruolo !== 'DIPENDENTE' && session.ruolo !== 'LAVORATORE') {
-			goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
-			return;
-		}
+		const session = await verificaAutenticazioneERuolo(['DIPENDENTE', 'LAVORATORE']);
+		if (!session) return;
 
 		userEmail = session.email;
 		try {

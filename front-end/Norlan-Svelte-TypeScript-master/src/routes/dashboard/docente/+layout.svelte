@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, BookOpen, Users,
@@ -11,7 +10,8 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
-	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte.ts';
+	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
+	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
 	interface DocenteRaw {
 		nome?: string;
@@ -35,22 +35,8 @@
 	];
 
 	onMount(async () => {
-		const session = AuthService.getSession();
-
-		if (!session) {
-			goto('/login', { replaceState: true });
-			return;
-		}
-
-		if (session.richiedeCambioPassword) {
-			goto('/dashboard/cambio-obbligatorio', { replaceState: true });
-			return;
-		}
-
-		if (session.ruolo !== 'DOCENTE') {
-			goto(AuthService.getDashboardRouteByRole(session.ruolo), { replaceState: true });
-			return;
-		}
+		const session = await verificaAutenticazioneERuolo(['DOCENTE']);
+		if (!session) return;
 
 		docenteEmail = session.email;
 

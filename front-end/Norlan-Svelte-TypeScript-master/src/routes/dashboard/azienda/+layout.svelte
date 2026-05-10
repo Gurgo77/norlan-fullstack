@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { base, resolveRoute } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import {
@@ -13,7 +12,8 @@
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import type { AziendaData } from '$lib/models/Azienda';
 	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
-	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte.ts';
+	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
+	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
 	let { children } = $props();
 	let aziendaNome = $state('Caricamento...');
@@ -36,21 +36,8 @@
 	}
 
 	onMount(async () => {
-		const session = AuthService.getSession();
-		if (!session) {
-			goto(resolveRoute('/login'), { replaceState: true });
-			return;
-		}
-
-		if (session.richiedeCambioPassword) {
-			goto(resolveRoute('/dashboard/cambio-obbligatorio'), { replaceState: true });
-			return;
-		}
-
-		if (session.ruolo !== 'AZIENDA') {
-			goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
-			return;
-		}
+		const session = await verificaAutenticazioneERuolo(['AZIENDA']);
+		if (!session) return;
 
 		aziendaEmail = session.email;
 

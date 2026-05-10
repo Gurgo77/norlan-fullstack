@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import {
@@ -11,7 +10,8 @@
 	} from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
-	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte.ts';
+	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
+	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
 	interface SubMenuItem {
 		href: string;
@@ -69,22 +69,8 @@
 			openMenus.utenti = true;
 		}
 
-		const session = AuthService.getSession();
-
-		if (!session) {
-			await goto(`${base}/login`, { replaceState: true });
-			return;
-		}
-
-		if (session.richiedeCambioPassword) {
-			await goto(`${base}/dashboard/cambio-obbligatorio`, { replaceState: true });
-			return;
-		}
-
-		if (session.ruolo !== 'ADMIN') {
-			await goto(`${base}${AuthService.getDashboardRouteByRole(session.ruolo)}`, { replaceState: true });
-			return;
-		}
+		const session = await verificaAutenticazioneERuolo(['ADMIN']);
+		if (!session) return;
 
 		userEmail = session.email;
 		await notificheManager.init(session.idUtente);
