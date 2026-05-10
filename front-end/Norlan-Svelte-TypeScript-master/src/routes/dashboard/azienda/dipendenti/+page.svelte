@@ -25,6 +25,7 @@
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
     import {caricaDettagliEntita} from "$lib/utils/dettaglioUtils";
+    import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 
     interface ServerError {
         response?: {
@@ -183,32 +184,44 @@
     async function salvaDipendente() {
         if (!isFormValid || !idAziendaCorrente) return;
         isSaving = true;
-        try {
-            const payload = {
-                nome: formDipendente.nome,
-                cognome: formDipendente.cognome,
-                codiceFiscale: formDipendente.codiceFiscale.toUpperCase(),
-                email: formDipendente.email,
-                passwordHash: isEditing ? undefined : formDipendente.passwordHash
+
+        const payload = {
+            nome: formDipendente.nome,
+            cognome: formDipendente.cognome,
+            codiceFiscale: formDipendente.codiceFiscale.toUpperCase(),
+            email: formDipendente.email,
+            passwordHash: isEditing ? undefined : formDipendente.passwordHash
+        };
+
+        let res;
+        if (isEditing && formDipendente.idUtente) {
+            res = await aggiornaUtenteUniversale<DipendenteDTO>('DIPENDENTE', formDipendente.idUtente, payload);
+        } else {
+            res = await creaUtenteUniversale<DipendenteDTO>('DIPENDENTE', {
+                ...payload,
+                idAzienda: idAziendaCorrente
+            });
+        }
+
+        if (res.error || !res.data) {
+            alert(res.msg);
+        } else {
+            const esteso: DipendenteEsteso = {
+                ...res.data,
+                nomeAzienda: nomeAziendaCorrente
             };
 
-            if (isEditing && formDipendente.idUtente) {
-                const aggiornato = await LavoratoreService.update(formDipendente.idUtente, payload as any);
-                lavoratori = lavoratori.map(l => l.idUtente === aggiornato.idUtente ? { ...aggiornato, nomeAzienda: nomeAziendaCorrente } : l);
-                if (selectedDipendente?.idUtente === aggiornato.idUtente) {
-                    selectedDipendente = { ...aggiornato, nomeAzienda: nomeAziendaCorrente };
+            if (isEditing) {
+                lavoratori = lavoratori.map(l => l.idUtente === res.data!.idUtente ? esteso : l);
+                if (selectedDipendente?.idUtente === res.data!.idUtente) {
+                    selectedDipendente = esteso;
                 }
             } else {
-                const nuovo = await LavoratoreService.create(idAziendaCorrente, payload as any);
-                lavoratori = [{ ...nuovo, nomeAzienda: nomeAziendaCorrente }, ...lavoratori];
+                lavoratori = [esteso, ...lavoratori];
             }
-
             showAddModal = false;
-        } catch (error) {
-            console.error(error);
-        } finally {
-            isSaving = false;
         }
+        isSaving = false;
     }
 
     function preparaEliminazione(l: DipendenteEsteso | null) {

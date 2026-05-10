@@ -22,6 +22,7 @@
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
+    import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -219,51 +220,49 @@
     }
 
     async function salvaDipendente() {
-        if (!isFormValid) return;
+        if (!isFormValid || isSaving) return;
         isSaving = true;
-        try {
-            const payload = {
-                nome: formDipendente.nome,
-                cognome: formDipendente.cognome,
-                codiceFiscale: formDipendente.codiceFiscale.toUpperCase(),
-                email: formDipendente.email,
-                passwordHash: isEditing ? undefined : formDipendente.password
+
+        const payload = {
+            nome: formDipendente.nome,
+            cognome: formDipendente.cognome,
+            codiceFiscale: formDipendente.codiceFiscale.toUpperCase(),
+            email: formDipendente.email,
+            passwordHash: isEditing ? undefined : formDipendente.password
+        };
+
+        const aziendaSelezionata = aziende.find(a => String(a.idUtente) === String(formDipendente.idAzienda));
+
+        let res;
+        if (isEditing && formDipendente.idUtente) {
+            res = await aggiornaUtenteUniversale<DipendenteDTO>('DIPENDENTE', formDipendente.idUtente, payload);
+        } else {
+            res = await creaUtenteUniversale<DipendenteDTO>('DIPENDENTE', {
+                ...payload,
+                idAzienda: formDipendente.idAzienda
+            });
+        }
+
+        if (res.error || !res.data) {
+            alert(res.msg);
+        } else {
+            const esteso: DipendenteEsteso = {
+                ...res.data,
+                nomeAzienda: aziendaSelezionata?.ragioneSociale || "Azienda non specificata",
+                idAzienda: formDipendente.idAzienda
             };
 
-            const aziendaSelezionata = aziende.find(a => String(a.idUtente) === String(formDipendente.idAzienda));
-
-            if (isEditing && formDipendente.idUtente) {
-                const aggiornato = await LavoratoreService.update(formDipendente.idUtente, payload as any);
-                const esteso: DipendenteEsteso = {
-                    ...aggiornato,
-                    nomeAzienda: aziendaSelezionata?.ragioneSociale || "Azienda non specificata",
-                    idAzienda: formDipendente.idAzienda
-                };
-
-                lavoratori = lavoratori.map(l => l.idUtente === aggiornato.idUtente ? esteso : l);
-                if (selectedDipendente?.idUtente === aggiornato.idUtente) {
+            if (isEditing) {
+                lavoratori = lavoratori.map(l => l.idUtente === res.data!.idUtente ? esteso : l);
+                if (selectedDipendente?.idUtente === res.data!.idUtente) {
                     selectedDipendente = esteso;
                 }
             } else {
-                const nuovo = await LavoratoreService.create(
-                    formDipendente.idAzienda as number,
-                    payload as unknown as DipendenteRequest
-                );
-                const esteso: DipendenteEsteso = {
-                    ...nuovo,
-                    nomeAzienda: aziendaSelezionata?.ragioneSociale || "Azienda non specificata",
-                    idAzienda: formDipendente.idAzienda
-                };
                 lavoratori = [esteso, ...lavoratori];
             }
-
             showAddModal = false;
-        } catch (error) {
-            console.error("Dettaglio dell'errore:", error);
-            alert("Si è verificato un errore durante l'operazione sul dipendente.");
-        } finally {
-            isSaving = false;
         }
+        isSaving = false;
     }
 
     function preparaEliminazione(l: DipendenteEsteso | null) {

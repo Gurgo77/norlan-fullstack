@@ -16,6 +16,7 @@
     import DocenteCard from '$lib/Components/Features/Anagrafica/DocenteDashboardCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
+    import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
@@ -106,46 +107,45 @@
     }
 
     async function salvaDocente() {
-        if (!isFormValid) return;
+        if (!isFormValid || isSaving) return;
         isSaving = true;
-        try {
-            if (isEditing && formDocente.idUtente) {
-                const payload = {
-                    nome: formDocente.nome.trim(),
-                    cognome: formDocente.cognome.trim(),
-                    email: formDocente.email.trim(),
-                    specializzazioneTecnica: formDocente.specializzazioneTecnica.trim()
-                };
 
-                const aggiornato = (await AnagraficaService.updateDocente(formDocente.idUtente, payload)) as DocenteData;
+        let res;
+        if (isEditing && formDocente.idUtente) {
+            const payloadModifica = {
+                nome: formDocente.nome.trim(),
+                cognome: formDocente.cognome.trim(),
+                email: formDocente.email.trim(),
+                specializzazioneTecnica: formDocente.specializzazioneTecnica.trim()
+            };
+            res = await aggiornaUtenteUniversale<DocenteData>('DOCENTE', formDocente.idUtente, payloadModifica);
+        } else {
+            const payloadRegistrazione = {
+                nome: formDocente.nome,
+                cognome: formDocente.cognome,
+                email: formDocente.email.trim(),
+                password: formDocente.password,
+                specializzazione: formDocente.specializzazioneTecnica
+            };
+            res = await creaUtenteUniversale<DocenteData>('DOCENTE', payloadRegistrazione);
+        }
 
-                docenti = docenti.map(d => d.idUtente === aggiornato.idUtente ? aggiornato : d);
-
-                if (selectedDocente?.idUtente === aggiornato.idUtente) {
-                    selectedDocente = aggiornato;
+        if (res.error) {
+            alert(res.msg);
+        } else {
+            if (isEditing && res.data) {
+                docenti = docenti.map(d => d.idUtente === res.data!.idUtente ? res.data! : d);
+                if (selectedDocente?.idUtente === res.data.idUtente) {
+                    selectedDocente = res.data;
                 }
             } else {
-                const payload = {
-                    ruolo: 'DOCENTE',
-                    nome: formDocente.nome,
-                    cognome: formDocente.cognome,
-                    email: formDocente.email.trim(),
-                    password: formDocente.password,
-                    specializzazione: formDocente.specializzazioneTecnica
-                } as unknown as AuthRequestDTO;
-
-                await AnagraficaService.registraUtente(payload);
-                const res = await AnagraficaService.getAllDocenti();
-                docenti = res as DocenteData[];
+                const elencoDocenti = await AnagraficaService.getAllDocenti();
+                docenti = elencoDocenti as DocenteData[];
             }
-
             showAddModal = false;
-        } catch (error) {
-            console.error("Si è verificato un errore durante il salvataggio dell'anagrafica docente:", error);
-            alert("Operazione fallita. Verificare i dati e riprovare.");
-        } finally {
-            isSaving = false;
         }
+
+        isSaving = false;
     }
 
     function preparaEliminazione(d: DocenteData | null) {

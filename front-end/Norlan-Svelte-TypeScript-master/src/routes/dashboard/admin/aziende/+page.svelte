@@ -24,6 +24,7 @@
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
+	import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
@@ -176,36 +177,38 @@
 
 	async function salvaNuovoDipendente() {
 		if (!isDipendenteValid || !selectedAzienda) return;
+
+		const idAziendaCorrente = selectedAzienda.idUtente;
+
 		isSavingDipendente = true;
-		try {
-			const idAz = selectedAzienda.idUtente;
 
-			const payload = {
-				nome: formDipendente.nome,
-				cognome: formDipendente.cognome,
-				codiceFiscale: formDipendente.codiceFiscale,
-				email: formDipendente.email.trim(),
-				passwordHash: formDipendente.password,
-				richiedeCambioPassword: true
-			} as unknown as DipendenteRequest;
+		const payload = {
+			idAzienda: idAziendaCorrente,
+			nome: formDipendente.nome,
+			cognome: formDipendente.cognome,
+			codiceFiscale: formDipendente.codiceFiscale.toUpperCase(),
+			email: formDipendente.email.trim(),
+			passwordHash: formDipendente.password,
+			richiedeCambioPassword: true
+		};
 
-			const nuovo = await LavoratoreService.create(idAz, payload);
-			dipendentiCorrenti = [...dipendentiCorrenti, nuovo];
+		const res = await creaUtenteUniversale<DipendenteDTO>('DIPENDENTE', payload);
+
+		if (res.error || !res.data) {
+			alert(res.msg);
+		} else {
+			dipendentiCorrenti = [...dipendentiCorrenti, res.data];
 
 			if (!dynamicHasDipendenti) {
 				dynamicHasDipendenti = true;
-				const idx = aziende.findIndex(a => a.idUtente === idAz);
+				const idx = aziende.findIndex(a => a.idUtente === idAziendaCorrente);
 				if (idx !== -1) aziende[idx].hasDipendenti = true;
 			}
 
 			showDipendenteModal = false;
 			formDipendente = { nome: '', cognome: '', codiceFiscale: '', email: '', password: '' };
-		} catch (error) {
-			console.error("Errore riscontrato durante la creazione del dipendente:", error);
-			alert("Creazione fallita. Verificare che l'email o il Codice Fiscale non siano già registrati a sistema.");
-		} finally {
-			isSavingDipendente = false;
 		}
+		isSavingDipendente = false;
 	}
 
 	function apriModalUploadNuovo() {
@@ -291,52 +294,34 @@
 	async function salvaAzienda() {
 		if (!isFormValid || isSaving) return;
 		isSaving = true;
-		try {
-			if (isEditing && formAzienda.idUtente) {
 
-				const payload = {
-					idUtente: Number(formAzienda.idUtente),
-					email: formAzienda.email.trim(),
-					ruolo: 'AZIENDA',
-					ragioneSociale: formAzienda.ragioneSociale.trim(),
-					partitaIva: formAzienda.partitaIva.trim(),
-					etichettaDisplay: `${formAzienda.ragioneSociale} (${formAzienda.partitaIva})`,
-					hasDipendenti: formAzienda.hasDipendenti,
-					sedeLegale: formAzienda.sedeLegale.trim(),
-					pec: formAzienda.pec.trim(),
-					telefono: formAzienda.telefono.trim(),
-					cellulare: formAzienda.cellulare.trim(),
-					referenteAziendale: formAzienda.referenteAziendale.trim()
-				};
-
-				const aggiornato = (await AnagraficaService.updateAzienda(formAzienda.idUtente, payload as any)) as AziendaData;
-				const hasDip = await AnagraficaService.hasDipendenti(formAzienda.idUtente);
-				const az = new Azienda({...aggiornato, hasDipendenti: hasDip});
-
-				aziende = aziende.map(a => a.idUtente === az.idUtente ? az : a);
-				if (selectedAzienda?.idUtente === az.idUtente) {
-					selectedAzienda = az;
-				}
-			} else {
-				const payload: AuthRequestDTO & { sedeLegale?: string; pec?: string; telefono?: string; cellulare?: string; referenteAziendale?: string; hasDipendenti?: boolean; } = {
-					...formAzienda,
-					ruolo: 'AZIENDA'
-				};
-				await AnagraficaService.registraUtente(payload);
-				const res = await AnagraficaService.getAllAziende();
-				aziende = (res as AziendaData[]).map(item => new Azienda(item));
-				await Promise.all(aziende.map(async (a, i) => {
-					aziende[i].hasDipendenti = await AnagraficaService.hasDipendenti(a.idUtente);
-				}));
-			}
-			showModal = false;
-		} catch (error: any) {
-			console.error("Errore durante il salvataggio:", error);
-			const message = error.response?.data || "Verificare i dati inseriti (es. partita IVA o Email già presenti).";
-			alert(`Impossibile salvare: ${message}`);
-		} finally {
-			isSaving = false;
+		let res;
+		if (isEditing && formAzienda.idUtente) {
+			res = await aggiornaUtenteUniversale<AziendaData>('AZIENDA', formAzienda.idUtente, formAzienda);
+		} else {
+			res = await creaUtenteUniversale<AziendaData>('AZIENDA', formAzienda);
 		}
+
+		if (res.error) {
+			alert(res.msg);
+		} else {
+			const freshRes = await AnagraficaService.getAllAziende();
+			const data = freshRes as AziendaData[];
+			aziende = data.map(item => new Azienda(item));
+
+			await Promise.all(aziende.map(async (a, i) => {
+				aziende[i].hasDipendenti = await AnagraficaService.hasDipendenti(a.idUtente);
+			}));
+
+			if (isEditing && res.data) {
+				const hasDip = await AnagraficaService.hasDipendenti(res.data.idUtente);
+				const az = new Azienda({...res.data, hasDipendenti: hasDip});
+				if (selectedAzienda?.idUtente === az.idUtente) selectedAzienda = az;
+			}
+
+			showModal = false;
+		}
+		isSaving = false;
 	}
 
 	function preparaEliminazione(a: Azienda | null) { if (!a) return; aziendaDaEliminare = a; confermaTesto = ''; showDeleteModal = true; }
