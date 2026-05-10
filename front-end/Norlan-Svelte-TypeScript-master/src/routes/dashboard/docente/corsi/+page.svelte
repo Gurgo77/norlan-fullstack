@@ -3,16 +3,17 @@
 	import { fade, scale } from 'svelte/transition';
 	import { X, Search, Calendar, Loader2, CheckSquare, UploadCloud, CheckCircle2, Clock, BarChart3, Star, BookOpen, Play, AlertTriangle, Send, FileText, Download } from 'lucide-svelte';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
-	import { StatoCorso } from '$lib/models/Enums';
+	import { StatoCorso, ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
+	import { DocumentoService } from '$lib/services/DocumentoService';
 	import httpClient from '$lib/api/httpClient';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+	import { scaricaDocumentoUniversale, uploadDocumentoUniversale } from '$lib/utils/documentoUtils';
 
 	interface CorsoFormazioneEsteso extends CorsoFormazione { numeroIscritti?: number; isLoadingIscritti?: boolean; }
 	interface FeedbackStatsDTO { idCorso: number; mediaDocenza: number; mediaContenuti: number; totaleFeedback: number; commenti: string[]; }
@@ -107,25 +108,28 @@
 		finally { isLoadingMateriali = false; }
 	}
 
-	function scaricaMateriale(idMateriale: number, nome: string) {
-		const nomeFile = nome.endsWith('.pdf') ? nome : `${nome}.pdf`;
-		const downloadPromise = httpClient.get(`/api/formazione/materiali/${idMateriale}/download`, { responseType: 'blob' })
-				.then(res => new Blob([res.data]));
-
-		gestisciDownloadStandard(downloadPromise, nomeFile);
+	async function scaricaMateriale(idMateriale: number, path: string) {
+		await scaricaDocumentoUniversale(idMateriale, path);
 	}
 
 	async function caricaMaterialeDidattico() {
 		if (!selectedCorsoMateriale || !fileMateriale || !titoloMateriale.trim()) return;
 		isUploadingMateriale = true;
-		try {
-			const formData = new FormData(); formData.append('file', fileMateriale); formData.append('titoloDocumento', titoloMateriale);
-			await httpClient.post(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-			triggerBanner("Materiale didattico caricato con successo!");
-			const res = await httpClient.get(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`); materialiCaricati = res.data;
+
+		const res = await uploadDocumentoUniversale(selectedCorsoMateriale.idCorso, fileMateriale, {
+			modulo: ModuloServizio.FORMAZIONE,
+			tipologia: titoloMateriale
+		});
+
+		if (res.error) {
+			triggerBanner(res.msg, 'ERR');
+		} else {
+			triggerBanner("Materiale didattico caricato!");
+			const refresh = await httpClient.get(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`);
+			materialiCaricati = refresh.data;
 			fileMateriale = null; titoloMateriale = '';
-		} catch { triggerBanner("Errore durante l'upload", 'ERR'); }
-		finally { isUploadingMateriale = false; }
+		}
+		isUploadingMateriale = false;
 	}
 
 	async function apriValidazioneRegistro(corso: CorsoFormazioneEsteso) {
@@ -359,7 +363,7 @@
 									<p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date(mat.dataCaricamento).toLocaleDateString()}</p>
 								</div>
 							</div>
-							<button onclick={() => scaricaMateriale(mat.idMateriale, mat.titoloDocumento)} class="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
+							<button onclick={() => scaricaMateriale(mat.idMateriale, mat.percorsoFile)} class="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
 								<Download size={16} />
 							</button>
 						</div>

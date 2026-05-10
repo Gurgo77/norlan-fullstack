@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, X, Send, Trash2, User } from 'lucide-svelte';
+	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, Send, Trash2, User } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
@@ -11,9 +11,9 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
-	interface CorsoStato { idCorso: number; idDocumento?: number; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
+	interface CorsoStato { idCorso: number; idDocumento?: number; filePath?: string; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
 	interface DipendenteFormazione { id: number; nomeCompleto: string; ruolo: string; corsi: CorsoStato[]; tuttiIdCorsiIscritto: number[]; }
 
 	let isLoading = $state(true);
@@ -51,7 +51,7 @@
 						let s: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO' = 'DA_INIZIARE';
 						if (i.statoCorso === 'IN_SVOLGIMENTO') s = 'IN_SVOLGIMENTO';
 						else if (i.statoCorso === 'CONCLUSO' || i.statoCorso === 'CERTIFICATO' || i.statoCorso === 'VALIDATO' || i.presenzaConfermata) s = 'COMPLETATO';
-						return { idCorso: i.idCorso, idDocumento: i.idDocumento, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
+						return { idCorso: i.idCorso, idDocumento: i.idDocumento, filePath: i.filePathDocumento, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
 					}),
 					tuttiIdCorsiIscritto: tuttiId
 				};
@@ -133,22 +133,17 @@
 		}
 	}
 
-	function scaricaOriginale(idDocumento: number) {
-		gestisciDownloadStandard(
-				DocumentoService.downloadDocumento(idDocumento),
-				`Attestati_Originali_${idDocumento}.pdf`
-		);
+	async function scaricaOriginale(attestato: Documento) {
+		if(!attestato.idDocumento || !attestato.filePath) return;
+		await scaricaDocumentoUniversale(attestato.idDocumento, attestato.filePath);
 	}
 
-	function scaricaAttestato(idDocumento: number | undefined, titoloCorso: string) {
-		if (!idDocumento) {
-			alert("Il documento dell'attestato non è ancora disponibile.");
+	async function scaricaAttestato(corso: CorsoStato) {
+		if (!corso.idDocumento || !corso.filePath) {
+			alert("L'attestato non è ancora disponibile per questo corso.");
 			return;
 		}
-		gestisciDownloadStandard(
-				DocumentoService.downloadDocumento(idDocumento),
-				`Attestato_${titoloCorso.replace(/\s+/g, '_')}.pdf`
-		);
+		await scaricaDocumentoUniversale(corso.idDocumento, corso.filePath);
 	}
 
 	function handleFileChange(event: Event, idDocumento: number) {
@@ -199,7 +194,7 @@
 						<div class="flex flex-col gap-3">
 							<AlertCard titolo="Pacchetto Attestati Corso" sottotitolo="Scarica il PDF, apponi la firma aziendale e ricaricalo." variante="warning" icona={FileCheck2} stato="Da Firmare" data="Ricevuto il: {formattaData(attestato.dataCaricamento)}" />
 							<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-								<button onclick={() => scaricaOriginale(idDoc)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors"><Download size={16} /> Scarica</button>
+								<button onclick={() => scaricaOriginale(attestato)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors"><Download size={16} /> Scarica</button>
 								<div class="relative"><input type="file" accept="application/pdf" id="upload-{idDoc}" onchange={(e) => handleFileChange(e, idDoc)} class="hidden" /><label for="upload-{idDoc}" class="w-full py-3 border-2 border-dashed {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all"><UploadCloud size={16} /> {fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}</label></div>
 								<button onclick={() => consegnaAiDipendenti(idDoc)} disabled={!fileFirmati[idDoc] || isActionLoading} class="w-full py-3 bg-emerald-600 text-white rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:bg-emerald-700 shadow-lg">{#if isActionLoading}<Loader2 class="animate-spin" size={16} />{:else}<CheckCircle2 size={16} /> Consegna{/if}</button>
 							</div>
@@ -228,7 +223,7 @@
 								ruolo="azienda"
 								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: corso.stato, dataSvolgimento: corso.dataSvolgimento, luogo: 'Sede NorLan / Aula Virtuale' }}
 								onAnnullaIscrizione={corso.stato === 'DA_INIZIARE' ? () => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.titolo) : undefined}
-								onDownloadAttestato={() => scaricaAttestato(corso.idDocumento, corso.titolo)}
+								onDownloadAttestato={() => scaricaAttestato(corso)}
 						/>
 					{/each}
 				</div>

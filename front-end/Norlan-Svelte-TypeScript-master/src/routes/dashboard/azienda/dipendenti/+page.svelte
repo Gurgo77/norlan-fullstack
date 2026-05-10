@@ -23,9 +23,9 @@
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-    import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
     import {caricaDettagliEntita} from "$lib/utils/dettaglioUtils";
     import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
+    import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
     interface ServerError {
         response?: {
@@ -245,9 +245,8 @@
         }
     }
 
-    function scaricaDoc(doc: any) {
-        const nomeFile = doc.filePath ? doc.filePath.split('/').pop() : 'documento.pdf';
-        gestisciDownloadStandard(DocumentoService.downloadDocumento(doc.idDocumento || doc.id), nomeFile);
+    async function scaricaDoc(doc: any) {
+        await scaricaDocumentoUniversale(doc.idDocumento || doc.id, doc.filePath);
     }
 
     function openNewDpiModal() {

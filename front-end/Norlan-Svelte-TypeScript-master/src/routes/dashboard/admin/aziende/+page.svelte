@@ -22,9 +22,9 @@
 	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 	import AziendaCard from '$lib/Components/Features/Anagrafica/AziendaCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 	import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
+	import {uploadDocumentoUniversale, scaricaDocumentoUniversale, eliminaDocumentoUniversale} from '$lib/utils/documentoUtils';
 
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
@@ -152,11 +152,14 @@
 
 	async function confermaEliminaDoc() {
 		if (!docDaEliminare) return;
-		try {
-			await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
+		const res = await eliminaDocumentoUniversale(docDaEliminare.idDocumento);
+		if (res.error) {
+			alert(res.msg);
+		} else {
 			documentiCorrenti = documentiCorrenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
-			showDeleteDocModal = false; docDaEliminare = null;
-		} catch { alert("Errore durante l'eliminazione del documento."); }
+			showDeleteDocModal = false;
+			docDaEliminare = null;
+		}
 	}
 
 	function preparaEliminaDip(dip: DipendenteDTO) { dipDaEliminare = dip; showDeleteDipModal = true; }
@@ -232,38 +235,27 @@
 	async function gestisciUpload() {
 		if (!uploadFile || !selectedAzienda || !formDocumento.dataScadenza || !formDocumento.dataRilascio) return;
 		isUploading = true;
-		try {
-			const fd = new FormData();
-			fd.append('file', uploadFile);
-			fd.append('modulo', formDocumento.modulo);
-			fd.append('tipologia', formDocumento.tipologia);
-			fd.append('dataScadenza', formDocumento.dataScadenza);
-			fd.append('dataRilascio', formDocumento.dataRilascio);
 
-			await DocumentoService.uploadDocumento(selectedAzienda.idUtente, fd);
+		const res = await uploadDocumentoUniversale(selectedAzienda.idUtente, uploadFile, formDocumento);
 
+		if (res.error) {
+			alert(res.msg);
+		} else {
 			if (idDocumentoDaAggiornare !== null) {
-				await DocumentoService.deleteDocumento(idDocumentoDaAggiornare);
+				await eliminaDocumentoUniversale(idDocumentoDaAggiornare);
 			}
-
 			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(selectedAzienda.idUtente);
-
 			showUploadModal = false;
 			uploadFile = null;
 			idDocumentoDaAggiornare = null;
-		} catch (error) {
-			console.error("Errore riscontrato durante il caricamento del documento:", error);
-			alert("Caricamento fallito. Risposta del server non valida.");
-		} finally {
-			isUploading = false;
 		}
+		isUploading = false;
 	}
 
-	function scaricaDoc(idDocumento: number | string) {
+	async function scaricaDoc(idDocumento: number | string) {
 		const doc = documentiCorrenti.find(d => d.idDocumento === idDocumento);
-		const nomeFile = doc?.filePath?.split('/').pop() || 'documento.pdf';
-
-		gestisciDownloadStandard(DocumentoService.downloadDocumento(Number(idDocumento)), nomeFile);
+		if (!doc) return;
+		await scaricaDocumentoUniversale(doc.idDocumento, doc.filePath);
 	}
 
 	function apriModaleRegistrazione() {

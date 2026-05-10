@@ -10,9 +10,8 @@
         FileText, ShieldCheck, MessageSquare, AlertCircle, CheckCircle, Clock, Edit3
     } from 'lucide-svelte';
 
-    import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
+    import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
-    import { DocumentoService } from '$lib/services/DocumentoService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
     import { Documento } from '$lib/models/Documento';
     import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
@@ -20,10 +19,9 @@
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-    import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
-    import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
-
+    import {creaUtenteUniversale, aggiornaUtenteUniversale} from '$lib/utils/anagraficaUtils';
+    import {scaricaDocumentoUniversale, eliminaDocumentoUniversale} from '$lib/utils/documentoUtils';
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
         idAzienda?: string | number;
@@ -286,25 +284,23 @@
         }
     }
 
-    function scaricaDoc(doc: Documento) {
-        const nomeFile = doc.filePath?.split('/').pop() || 'attestato_formativo.pdf';
-        gestisciDownloadStandard(
-            DocumentoService.downloadDocumento(doc.idDocumento),
-            nomeFile
-        );
+    async function scaricaDoc(doc: Documento) {
+        await scaricaDocumentoUniversale(doc.idDocumento, doc.filePath);
     }
 
     function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }
 
     async function confermaEliminaDoc() {
         if (!docDaEliminare) return;
-        try {
-            await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
+
+        const res = await eliminaDocumentoUniversale(docDaEliminare.idDocumento);
+
+        if (res.error) {
+            alert(res.msg);
+        } else {
             documentiCorrenti = documentiCorrenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
             showDeleteDocModal = false;
             docDaEliminare = null;
-        } catch {
-            alert("Si è verificato un errore durante l'eliminazione dell'attestato.");
         }
     }
 

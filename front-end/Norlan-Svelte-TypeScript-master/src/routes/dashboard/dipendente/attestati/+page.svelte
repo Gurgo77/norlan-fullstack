@@ -10,7 +10,7 @@
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import DocCard, { type DocInfo } from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -36,13 +36,8 @@
 		}
 	});
 
-	function scaricaAttestato(idCorso: number | string) {
-		if (!utente) return;
-
-		gestisciDownloadStandard(
-				FormazioneService.downloadAttestato(Number(idCorso), utente.idUtente),
-				`Attestato_Corso_${idCorso}_NorLan.pdf`
-		);
+	async function scaricaAttestato(idDocumento: number, filePath: string) {
+		await scaricaDocumentoUniversale(idDocumento, filePath);
 	}
 
 	const attestatiDisponibili = $derived(
@@ -54,15 +49,17 @@
 							i.titoloCorso.toLowerCase().includes(searchQuery.toLowerCase())
 					)
 					.map(i => {
-						const info: DocInfo = {
-							id: i.idCorso,
-							titolo: i.titoloCorso,
-							sottotitolo: "Certificato di Formazione",
-							stato: 'OK', // Gli attestati presi dal lavoratore sono considerati validi
-							dataCaricamento: formattaData(i.dataOrarioCorso),
-							dataScadenza: i.dataOrarioCorso // Usiamo la data corso come riferimento se non c'è vera scadenza, modificalo se il backend ha la dataScadenza reale
+						return {
+							info: {
+								id: i.idDocumento as number,
+								titolo: i.titoloCorso,
+								sottotitolo: "Certificato di Formazione",
+								stato: 'OK' as const,
+								dataCaricamento: formattaData(i.dataOrarioCorso),
+								dataScadenza: i.dataOrarioCorso
+							},
+							path: i.filePathDocumento || ''
 						};
-						return info;
 					})
 	);
 
@@ -91,7 +88,7 @@
 					bind:value={searchQuery}
 					type="text"
 					placeholder="CERCA PER TITOLO CORSO..."
-					class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+					class="w-full rounded-[1.5rem] border border-gray-100 bg-white py-4 pl-12 pr-6 text-xs font-bold uppercase shadow-sm outline-none transition-all focus:ring-4 focus:ring-[#1B4B6B]/5"
 			/>
 		</div>
 	</div>
@@ -103,12 +100,12 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-			{#each attestatiDisponibili as documento (documento.id)}
+			{#each attestatiDisponibili as item (item.info.id)}
 				<div in:scale={{duration: 200}}>
 					<DocCard
-							{documento}
+							documento={item.info}
 							ruolo="dipendente"
-							onDownload={scaricaAttestato}
+							onDownload={() => scaricaAttestato(item.info.id, item.path)}
 					/>
 				</div>
 			{/each}

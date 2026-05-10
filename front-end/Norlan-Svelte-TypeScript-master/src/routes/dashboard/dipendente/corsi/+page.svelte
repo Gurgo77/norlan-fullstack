@@ -9,7 +9,7 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
 	interface MaterialeDidatticoDTO {
 		idMateriale: number;
@@ -101,11 +101,12 @@
 				.toUpperCase();
 	}
 
-	function scaricaMateriale(idMateriale: number, titolo: string) {
-		gestisciDownloadStandard(
-				FormazioneService.downloadMateriale(idMateriale),
-				`${titolo.replace(/\s+/g, '_')}.pdf`
-		);
+	async function scaricaMateriale(idMateriale: number, path?: string) {
+		if (!path) {
+			alert("Il file del materiale didattico non è disponibile.");
+			return;
+		}
+		await scaricaDocumentoUniversale(idMateriale, path);
 	}
 
 	function apriModaleFeedback(iscrizione: IscrizioneConMateriali) {
@@ -231,10 +232,11 @@
                       luogo: 'Sede NorLan / Aula Virtuale',
                       materiali: iscrizione.materiali.map((m) => ({
                          id: m.idMateriale,
-                         titolo: m.titoloDocumento
+                         titolo: m.titoloDocumento,
+                         path: m.percorsoFile
                       }))
                    }}
-							onDownloadMateriale={(id, titolo) => scaricaMateriale(id, titolo)}
+							onDownloadMateriale={(id, _, path) => scaricaMateriale(id, path)}
 					/>
 				</div>
 			{/each}

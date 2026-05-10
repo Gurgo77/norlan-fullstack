@@ -1,17 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		FileText,
-		Download,
-		Search,
-		Calendar,
-		ShieldCheck,
-		AlertCircle,
-		Clock,
-		FileDown,
-		Loader2
-	} from 'lucide-svelte';
+	import {FileText, Download, Search, Calendar, ShieldCheck, AlertCircle, Clock, FileDown, Loader2} from 'lucide-svelte';
 
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AuthService } from '$lib/services/AuthService';
@@ -19,8 +9,7 @@
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
-
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -41,11 +30,8 @@
 		}
 	});
 
-	function handleDownload(id: number, titolo: string) {
-		gestisciDownloadStandard(
-				DocumentoService.downloadDocumento(id),
-				`${titolo.replace(/\s+/g, '_')}.pdf`
-		);
+	async function handleDownload(id: number, path: string) {
+		await scaricaDocumentoUniversale(id, path);
 	}
 
 	function getStatoDocumento(doc: Documento): 'VALIDO' | 'IN_SCADENZA' | 'SCADUTO' {
@@ -193,7 +179,7 @@
 					</div>
 					<div class="flex gap-2 border-t border-gray-50 bg-gray-50/50 p-4">
 						<button
-								onclick={() => handleDownload(doc.idDocumento, doc.tipologia)}
+								onclick={() => handleDownload(doc.idDocumento, doc.filePath)}
 								class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-[10px] font-black uppercase text-[#1B4B6B] transition-all hover:border-[#1B4B6B] hover:bg-[#1B4B6B] hover:text-white"
 						>
 							<Download size={14} /> Scarica

@@ -13,8 +13,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DocCard from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
-
+	import {scaricaDocumentoUniversale, eliminaDocumentoUniversale} from '$lib/utils/documentoUtils';
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -53,21 +52,16 @@
 		isDeleting = true;
 		errorMessage = '';
 
-		try {
-			await DocumentoService.deleteDocumento(docDaEliminare.idDocumento);
+		const res = await eliminaDocumentoUniversale(docDaEliminare.idDocumento);
+
+		if (res.error) {
+			errorMessage = res.msg;
+		} else {
 			documenti = documenti.filter(d => d.idDocumento !== docDaEliminare?.idDocumento);
 			showDeleteModal = false;
 			docDaEliminare = null;
-		} catch (error: any) {
-			console.error("Errore eliminazione:", error);
-			if (error.response?.status === 409) {
-				errorMessage = "Impossibile eliminare: questo documento è collegato a un corso o a un'assegnazione attiva.";
-			} else {
-				errorMessage = "Si è verificato un errore tecnico durante l'eliminazione.";
-			}
-		} finally {
-			isDeleting = false;
 		}
+		isDeleting = false;
 	}
 
 	const filteredDocumenti = $derived(
@@ -98,8 +92,8 @@
 		}).length
 	});
 
-	function scarica(id: number, filename: string) {
-		gestisciDownloadStandard(DocumentoService.downloadDocumento(id), `${filename}.pdf`);
+	async function scarica(id: number, path: string) {
+		await scaricaDocumentoUniversale(id, path);
 	}
 </script>
 
@@ -152,16 +146,16 @@
 				<div in:scale>
 					<DocCard
 							documento={{
-                            id: doc.idDocumento,
-                            titolo: doc.tipologia.replace(/_/g, ' '),
-                            sottotitolo: doc.ragioneSocialeAzienda,
-                            stato: (Math.ceil((new Date(doc.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24))) < 0 ? 'DANGER' : 'WARNING',
-                            dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT')
-                        }}
+            id: doc.idDocumento,
+            titolo: doc.tipologia.replace(/_/g, ' '),
+            sottotitolo: doc.ragioneSocialeAzienda,
+            stato: (Math.ceil((new Date(doc.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24))) < 0 ? 'DANGER' : 'WARNING',
+            dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT')
+        }}
 							ruolo="admin"
-							onDownload={() => scarica(doc.idDocumento, doc.ragioneSocialeAzienda)}
+							onDownload={() => scarica(doc.idDocumento, doc.filePath)}
 							onDelete={() => preparaEliminazione(doc)}
-							onManage={() => vaiAdAzienda(doc.idAzienda || doc.idUtente)}
+							onManage={() => vaiAdAzienda(doc.idAzienda)}
 					/>
 				</div>
 			{/each}
