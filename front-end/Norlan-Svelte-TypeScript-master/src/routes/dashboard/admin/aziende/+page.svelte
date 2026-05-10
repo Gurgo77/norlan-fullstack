@@ -5,10 +5,10 @@
 	import { goto } from '$app/navigation';
 	import { resolveRoute } from '$app/paths';
 	import {
-		Building2, Plus, Trash2, ShieldCheck, ChevronRight, ChevronLeft,
-		Loader2, Search, Phone, User, Globe, Users, UserCheck, MapPin,
-		FileText, Download, Calendar, X, AlertTriangle, Upload, UserPlus,
-		Mail, MessageSquare, Edit3
+		Building2, Plus, Trash2, ChevronLeft,
+		Loader2, Search, Phone, User, Users, UserCheck, MapPin,
+		FileText, AlertTriangle, Upload, UserPlus,
+		Mail, Edit3
 	} from 'lucide-svelte';
 
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
@@ -23,6 +23,7 @@
 	import AziendaCard from '$lib/Components/Features/Anagrafica/AziendaCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
@@ -116,16 +117,20 @@
 
 	async function apriDettaglio(aziendaPreview: Azienda) {
 		selectedAzienda = aziendaPreview;
-		try {
-			const fullData = await AnagraficaService.getAziendaById(aziendaPreview.idUtente);
-			selectedAzienda = new Azienda(fullData);
-			documentiCorrenti = await DocumentoService.getDocumentiByAzienda(aziendaPreview.idUtente);
-			const hasDip = await AnagraficaService.hasDipendenti(aziendaPreview.idUtente);
-			dynamicHasDipendenti = hasDip;
-			const idx = aziende.findIndex(a => a.idUtente === aziendaPreview.idUtente);
-			if (idx !== -1) aziende[idx].hasDipendenti = hasDip;
-			dipendentiCorrenti = await LavoratoreService.getByAzienda(aziendaPreview.idUtente);
-		} catch { console.error("Errore durante il recupero dei dettagli dell'azienda."); }
+
+		const res = await caricaDettagliEntita(aziendaPreview.idUtente, 'AZIENDA') as any;
+
+		if (res.error) {
+			alert("Si è verificato un errore nel caricamento dei dati dell'azienda.");
+		}
+
+		selectedAzienda = res.info ?? null;
+		documentiCorrenti = res.documenti;
+		dipendentiCorrenti = res.personale;
+		dynamicHasDipendenti = res.extra.hasDip;
+
+		const idx = aziende.findIndex(a => a.idUtente === aziendaPreview.idUtente);
+		if (idx !== -1) aziende[idx].hasDipendenti = res.extra.hasDip;
 	}
 
 	async function vaiADettaglioDipendente(idUtente: string | number) {

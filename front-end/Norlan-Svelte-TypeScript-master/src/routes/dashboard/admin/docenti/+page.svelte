@@ -1,10 +1,9 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fade, scale, slide } from 'svelte/transition';
+    import { fade, slide } from 'svelte/transition';
     import { goto } from '$app/navigation';
     import {
-        GraduationCap, Plus, Trash2, Search, Mail, MessageSquare,
-        ChevronRight, ChevronLeft, Loader2, X, AlertTriangle, BookOpen,
+        GraduationCap, Plus, Trash2, Search, Mail, ChevronLeft, Loader2, AlertTriangle, BookOpen,
         Calendar, Edit3
     } from 'lucide-svelte';
 
@@ -16,6 +15,7 @@
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DocenteCard from '$lib/Components/Features/Anagrafica/DocenteDashboardCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+    import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
@@ -67,15 +67,12 @@
     async function apriDettaglio(docente: DocenteData) {
         selectedDocente = docente;
         isLoadingDettaglio = true;
-        try {
-            const tuttiCorsi = await FormazioneService.getAllCorsi();
-            corsiDocente = tuttiCorsi.filter(c => c.idDocente === docente.idUtente);
-        } catch (error) {
-            console.error("Errore durante il caricamento dei corsi associati al docente:", error);
-            corsiDocente = [];
-        } finally {
-            isLoadingDettaglio = false;
-        }
+
+        const res = await caricaDettagliEntita(Number(docente.idUtente), 'DOCENTE') as any;
+        corsiDocente = res.corsi;
+        if (res.error) alert("Si è verificato un errore nel caricamento dei dati.");
+
+        isLoadingDettaglio = false;
     }
 
     function apreGmail(email: string) {

@@ -19,9 +19,9 @@
     import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
-    import { FormazioneService } from '$lib/services/FormazioneService';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+    import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -173,29 +173,15 @@
     async function apriDettaglio(lavoratore: DipendenteEsteso) {
         selectedDipendente = lavoratore;
         isLoadingDettaglio = true;
-        try {
-            const [resIscrizioni, resDpis] = await Promise.all([
-                FormazioneService.getIscrizioniUtente(lavoratore.idUtente as number),
-                LavoratoreService.getDpiByLavoratore(lavoratore.idUtente as number)
-            ]);
-            documentiCorrenti = resIscrizioni
-                .filter(i => i.idDocumento != null)
-                .map(i => ({
-                    idDocumento: i.idDocumento!,
-                    modulo: i.titoloCorso || 'Corso di Formazione',
-                    tipologia: 'ATTESTATO_CORSO',
-                    dataScadenza: i.dataOrarioCorso,
-                    filePath: '',
-                    stato: 'APPROVATO',
-                    scaduto: false
-                } as Documento));
+        const res = await caricaDettagliEntita(Number(lavoratore.idUtente), 'DIPENDENTE') as any;
 
-            dpiCorrenti = resDpis as unknown as DpiEsteso[];
-        } catch (error) {
-            console.error("Errore durante il caricamento dei dettagli del dipendente:", error);
-        } finally {
-            isLoadingDettaglio = false;
+        if (res.error) {
+            alert("Si è verificato un errore nel caricamento dei dati del dipendente.");
         }
+        documentiCorrenti = res.documenti;
+        dpiCorrenti = res.dpi;
+
+        isLoadingDettaglio = false;
     }
 
     function apreGmail(email: string) {

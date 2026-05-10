@@ -12,6 +12,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
 	import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
+	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 
 	interface StudenteDettaglio {
 		idUtente: number;
@@ -95,34 +96,21 @@
 
 	async function apriDettaglioStudente(studente: StudenteDettaglio) {
 		isLoadingDettaglio = true;
+		const res = await caricaDettagliEntita(studente.idUtente, 'STUDENTE') as any;
 
-		selectedStudente = {
-			idUtente: studente.idUtente,
-			email: studente.emailUtente,
-			nome: 'Caricamento...',
-			cognome: '',
-			codiceFiscale: '...'
-		};
-
-		try {
-			const datiReali = await LavoratoreService.getById(studente.idUtente);
-			if (datiReali) {
-				selectedStudente = {
-					idUtente: studente.idUtente,
-					email: datiReali.email || studente.emailUtente,
-					nome: datiReali.nome || 'Nome N.D.',
-					cognome: datiReali.cognome || '',
-					codiceFiscale: datiReali.codiceFiscale || 'Non specificato'
-				};
-			}
-		} catch (error) {
-			console.warn("Impossibile caricare i dati completi dello studente", error);
-			selectedStudente.nome = 'Studente';
-			selectedStudente.cognome = 'Non Trovato';
-			selectedStudente.codiceFiscale = 'N.D.';
-		} finally {
-			isLoadingDettaglio = false;
+		if (res.error) {
+			alert("Impossibile recuperare il profilo dello studente.");
+			selectedStudente = null;
+		} else {
+			selectedStudente = {
+				idUtente: studente.idUtente,
+				email: res.info?.email || studente.emailUtente,
+				nome: res.info?.nome || 'Studente',
+				cognome: res.info?.cognome || 'Non Trovato',
+				codiceFiscale: res.info?.codiceFiscale || 'N.D.'
+			};
 		}
+		isLoadingDettaglio = false;
 	}
 </script>
 

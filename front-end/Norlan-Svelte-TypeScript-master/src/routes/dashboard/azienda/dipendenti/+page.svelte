@@ -24,6 +24,7 @@
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
+    import {caricaDettagliEntita} from "$lib/utils/dettaglioUtils";
 
     interface ServerError {
         response?: {
@@ -139,30 +140,14 @@
     async function apriDettaglio(lavoratore: DipendenteEsteso) {
         selectedDipendente = lavoratore;
         isLoadingDettaglio = true;
-        try {
-            const [resIscrizioni, resDpis] = await Promise.all([
-                FormazioneService.getIscrizioniUtente(lavoratore.idUtente as number),
-                LavoratoreService.getDpiByLavoratore(lavoratore.idUtente as number)
-            ]);
+        const res = await caricaDettagliEntita(Number(lavoratore.idUtente), 'DIPENDENTE') as any;
 
-            documentiCorrenti = resIscrizioni
-                .filter(i => i.idDocumento != null)
-                .map(i => ({
-                    idDocumento: i.idDocumento!,
-                    modulo: i.titoloCorso || 'Corso di Formazione',
-                    tipologia: 'ATTESTATO_CORSO',
-                    dataScadenza: i.dataOrarioCorso,
-                    filePath: '',
-                    stato: 'APPROVATO',
-                    scaduto: false
-                } as Documento));
-
-            dpiCorrenti = Array.isArray(resDpis) ? resDpis as unknown as DpiEsteso[] : (resDpis as any)?.data || [];
-        } catch (error) {
-            console.error(error);
-        } finally {
-            isLoadingDettaglio = false;
+        if (res.error) {
+            alert("Si è verificato un errore nel caricamento dei dati del dipendente.");
         }
+        documentiCorrenti = res.documenti;
+        dpiCorrenti = res.dpi;
+        isLoadingDettaglio = false;
     }
 
     function apreGmail(email: string) {
