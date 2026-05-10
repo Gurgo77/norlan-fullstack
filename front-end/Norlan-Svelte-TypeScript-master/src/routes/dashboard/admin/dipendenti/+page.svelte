@@ -22,6 +22,7 @@
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
     import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
     import { scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
+    import { getInfoScadenza, ordinaPerScadenza } from '$lib/utils/scadenzeUtils';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -102,38 +103,14 @@
         (isEditing ? true : formDipendente.password.trim() !== '')
     );
 
-    function getStatoScadenza(dataScadenza: string | undefined) {
-        if (!dataScadenza) return { colore: 'text-green-600', bgBadge: 'bg-green-50', borderBadge: 'border-green-200', bgTop: 'bg-green-500', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
 
-        const oggi = new Date();
-        const scadenza = new Date(dataScadenza);
-        const diffTempo = scadenza.getTime() - oggi.getTime();
-        const giorniRimanenti = Math.ceil(diffTempo / (1000 * 3600 * 24));
-
-        if (giorniRimanenti < 0) return { colore: 'text-red-600', bgBadge: 'bg-red-50', borderBadge: 'border-red-200', bgTop: 'bg-red-500', label: 'Scaduto', IconaDef: AlertCircle, peso: 1 };
-        if (giorniRimanenti <= 30) return { colore: 'text-yellow-600', bgBadge: 'bg-yellow-50', borderBadge: 'border-yellow-200', bgTop: 'bg-yellow-500', label: `In scadenza (${giorniRimanenti}gg)`, IconaDef: Clock, peso: 2 };
-
-        return { colore: 'text-green-600', bgBadge: 'bg-green-50', borderBadge: 'border-green-200', bgTop: 'bg-green-500', label: 'Valido', IconaDef: CheckCircle, peso: 3 };
-    }
 
     const sortedDocumentiCorrenti = $derived(
-        [...documentiCorrenti].sort((a, b) => {
-            const statoA = getStatoScadenza(a.dataScadenza);
-            const statoB = getStatoScadenza(b.dataScadenza);
-            if (statoA.peso !== statoB.peso) return statoA.peso - statoB.peso;
-            return new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime();
-        })
+        ordinaPerScadenza(documentiCorrenti, 'dataScadenza')
     );
 
     const sortedDpiCorrenti = $derived(
-        [...dpiCorrenti].sort((a, b) => {
-            const statoA = getStatoScadenza(a.dataScadenzaRevisione);
-            const statoB = getStatoScadenza(b.dataScadenzaRevisione);
-            if (statoA.peso !== statoB.peso) return statoA.peso - statoB.peso;
-            const dataA = a.dataScadenzaRevisione ? new Date(a.dataScadenzaRevisione).getTime() : Infinity;
-            const dataB = b.dataScadenzaRevisione ? new Date(b.dataScadenzaRevisione).getTime() : Infinity;
-            return dataA - dataB;
-        })
+        ordinaPerScadenza(dpiCorrenti, 'dataScadenzaRevisione')
     );
 
     onMount(async () => {
@@ -500,7 +477,9 @@
                             <div class="space-y-4">
                                 {#each sortedDpiCorrenti as dpi (dpi.idAssegnazione || Math.random())}
                                     {@const nomeDpiReale = dpi.tipo === 'ALTRO' && dpi.nomeDpi ? dpi.nomeDpi : (dpi.tipo || '').replace(/_/g, ' ')}
-                                    {@const stato = getStatoScadenza(dpi.dataScadenzaRevisione)}
+
+                                    {@const info = getInfoScadenza(dpi.dataScadenzaRevisione)}
+
                                     <div class="flex flex-col gap-2">
                                         <DettagliDocCard
                                                 tipo="DPI"
@@ -511,10 +490,10 @@
                                                 onDelete={() => preparaEliminaDPI(dpi)}
                                         />
 
-                                        {#if stato.peso === 1}
+                                        {#if info.stato === 'DANGER'}
                                             <div class="bg-red-50/50 border border-red-100 rounded-xl p-3 shadow-sm">
                                                 <p class="text-[8px] font-black uppercase text-red-500 mb-2 text-center tracking-tighter">
-                                                    Invia sollecito a {selectedDipendente.nomeAzienda}:
+                                                    Invia sollecito a {selectedDipendente?.nomeAzienda}:
                                                 </p>
                                                 <div class="flex gap-2">
                                                     <button

@@ -26,6 +26,7 @@
     import { caricaDettagliEntita } from "$lib/utils/dettaglioUtils";
     import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
     import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
+    import { ordinaPerScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
     interface ServerError {
         response?: {
@@ -94,25 +95,12 @@
         (isEditing ? true : formDipendente.passwordHash.trim() !== '')
     );
 
-    function formattaScadenza(data?: string) {
-        if (!data || data === '9999-12-31') return 'Senza scadenza';
-        return new Date(data).toLocaleDateString();
-    }
-
     const sortedDocumentiCorrenti = $derived(
-        [...documentiCorrenti].sort((a, b) => {
-            const dataA = a.dataScadenza ? new Date(a.dataScadenza).getTime() : Infinity;
-            const dataB = b.dataScadenza ? new Date(b.dataScadenza).getTime() : Infinity;
-            return dataA - dataB;
-        })
+        ordinaPerScadenza(documentiCorrenti, 'dataScadenza')
     );
 
     const sortedDpiCorrenti = $derived(
-        [...dpiCorrenti].sort((a, b) => {
-            const dataA = a.dataScadenzaRevisione ? new Date(a.dataScadenzaRevisione).getTime() : Infinity;
-            const dataB = b.dataScadenzaRevisione ? new Date(b.dataScadenzaRevisione).getTime() : Infinity;
-            return dataA - dataB;
-        })
+        ordinaPerScadenza(dpiCorrenti, 'dataScadenzaRevisione')
     );
 
     onMount(async () => {
@@ -404,7 +392,7 @@
                                             tipo="ATTESTATO"
                                             titolo={(doc.tipologia || 'Documento').replace(/_/g, ' ')}
                                             sottotitolo={doc.modulo || ''}
-                                            dataScadenza={doc.dataScadenza}
+                                            dataScadenza={formattaDataScadenza(doc.dataScadenza)}
                                             onDownload={() => scaricaDoc(doc)}
                                     />
                                 {/each}
@@ -434,8 +422,8 @@
                                     <DettagliDocCard
                                             tipo="DPI"
                                             titolo={nomeDpiReale}
-                                            dataScadenza={dpi.dataScadenzaRevisione}
-                                            dataSecondaria={dpi.dataConsegna}
+                                            dataScadenza={formattaDataScadenza(dpi.dataScadenzaRevisione)}
+                                            dataSecondaria={formattaDataScadenza(dpi.dataConsegna)}
                                             labelDataSecondaria="Consegnato"
                                             onUpdate={() => openUpdateDpiModal(dpi.idAssegnazione || dpi.id || 0)}
                                             onDelete={() => preparaEliminaDPI(dpi.idAssegnazione || dpi.id || 0)}

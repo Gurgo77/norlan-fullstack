@@ -10,6 +10,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+	import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
 	interface DpiRegistro {
 		idAssegnazione?: number;
@@ -40,18 +41,14 @@
 	let registro = $state<DpiRegistro[]>([]);
 	let dipendentiList = $state<any[]>([]);
 
-	// Stato Modale Inserimento
 	let showDpiModal = $state(false);
 	let isSavingDpi = $state(false);
 	let formDpi = $state<FormDPI>({
 		idAssegnazione: null, idDipendente: '', tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: ''
 	});
 
-	// Stato Modale Errore
 	let showErrorModal = $state(false);
 	let errorMessage = $state('');
-
-	// Stato Modale Conferma Eliminazione
 	let showConfirmModal = $state(false);
 	let dpiToDelete = $state<number | string | null>(null);
 
@@ -70,7 +67,7 @@
 					...dpi,
 					idDipendente: d.idUtente,
 					nomeCompletoDipendente: `${d.nome} ${d.cognome}`.toUpperCase(),
-					statoDerivato: calcolaStato(dpi.dataScadenzaRevisione),
+					statoDerivato: getInfoScadenza(dpi.dataScadenzaRevisione).stato,
 					matricola: dpi.note || `ID-${dpi.idAssegnazione || dpi.id || 0}`
 				})) as DpiRegistro[];
 			});
@@ -84,27 +81,11 @@
 		}
 	});
 
-	function calcolaStato(dataScadenzaStr: string | undefined): 'OK' | 'WARNING' | 'DANGER' {
-		if (!dataScadenzaStr) return 'OK';
-		const oggi = new Date();
-		const scadenza = new Date(dataScadenzaStr);
-		const diffGiorni = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
-		if (diffGiorni < 0) return 'DANGER';
-		if (diffGiorni <= 30) return 'WARNING';
-		return 'OK';
-	}
-
-	function formattaData(dateStr: string | undefined) {
-		if (!dateStr) return 'N.D.';
-		return new Date(dateStr).toLocaleDateString('it-IT');
-	}
-
 	function mostraErrore(messaggio: string) {
 		errorMessage = messaggio;
 		showErrorModal = true;
 	}
 
-	// --- NUOVA LOGICA ELIMINAZIONE CON MODALE ---
 	function richiediEliminazione(idDpi: number | string) {
 		dpiToDelete = idDpi;
 		showConfirmModal = true;
@@ -123,7 +104,6 @@
 			mostraErrore("Impossibile eliminare il DPI. Riprovare o contattare l'assistenza.");
 		}
 	}
-	// --------------------------------------------
 
 	function openNewDpiModal() {
 		formDpi = { idAssegnazione: null, idDipendente: '', tipo: '', nomeDpi: '', dataConsegna: '', dataScadenzaRevisione: '' };
@@ -165,7 +145,7 @@
 				...(savedDpi as any),
 				idDipendente: formDpi.idDipendente,
 				nomeCompletoDipendente: nomeCompleto,
-				statoDerivato: calcolaStato((savedDpi as any).dataScadenzaRevisione),
+				statoDerivato: getInfoScadenza((savedDpi as any).dataScadenzaRevisione).stato,
 				matricola: (savedDpi as any).note || `ID-${(savedDpi as any).idAssegnazione || (savedDpi as any).id || 0}`
 			};
 
@@ -192,12 +172,15 @@
 						tipoSafe.includes(searchQuery.toLowerCase()) ||
 						matricolaSafe.includes(searchQuery.toLowerCase()) ||
 						nomeDpiSafe.includes(searchQuery.toLowerCase());
+
 				const matchFiltro = filtroAttivo === 'TUTTI' || d.statoDerivato === filtroAttivo;
 				return matchSearch && matchFiltro;
 			}).sort((a, b) => {
-				const priorita = { 'DANGER': 1, 'WARNING': 2, 'OK': 3 };
-				if (priorita[a.statoDerivato] !== priorita[b.statoDerivato]) {
-					return priorita[a.statoDerivato] - priorita[b.statoDerivato];
+				const infoA = getInfoScadenza(a.dataScadenzaRevisione);
+				const infoB = getInfoScadenza(b.dataScadenzaRevisione);
+
+				if (infoA.peso !== infoB.peso) {
+					return infoA.peso - infoB.peso;
 				}
 				const dataA = a.dataScadenzaRevisione ? new Date(a.dataScadenzaRevisione).getTime() : Infinity;
 				const dataB = b.dataScadenzaRevisione ? new Date(b.dataScadenzaRevisione).getTime() : Infinity;
@@ -218,8 +201,8 @@
 	);
 
 	const stats = $derived({
-		scaduti: registro.filter(d => d.statoDerivato === 'DANGER').length,
-		inScadenza: registro.filter(d => d.statoDerivato === 'WARNING').length
+		scaduti: registro.filter(d => getInfoScadenza(d.dataScadenzaRevisione).stato === 'DANGER').length,
+		inScadenza: registro.filter(d => getInfoScadenza(d.dataScadenzaRevisione).stato === 'WARNING').length
 	});
 </script>
 
@@ -308,8 +291,8 @@
                                nome: nomeDpiReale,
                                matricola: item.matricola,
                                stato: item.statoDerivato,
-                               dataRevisione: formattaData(item.dataScadenzaRevisione),
-                               dataConsegna: formattaData(item.dataConsegna)
+                               dataRevisione: formattaDataScadenza(item.dataScadenzaRevisione),
+                               dataConsegna: formattaDataScadenza(item.dataConsegna)
                             }}
 										onModifica={openUpdateDpiModal}
 										onElimina={richiediEliminazione}

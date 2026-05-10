@@ -25,6 +25,7 @@
 	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 	import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 	import { uploadDocumentoUniversale, scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
+	import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
@@ -338,20 +339,14 @@
 	}
 
 	function creaDocInfo(doc: Documento): DocInfo {
-		const oggi = new Date().getTime();
-		const scadenza = new Date(doc.dataScadenza).getTime();
-		const giorniRimanenti = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
-
-		let stato: 'OK' | 'WARNING' | 'DANGER' = 'OK';
-		if (giorniRimanenti < 0) stato = 'DANGER';
-		else if (giorniRimanenti <= 30) stato = 'WARNING';
+		const info = getInfoScadenza(doc.dataScadenza);
 
 		return {
 			id: doc.idDocumento,
 			titolo: doc.tipologia.replace(/_/g, ' '),
 			sottotitolo: doc.modulo,
-			stato: stato,
-			dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT')
+			stato: info.stato,
+			dataScadenza: formattaDataScadenza(doc.dataScadenza)
 		};
 	}
 </script>
@@ -434,7 +429,9 @@
 										ruolo="admin"
 										onDownload={() => scaricaDoc(doc.idDocumento)}
 										onDelete={() => preparaEliminaDoc(doc)}
-										onManage={doc.scaduto ? () => preparaAggiornamento(doc.idDocumento) : undefined}
+										onManage={getInfoScadenza(doc.dataScadenza).stato === 'DANGER'
+										? () => preparaAggiornamento(doc.idDocumento)
+									: undefined}
 								/>
 							</div>
 						{/each}

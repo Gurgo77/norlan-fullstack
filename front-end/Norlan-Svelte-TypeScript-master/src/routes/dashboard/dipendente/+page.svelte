@@ -17,6 +17,7 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard, { type DashboardCorso } from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
+	import { getInfoScadenza, formattaDataScadenza, ordinaPerScadenza } from '$lib/utils/scadenzeUtils';
 
 	interface Impegno { id: number; titolo: string; data: string; timestamp: number; }
 	interface Dpi { id: number; nome: string; matricola: string; stato: 'OK' | 'WARNING' | 'DANGER'; revisione: string; timestamp: number; }
@@ -35,7 +36,14 @@
 	let statoFormazione = $state<'OK' | 'WARNING' | 'DANGER'>('OK');
 	let statoDPI = $state<'OK' | 'WARNING' | 'DANGER'>('OK');
 	let impegni = $state<Impegno[]>([]);
-	let dotazioniDPI = $state<Dpi[]>([]);
+	let dotazioniDPI: {
+        id: number;
+        nome: string;
+        matricola: string;
+        stato: "OK" | "WARNING" | "DANGER";
+        revisione: string;
+        dataOriginale: string
+    }[] = $state<Dpi[]>([]);
 	let materiali = $state<Materiale[]>([]);
 	let ultimoCorsoAttivo = $state<DashboardCorso | null>(null);
 
@@ -47,6 +55,7 @@
 		currentUser = AuthService.getSession();
 		const token = AuthService.getToken();
 		if (!currentUser || !token) return;
+
 		try {
 			const [dipData, dpiDataRaw, iscrizioniData, cronologiaChat] = await Promise.all([
 				LavoratoreService.getById(currentUser.idUtente),
@@ -54,37 +63,93 @@
 				FormazioneService.getIscrizioniUtente(currentUser.idUtente),
 				ChatService.getCronologia(currentUser.idUtente, STAFF_ID)
 			]);
+
 			utente = dipData;
 			messaggiChat = cronologiaChat;
+
 			const oggi = new Date().getTime();
-			let hasDpiWarning = false;
-			let hasDpiDanger = false;
-			const dpiData = dpiDataRaw as unknown as DpiBackendData[];
+			const dpiData = (dpiDataRaw as unknown as DpiBackendData[]);
+
 			dotazioniDPI = dpiData.map((d) => {
-				const dataScad = d.dataScadenzaRevisione || d.dataScadenza;
-				const scadenza = dataScad ? new Date(dataScad).getTime() : 0;
-				const diffG = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
-				let s: 'OK' | 'WARNING' | 'DANGER' = 'OK';
-				if (diffG < 0) { s = 'DANGER'; hasDpiDanger = true; } else if (diffG <= 30) { s = 'WARNING'; hasDpiWarning = true; }
-				return { id: d.idAssegnazione || d.id || 0, nome: (d.tipo || d.nomeDpi || 'Dispositivo').replace(/_/g, ' '), matricola: d.note || `ID-${d.idAssegnazione || d.id || 0}`, stato: s, revisione: dataScad ? new Date(dataScad).toLocaleDateString('it-IT') : 'N.D.', timestamp: scadenza };
+				const dataScad = d.dataScadenzaRevisione || d.dataScadenza || '';
+				const info = getInfoScadenza(dataScad);
+
+				return {
+					id: d.idAssegnazione || d.id || 0,
+					nome: (d.tipo || d.nomeDpi || 'Dispositivo').replace(/_/g, ' '),
+					matricola: d.note || `ID-${d.idAssegnazione || d.id || 0}`,
+					stato: info.stato,
+					revisione: formattaDataScadenza(dataScad),
+					dataOriginale: dataScad as string,
+					timestamp: dataScad ? new Date(dataScad).getTime() : 0
+				};
+			}).sort((a, b) => {
+				const priorita = { 'DANGER': 1, 'WARNING': 2, 'OK': 3 };
+				if (priorita[a.stato] !== priorita[b.stato]) return priorita[a.stato] - priorita[b.stato];
+				return a.timestamp - b.timestamp;
 			});
-			dotazioniDPI.sort((a, b) => a.timestamp - b.timestamp);
-			statoDPI = hasDpiDanger ? 'DANGER' : hasDpiWarning ? 'WARNING' : 'OK';
+
+			if (dotazioniDPI.some(d => d.stato === 'DANGER')) statoDPI = 'DANGER';
+			else if (dotazioniDPI.some(d => d.stato === 'WARNING')) statoDPI = 'WARNING';
+			else statoDPI = 'OK';
+
 			let hasCorsiImminenti = false;
-			let priorityCourse = iscrizioniData.find(i => i.statoCorso === 'IN_SVOLGIMENTO') || iscrizioniData.find(i => i.statoCorso === 'PROGRAMMATO');
+			const tempImpegni: Impegno[] = [];
+			const tempMateriali: Materiale[] = [];
+
 			iscrizioniData.forEach((i) => {
 				if (i.statoCorso === 'PROGRAMMATO' || i.statoCorso === 'IN_SVOLGIMENTO') {
 					hasCorsiImminenti = true;
-					impegni.push({ id: i.idCorso, titolo: i.titoloCorso, data: new Date(i.dataOrarioCorso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), timestamp: new Date(i.dataOrarioCorso).getTime() });
+					tempImpegni.push({
+						id: i.idCorso,
+						titolo: i.titoloCorso,
+						data: formattaDataScadenza(i.dataOrarioCorso) + ' ore ' + new Date(i.dataOrarioCorso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+						timestamp: new Date(i.dataOrarioCorso).getTime()
+					});
 				}
-				if (i.presenzaConfermata && i.idDocumento) { materiali.push({ id: i.idCorso, titolo: i.titoloCorso, data: new Date(i.dataOrarioCorso).toLocaleDateString('it-IT') }); }
+				if (i.presenzaConfermata && i.idDocumento) {
+					tempMateriali.push({
+						id: i.idCorso,
+						titolo: i.titoloCorso,
+						data: formattaDataScadenza(i.dataOrarioCorso)
+					});
+				}
 			});
-			impegni.sort((a, b) => a.timestamp - b.timestamp);
+
+			impegni = tempImpegni.sort((a, b) => a.timestamp - b.timestamp);
+			materiali = tempMateriali;
 			statoFormazione = hasCorsiImminenti ? 'WARNING' : 'OK';
-			if (priorityCourse) { ultimoCorsoAttivo = { id: priorityCourse.idCorso, titolo: priorityCourse.titoloCorso, stato: priorityCourse.statoCorso === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE', dataSvolgimento: new Date(priorityCourse.dataOrarioCorso).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase(), luogo: 'Sede NorLan / Aula Virtuale' }; }
-			chatService = new ChatService((msg: Messaggio) => { if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) { messaggiChat = [...messaggiChat, msg]; scrollChat(); } }, (err: string) => console.error(err));
+
+			const priorityCourse = iscrizioniData.find(i => i.statoCorso === 'IN_SVOLGIMENTO') ||
+					iscrizioniData.find(i => i.statoCorso === 'PROGRAMMATO');
+
+			if (priorityCourse) {
+				ultimoCorsoAttivo = {
+					id: priorityCourse.idCorso,
+					titolo: priorityCourse.titoloCorso,
+					stato: priorityCourse.statoCorso === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE',
+					dataSvolgimento: formattaDataScadenza(priorityCourse.dataOrarioCorso).toUpperCase(),
+					luogo: 'Sede NorLan / Aula Virtuale'
+				};
+			}
+
+			chatService = new ChatService(
+					(msg: Messaggio) => {
+						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
+							messaggiChat = [...messaggiChat, msg];
+							scrollChat();
+						}
+					},
+					(err: string) => console.error(err)
+			);
 			chatService.connect(token, currentUser.idUtente);
-		} catch (error) { console.error(error); } finally { isLoading = false; setTimeout(scrollChat, 100); }
+
+		} catch (error) {
+			console.error(error);
+		} finally {
+			isLoading = false;
+			setTimeout(scrollChat, 100);
+		}
 	});
 
 	onDestroy(() => { if (chatService) chatService.disconnect(); });

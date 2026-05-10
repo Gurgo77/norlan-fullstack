@@ -19,6 +19,7 @@
 	import type { Documento } from '$lib/models/Documento';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
+	import { getInfoScadenza } from '$lib/utils/scadenzeUtils';
 
 	interface ScadenzaTabella {
 		id: string;
@@ -71,17 +72,15 @@
 			const docentiList = datiDocenti as DocenteData[];
 			const corsiList = datiCorsi as CorsoFormazione[];
 			const documentiList = tuttiDocumenti as Documento[];
+
 			const dpiPromises = dipendentiList.map(async (d: DipendenteDTO) => {
 				try {
 					const dpis = await LavoratoreService.getDpiByLavoratore(d.idUtente);
-					return dpis.map((dpi: AssegnazioneDPIDTO) => {
-						const dpiEsteso: DpiEsteso = {
-							...dpi,
-							nomeDipendente: `${d.nome} ${d.cognome}`,
-							idAzienda: (d as DipendenteDTO & { idAzienda?: number }).idAzienda || 0
-						};
-						return dpiEsteso;
-					});
+					return dpis.map((dpi: AssegnazioneDPIDTO) => ({
+						...dpi,
+						nomeDipendente: `${d.nome} ${d.cognome}`,
+						idAzienda: (d as DipendenteDTO & { idAzienda?: number }).idAzienda || 0
+					}));
 				} catch {
 					return [];
 				}
@@ -97,22 +96,10 @@
 				dpiTotali: allDpis.length
 			};
 
-			const oggiMs = new Date().getTime();
-
-			const calcolaStatusEStato = (giorniMancanti: number): { status: 'red' | 'yellow' | 'green', testo: string } => {
-				if (giorniMancanti < 0) return { status: 'red', testo: 'SCADUTO' };
-				if (giorniMancanti === 0) return { status: 'red', testo: 'SCADE OGGI' };
-				if (giorniMancanti <= 7) return { status: 'red', testo: `SCADRÀ TRA ${giorniMancanti} GG` };
-				if (giorniMancanti <= 30) return { status: 'yellow', testo: `SCADRÀ TRA ${giorniMancanti} GG` };
-				return { status: 'green', testo: 'A POSTO' };
-			};
-
 			const scadenzeDocs: ScadenzaTabella[] = documentiList
 					.filter(doc => doc.tipologia !== 'ATTESTATO_CORSO')
 					.map(doc => {
-						const dataScad = new Date(doc.dataScadenza).getTime();
-						const diff = Math.ceil((dataScad - oggiMs) / (1000 * 3600 * 24));
-						const calc = calcolaStatusEStato(diff);
+						const info = getInfoScadenza(doc.dataScadenza);
 
 						return {
 							id: `doc_${doc.idDocumento}`,
@@ -120,10 +107,10 @@
 							idAzienda: doc.idAzienda,
 							azienda: doc.ragioneSocialeAzienda,
 							dettaglio: `${doc.tipologia.replace(/_/g, ' ')} - ${doc.modulo}`,
-							status: calc.status,
-							testoScadenza: calc.testo,
+							status: info.stato === 'DANGER' ? 'red' : info.stato === 'WARNING' ? 'yellow' : 'green',
+							testoScadenza: info.label.toUpperCase(),
 							dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT'),
-							timestampScadenza: dataScad,
+							timestampScadenza: new Date(doc.dataScadenza).getTime(),
 							linkRedirect: resolveRoute('/dashboard/admin/scadenziario')
 						};
 					});
@@ -131,10 +118,7 @@
 			const scadenzeDpi: ScadenzaTabella[] = allDpis.filter(dpi => {
 				return dpi.dataScadenzaRevisione && dpi.dataScadenzaRevisione !== '9999-12-31';
 			}).map(dpi => {
-				const scadMs = new Date(dpi.dataScadenzaRevisione!).getTime();
-				const diff = Math.ceil((scadMs - oggiMs) / (1000 * 3600 * 24));
-				const calc = calcolaStatusEStato(diff);
-
+				const info = getInfoScadenza(dpi.dataScadenzaRevisione);
 				const az = aziendeList.find(a => String(a.idUtente) === String(dpi.idAzienda));
 
 				return {
@@ -143,10 +127,10 @@
 					idAzienda: az ? az.idUtente : 0,
 					azienda: az ? az.ragioneSociale : 'Azienda N.D.',
 					dettaglio: `${dpi.tipo!.replace(/_/g, ' ')} (${dpi.nomeDipendente})`,
-					status: calc.status,
-					testoScadenza: calc.testo,
+					status: info.stato === 'DANGER' ? 'red' : info.stato === 'WARNING' ? 'yellow' : 'green',
+					testoScadenza: info.label.toUpperCase(),
 					dataScadenza: new Date(dpi.dataScadenzaRevisione!).toLocaleDateString('it-IT'),
-					timestampScadenza: scadMs,
+					timestampScadenza: new Date(dpi.dataScadenzaRevisione!).getTime(),
 					linkRedirect: resolveRoute('/dashboard/admin/dpi')
 				};
 			});

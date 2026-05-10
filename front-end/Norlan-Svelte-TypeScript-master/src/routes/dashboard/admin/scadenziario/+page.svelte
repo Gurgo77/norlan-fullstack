@@ -13,7 +13,9 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DocCard from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import {scaricaDocumentoUniversale, eliminaDocumentoUniversale} from '$lib/utils/documentoUtils';
+	import { scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
+	import {getInfoScadenza, calcolaGiorniRimanenti, formattaDataScadenza, ordinaPerScadenza} from '$lib/utils/scadenzeUtils';
+
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -64,32 +66,25 @@
 		isDeleting = false;
 	}
 
-	const filteredDocumenti = $derived(
-			documenti.filter(d => {
-				if (d.tipologia === TipoDocumento.ATTESTATO_CORSO) return false;
+	const filteredDocumenti = $derived.by(() => {
+		const filtrati = documenti.filter(d => {
+			if (d.tipologia === TipoDocumento.ATTESTATO_CORSO) return false;
 
-				const oggi = new Date();
-				oggi.setHours(0, 0, 0, 0);
-				const scadenza = new Date(d.dataScadenza);
+			const giorni = calcolaGiorniRimanenti(d.dataScadenza);
+			if (giorni > 30) return false;
 
-				const giorniRimanenti = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 3600 * 24));
-				if (giorniRimanenti > 30) return false;
+			const matchSearch = d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					d.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
 
-				return d.ragioneSocialeAzienda.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						d.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
-			}).sort((a, b) => new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime())
-	);
+			return matchSearch;
+		});
+
+		return ordinaPerScadenza(filtrati, 'dataScadenza');
+	});
 
 	const statistiche = $derived({
-		inScadenza: filteredDocumenti.filter(d => {
-			const diff = new Date(d.dataScadenza).getTime() - new Date().getTime();
-			const giorni = Math.ceil(diff / (1000 * 3600 * 24));
-			return giorni >= 0 && giorni <= 30;
-		}).length,
-		scaduti: filteredDocumenti.filter(d => {
-			const diff = new Date(d.dataScadenza).getTime() - new Date().getTime();
-			return Math.ceil(diff / (1000 * 3600 * 24)) < 0;
-		}).length
+		inScadenza: filteredDocumenti.filter(d => getInfoScadenza(d.dataScadenza).stato === 'WARNING').length,
+		scaduti: filteredDocumenti.filter(d => getInfoScadenza(d.dataScadenza).stato === 'DANGER').length
 	});
 
 	async function scarica(id: number, path: string) {
@@ -143,15 +138,16 @@
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 			{#each filteredDocumenti as doc (doc.idDocumento)}
+				{@const info = getInfoScadenza(doc.dataScadenza)}
 				<div in:scale>
 					<DocCard
 							documento={{
-            id: doc.idDocumento,
-            titolo: doc.tipologia.replace(/_/g, ' '),
-            sottotitolo: doc.ragioneSocialeAzienda,
-            stato: (Math.ceil((new Date(doc.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24))) < 0 ? 'DANGER' : 'WARNING',
-            dataScadenza: new Date(doc.dataScadenza).toLocaleDateString('it-IT')
-        }}
+								id: doc.idDocumento,
+								titolo: doc.tipologia.replace(/_/g, ' '),
+								sottotitolo: doc.ragioneSocialeAzienda,
+								stato: info.stato,
+								dataScadenza: formattaDataScadenza(doc.dataScadenza)
+							}}
 							ruolo="admin"
 							onDownload={() => scarica(doc.idDocumento, doc.filePath)}
 							onDelete={() => preparaEliminazione(doc)}

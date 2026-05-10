@@ -21,6 +21,8 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
+	import { getInfoScadenza, formattaDataScadenza, calcolaGiorniRimanenti } from '$lib/utils/scadenzeUtils';
+
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utenteAzienda = $state<AziendaData | null>(null);
@@ -40,25 +42,35 @@
 	}).format(new Date());
 
 	const alertScadenzeDocs = $derived(
-			documentiScadenza.filter(d => {
-				const giorni = Math.ceil((new Date(d.dataScadenza).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-				return giorni <= 30;
-			})
+			documentiScadenza.filter(d => calcolaGiorniRimanenti(d.dataScadenza) <= 30)
 	);
 
 	const infoStato = $derived(() => {
-		const haDocsScaduti = documentiScadenza.some(d => d.scaduto);
-		if (haDocsScaduti) return { label: 'CRITICO', color: 'bg-red-500', icon: AlertTriangle, text: 'Documenti Scaduti Rilevati' };
-		if (alertScadenzeDocs.length > 0) return { label: 'ATTENZIONE', color: 'bg-amber-400 text-[#1B4B6B]', icon: Clock, text: 'Scadenze Imminenti' };
-		return { label: 'A NORMA', color: 'bg-emerald-500', icon: ShieldCheck, text: 'Nessuna criticità rilevata' };
+		const haDocsScaduti = documentiScadenza.some(d => getInfoScadenza(d.dataScadenza).stato === 'DANGER');
+
+		if (haDocsScaduti) return {
+			label: 'CRITICO',
+			color: 'bg-red-500',
+			icon: AlertTriangle,
+			text: 'Documenti Scaduti Rilevati'
+		};
+
+		if (alertScadenzeDocs.length > 0) return {
+			label: 'ATTENZIONE',
+			color: 'bg-amber-400 text-[#1B4B6B]',
+			icon: Clock,
+			text: 'Scadenze Imminenti'
+		};
+
+		return {
+			label: 'A NORMA',
+			color: 'bg-emerald-500',
+			icon: ShieldCheck,
+			text: 'Nessuna criticità rilevata'
+		};
 	});
 
 	const status = $derived(infoStato());
-
-	function formattaData(dateStr: string | undefined) {
-		if (!dateStr) return 'N.D.';
-		return new Date(dateStr).toLocaleDateString('it-IT');
-	}
 
 	function scaricaReport(idCorso: number | string) {
 		alert("Download report formazione corso ID: " + idCorso);
@@ -156,8 +168,17 @@
 						<span class="bg-gray-100 text-gray-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">{alertScadenzeDocs.length} Alert</span>
 					</div>
 					<div class="space-y-3">
-						{#each alertScadenzeDocs as alert (alert.idDocumento)}
-							<AlertCard titolo={alert.tipologia.replace(/_/g, ' ')} sottotitolo={alert.modulo} variante={alert.scaduto ? 'danger' : 'warning'} icona={alert.scaduto ? ShieldOff : Clock} stato={alert.scaduto ? 'SCADUTO' : 'IN SCADENZA'} data={formattaData(alert.dataScadenza)} href="/dashboard/azienda/documenti" />
+						{#each alertScadenzeDocs as doc (doc.idDocumento)}
+							{@const info = getInfoScadenza(doc.dataScadenza)}
+							<AlertCard
+									titolo={doc.tipologia.replace(/_/g, ' ')}
+									sottotitolo={doc.modulo}
+									variante={info.stato === 'DANGER' ? 'danger' : 'warning'}
+									icona={info.icona}
+									stato={info.label.toUpperCase()}
+									data={formattaDataScadenza(doc.dataScadenza)}
+									href="/dashboard/azienda/documenti"
+							/>
 						{/each}
 						{#if alertScadenzeDocs.length === 0}
 							<div class="py-6 text-center">
@@ -180,12 +201,12 @@
 							<DashboardCorsoCard
 									ruolo="azienda"
 									corso={{
-									id: corso.idCorso,
-									titolo: corso.titolo,
-									stato: 'DA_INIZIARE',
-									dataSvolgimento: formattaData(corso.dataOrario),
-									luogo: corso.luogoFisico
-								}}
+                            id: corso.idCorso,
+                            titolo: corso.titolo,
+                            stato: 'DA_INIZIARE',
+                            dataSvolgimento: formattaDataScadenza(corso.dataOrario),
+                            luogo: corso.luogoFisico
+                         }}
 									onAzioneCorso={() => scaricaReport(corso.idCorso)}
 							/>
 						{/each}
@@ -211,35 +232,3 @@
 		</div>
 	{/if}
 </div>
-
-<div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
-	{#if isChatOpen}
-		<div transition:scale={{duration: 200, start: 0.9}} class="bg-white w-80 h-[28rem] rounded-[2rem] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4">
-			<div class="bg-[#1B4B6B] p-5 text-white flex justify-between items-center shrink-0">
-				<div class="flex items-center gap-2"><ShieldCheck size={16} /><span class="text-xs font-black uppercase tracking-widest">Supporto NorLan</span></div>
-				<button onclick={() => isChatOpen = false} class="text-white hover:rotate-90 transition-all duration-300"><X size={16} /></button>
-			</div>
-			<div bind:this={chatScrollContainer} class="flex-1 bg-gray-50 p-4 overflow-y-auto space-y-3 custom-scrollbar">
-				{#each messaggiChat as msg (msg.idMessaggio)}
-					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
-						<div class="max-w-[85%] p-3 rounded-2xl text-xs font-medium shadow-sm {msg.idMittente === currentUser?.idUtente ? 'bg-[#1B4B6B] text-white rounded-tr-none' : 'bg-white border border-gray-200 text-[#1B4B6B] rounded-tl-none'}">{msg.testo}</div>
-					</div>
-				{/each}
-			</div>
-			<form class="p-3 bg-white border-t border-gray-100 flex gap-2 shrink-0" onsubmit={(e) => {e.preventDefault(); inviaMessaggioChat();}}>
-				<input bind:value={chatMessage} type="text" placeholder="Scrivi messaggio..." class="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold outline-none" />
-				<button type="submit" disabled={!chatMessage.trim() || !chatService} class="w-10 h-10 bg-[#1B4B6B] text-white rounded-xl flex items-center justify-center shadow-md"><Send size={14} /></button>
-			</form>
-		</div>
-	{/if}
-	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="w-16 h-16 bg-[#1B4B6B] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform relative group">
-		<MessageSquare size={24} />
-		<span class="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
-	</button>
-</div>
-
-<style>
-	:global(body) { background-color: #F9FAFB; }
-	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-	.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-</style>

@@ -7,17 +7,18 @@
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
+	import { getInfoScadenza, formattaDataScadenza, ordinaPerScadenza, type StatoScadenza } from '$lib/utils/scadenzeUtils';
 
-	type ComplianceStatus = 'OK' | 'WARNING' | 'DANGER';
-	type OpzioneFiltro = 'TUTTI' | ComplianceStatus;
+	type OpzioneFiltro = 'TUTTI' | StatoScadenza;
 
 	interface Dpi {
 		id: number;
 		nome: string;
 		matricola: string;
-		stato: ComplianceStatus;
+		stato: StatoScadenza;
 		revisione: string;
 		consegna: string;
+		dataPerSort: string;
 	}
 
 	interface DpiBackendData {
@@ -39,22 +40,6 @@
 
 	const opzioniFiltro: OpzioneFiltro[] = ['TUTTI', 'OK', 'WARNING', 'DANGER'];
 
-	function impostaFiltro(valore: OpzioneFiltro) {
-		filtroStato = valore;
-	}
-
-	function calcolaStato(dataScadenzaStr: string | undefined | null): ComplianceStatus {
-		if (!dataScadenzaStr) return 'OK';
-
-		const oggi = new Date().getTime();
-		const scadenza = new Date(dataScadenzaStr).getTime();
-		const diffGiorni = Math.ceil((scadenza - oggi) / (1000 * 3600 * 24));
-
-		if (diffGiorni < 0) return 'DANGER';
-		if (diffGiorni <= 30) return 'WARNING';
-		return 'OK';
-	}
-
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -67,25 +52,27 @@
 
 			utente = dipendenteData;
 
-			const dpiData = dpiDataRaw as unknown as DpiBackendData[];
-
-			dotazioni = dpiData.map((d: DpiBackendData) => {
+			const elencoDalServer = dpiDataRaw as unknown as DpiBackendData[];
+			const tempDotazioni: Dpi[] = elencoDalServer.map((d) => {
 				const idReale = d.idAssegnazione || d.id || Date.now();
-				const nomeReale = d.tipo ? d.tipo.replace(/_/g, ' ') : (d.nomeDpi || 'SCONOSCIUTO');
-				const dataReale = d.dataScadenzaRevisione || d.dataScadenza;
+				const dataScadenza = d.dataScadenzaRevisione || d.dataScadenza;
+				const info = getInfoScadenza(dataScadenza);
 
 				return {
 					id: idReale,
-					nome: nomeReale,
+					nome: d.tipo ? d.tipo.replace(/_/g, ' ') : (d.nomeDpi || 'SCONOSCIUTO'),
 					matricola: `DPI-${idReale}`,
-					stato: calcolaStato(dataReale),
-					revisione: dataReale ? new Date(dataReale).toLocaleDateString('it-IT') : 'NON PREVISTA',
-					consegna: d.dataConsegna ? new Date(d.dataConsegna).toLocaleDateString('it-IT') : 'N.D.'
+					stato: info.stato,
+					revisione: formattaDataScadenza(dataScadenza),
+					consegna: formattaDataScadenza(d.dataConsegna),
+					dataPerSort: dataScadenza || ''
 				};
 			});
 
+			dotazioni = ordinaPerScadenza(tempDotazioni, 'dataPerSort');
+
 		} catch (error) {
-			console.error("Errore durante il recupero dei DPI:", error);
+			console.error("Si è verificato un errore nel caricamento dei DPI:", error);
 		} finally {
 			isLoading = false;
 		}
@@ -93,11 +80,8 @@
 
 	const dpiFiltrati = $derived(
 			dotazioni.filter(d => {
-				const searchSafe = searchQuery ? searchQuery.toLowerCase() : '';
-				const nomeSafe = d.nome ? d.nome.toLowerCase() : '';
-				const matricolaSafe = d.matricola ? d.matricola.toLowerCase() : '';
-
-				const matchSearch = nomeSafe.includes(searchSafe) || matricolaSafe.includes(searchSafe);
+				const search = searchQuery.toLowerCase();
+				const matchSearch = d.nome.toLowerCase().includes(search) || d.matricola.toLowerCase().includes(search);
 				const matchFiltro = filtroStato === 'TUTTI' || d.stato === filtroStato;
 				return matchSearch && matchFiltro;
 			})

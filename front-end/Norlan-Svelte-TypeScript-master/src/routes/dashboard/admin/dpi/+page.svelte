@@ -11,6 +11,8 @@
     import { resolveRoute } from "$app/paths";
     import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 
+    import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
+
     let isLoading = $state(true);
     let searchQuery = $state('');
     let filtroStato = $state('TUTTI');
@@ -41,12 +43,6 @@
         }
     });
 
-    const calcolaStato = (d?: string) => {
-        if (!d || d === '9999-12-31') return 'OK';
-        const diff = Math.ceil((new Date(d).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-        return diff < 0 ? 'DANGER' : diff <= 30 ? 'WARNING' : 'OK';
-    };
-
     const gruppiFiltrati = $derived(() => {
         const map: Record<string, any> = {};
         dipendenti.forEach(dip => {
@@ -55,8 +51,8 @@
             if (!matchSearch) return;
 
             const dpisFiltrati = dip.dpis.filter((dpi: any) => {
-                const s = calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza);
-                return filtroStato === 'TUTTI' || s === filtroStato;
+                const info = getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza);
+                return filtroStato === 'TUTTI' || info.stato === filtroStato;
             });
 
             if (dpisFiltrati.length > 0) {
@@ -71,13 +67,11 @@
 
     const globalStats = $derived({
         totali: dipendenti.reduce((acc, d) => acc + d.dpis.length, 0),
-        scaduti: dipendenti.reduce((acc, d) => acc + d.dpis.filter((dpi: any) => calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza) === 'DANGER').length, 0),
-        warning: dipendenti.reduce((acc, d) => acc + d.dpis.filter((dpi: any) => calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza) === 'WARNING').length, 0)
+        scaduti: dipendenti.reduce((acc, d) => acc + d.dpis.filter((dpi: any) =>
+            getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato === 'DANGER').length, 0),
+        warning: dipendenti.reduce((acc, d) => acc + d.dpis.filter((dpi: any) =>
+            getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato === 'WARNING').length, 0)
     });
-
-    function formattaData(d?: string) {
-        return (!d || d === '9999-12-31') ? 'N.D.' : new Date(d).toLocaleDateString('it-IT');
-    }
 
     async function sollecitaAzienda(gruppo: any, canale: 'email' | 'chat') {
         const msg = `Gentile Amministrazione di ${gruppo.nome},\n\nVi segnaliamo che dal nostro sistema di monitoraggio risultano dei Dispositivi di Protezione Individuale (DPI) scaduti o anomali assegnati ai vostri lavoratori.\n\nVi invitiamo a verificare la sezione DPI del vostro pannello e a procedere con l'aggiornamento o la sostituzione nel più breve tempo possibile per ripristinare la conformità aziendale.\n\nCordiali saluti,\nStaff NorLan`;
@@ -181,9 +175,9 @@
                                         <DpiCard ruolo="admin" dpi={{
                                             id: dpi._uniqueKey,
                                             nome: (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' '),
-                                            stato: calcolaStato(dpi.dataScadenzaRevisione || dpi.dataScadenza),
-                                            dataRevisione: formattaData(dpi.dataScadenzaRevisione || dpi.dataScadenza),
-                                            dataConsegna: formattaData(dpi.dataConsegna)
+                                            stato: getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato,
+                                            dataRevisione: formattaDataScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza),
+                                            dataConsegna: formattaDataScadenza(dpi.dataConsegna)
                                         }} />
                                     {/each}
                                 </div>

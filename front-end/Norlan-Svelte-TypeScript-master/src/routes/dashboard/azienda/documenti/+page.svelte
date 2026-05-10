@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {FileText, Download, Search, Calendar, ShieldCheck, AlertCircle, Clock, FileDown, Loader2} from 'lucide-svelte';
+	import { FileText, Download, Search, Calendar, ShieldCheck, AlertCircle, Clock, FileDown, Loader2 } from 'lucide-svelte';
 
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { AuthService } from '$lib/services/AuthService';
@@ -10,6 +10,8 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
+
+	import { getInfoScadenza, ordinaPerScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -34,54 +36,22 @@
 		await scaricaDocumentoUniversale(id, path);
 	}
 
-	function getStatoDocumento(doc: Documento): 'VALIDO' | 'IN_SCADENZA' | 'SCADUTO' {
-		if (doc.scaduto) return 'SCADUTO';
-		const scadenza = new Date(doc.dataScadenza);
-		const diff = Math.ceil((scadenza.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-		if (diff < 0) return 'SCADUTO';
-		return diff <= 30 ? 'IN_SCADENZA' : 'VALIDO';
-	}
+	const filteredDocs = $derived.by(() => {
+		const filtrati = documenti.filter((doc) => {
+			const matchSearch = doc.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
+			const matchCat = filtroCategoria === 'TUTTI' || doc.modulo === filtroCategoria;
+			return matchSearch && matchCat;
+		});
 
-	const filteredDocs = $derived(
-			documenti.filter((doc) => {
-				const matchSearch = doc.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
-				const matchCat = filtroCategoria === 'TUTTI' || doc.modulo === filtroCategoria;
-				return matchSearch && matchCat;
-			}).sort((a, b) => {
-				const getPesoStato = (d: Documento) => {
-					const stato = getStatoDocumento(d);
-					if (stato === 'SCADUTO') return 1;
-					if (stato === 'IN_SCADENZA') return 2;
-					return 3;
-				};
-
-				const pesoA = getPesoStato(a);
-				const pesoB = getPesoStato(b);
-
-				if (pesoA !== pesoB) return pesoA - pesoB;
-				return new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime();
-			})
-	);
+		return ordinaPerScadenza(filtrati, 'dataScadenza');
+	});
 
 	const stats = $derived({
 		totali: documenti.length,
-		validi: documenti.filter((d) => getStatoDocumento(d) === 'VALIDO').length,
-		inScadenza: documenti.filter((d) => getStatoDocumento(d) === 'IN_SCADENZA').length,
-		scaduti: documenti.filter((d) => getStatoDocumento(d) === 'SCADUTO').length
+		validi: documenti.filter((d) => getInfoScadenza(d.dataScadenza).stato === 'OK').length,
+		inScadenza: documenti.filter((d) => getInfoScadenza(d.dataScadenza).stato === 'WARNING').length,
+		scaduti: documenti.filter((d) => getInfoScadenza(d.dataScadenza).stato === 'DANGER').length
 	});
-
-	const getStatusStyle = (stato: string) => {
-		switch (stato) {
-			case 'VALIDO':
-				return 'bg-green-50 text-green-600 border-green-100';
-			case 'IN_SCADENZA':
-				return 'bg-orange-50 text-orange-600 border-orange-100';
-			case 'SCADUTO':
-				return 'bg-red-50 text-red-600 border-red-100';
-			default:
-				return 'bg-gray-50 text-gray-600';
-		}
-	};
 </script>
 
 <div in:fade class="pb-20">
@@ -133,6 +103,7 @@
 			/>
 		</div>
 	</div>
+
 	{#if isLoading}
 		<div class="flex h-64 flex-col items-center justify-center gap-4 text-gray-300">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
@@ -151,16 +122,16 @@
 	{:else}
 		<div class="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
 			{#each filteredDocs as doc (doc.idDocumento)}
-				{@const status = getStatoDocumento(doc)}
+				{@const info = getInfoScadenza(doc.dataScadenza)}
 				<div class="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl" in:scale>
-					<div class="h-1.5 w-full {status === 'VALIDO' ? 'bg-green-500' : status === 'IN_SCADENZA' ? 'bg-orange-500' : 'bg-red-500'}"></div>
+					<div class="h-1.5 w-full {info.bgTop}"></div>
 					<div class="flex-1 p-8">
 						<div class="mb-6 flex items-start justify-between">
 							<div class="rounded-2xl bg-gray-50 p-3 text-[#1B4B6B] transition-all group-hover:bg-[#1B4B6B] group-hover:text-white">
 								<FileText size={24} />
 							</div>
-							<span class="rounded border px-2 py-1 text-[8px] font-black uppercase {getStatusStyle(status)}">
-                         {status.replace('_', ' ')}
+							<span class="rounded border px-2 py-1 text-[8px] font-black uppercase {info.bgBadge} {info.colore} {info.borderBadge}">
+                         {info.label}
                       </span>
 						</div>
 						<h3 class="mb-4 min-h-[3.5rem] text-lg font-black uppercase leading-tight text-[#1B4B6B] line-clamp-2">
@@ -169,11 +140,11 @@
 						<div class="space-y-3">
 							<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter text-gray-400">
 								<Calendar size={14} class="text-[#1B4B6B]" />
-								<span>Caricato: {new Date(doc.dataCaricamento).toLocaleDateString('it-IT')}</span>
+								<span>Caricato: {formattaDataScadenza(doc.dataCaricamento)}</span>
 							</div>
-							<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter {doc.scaduto ? 'text-red-500' : 'text-gray-400'}">
-								<Clock size={14} class={doc.scaduto ? 'text-red-500' : 'text-[#1B4B6B]'} />
-								<span>Scadenza: {new Date(doc.dataScadenza).toLocaleDateString('it-IT')}</span>
+							<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter {info.stato === 'DANGER' ? 'text-red-500' : 'text-gray-400'}">
+								<info.icona size={14} class={info.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B]'} />
+								<span>Scadenza: {formattaDataScadenza(doc.dataScadenza)}</span>
 							</div>
 						</div>
 					</div>
@@ -204,4 +175,4 @@
 	:global(body) {
 		background-color: #f9fafb;
 	}
-</style>
+</style>F
