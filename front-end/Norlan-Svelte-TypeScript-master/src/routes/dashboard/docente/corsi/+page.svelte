@@ -12,6 +12,7 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
 	interface CorsoFormazioneEsteso extends CorsoFormazione { numeroIscritti?: number; isLoadingIscritti?: boolean; }
 	interface FeedbackStatsDTO { idCorso: number; mediaDocenza: number; mediaContenuti: number; totaleFeedback: number; commenti: string[]; }
@@ -106,12 +107,12 @@
 		finally { isLoadingMateriali = false; }
 	}
 
-	async function scaricaMateriale(idMateriale: number, nome: string) {
-		try {
-			const res = await httpClient.get(`/api/formazione/materiali/${idMateriale}/download`, { responseType: 'blob' });
-			const url = window.URL.createObjectURL(new Blob([res.data]));
-			const a = document.createElement('a'); a.href = url; a.download = nome.endsWith('.pdf') ? nome : nome + ".pdf"; a.click(); window.URL.revokeObjectURL(url);
-		} catch { triggerBanner("Errore nel download del file", 'ERR'); }
+	function scaricaMateriale(idMateriale: number, nome: string) {
+		const nomeFile = nome.endsWith('.pdf') ? nome : `${nome}.pdf`;
+		const downloadPromise = httpClient.get(`/api/formazione/materiali/${idMateriale}/download`, { responseType: 'blob' })
+				.then(res => new Blob([res.data]));
+
+		gestisciDownloadStandard(downloadPromise, nomeFile);
 	}
 
 	async function caricaMaterialeDidattico() {

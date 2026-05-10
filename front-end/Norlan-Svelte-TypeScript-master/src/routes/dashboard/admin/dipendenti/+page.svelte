@@ -6,8 +6,8 @@
     import { fade, scale } from 'svelte/transition';
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
-        IdCard, Loader2, X, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Calendar, MessageSquare, AlertCircle, CheckCircle, Clock, Edit3
+        IdCard, Loader2, AlertTriangle, ChevronLeft,
+        FileText, ShieldCheck, MessageSquare, AlertCircle, CheckCircle, Clock, Edit3
     } from 'lucide-svelte';
 
     import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
@@ -21,6 +21,7 @@
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import { FormazioneService } from '$lib/services/FormazioneService';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+    import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -300,18 +301,12 @@
         }
     }
 
-    async function scaricaDoc(doc: Documento) {
-        try {
-            const b = await DocumentoService.downloadDocumento(doc.idDocumento);
-            const u = URL.createObjectURL(b);
-            const a = document.createElement('a');
-            a.href = u;
-            a.download = doc.filePath.split('/').pop() || 'attestato.pdf';
-            a.click();
-            URL.revokeObjectURL(u);
-        } catch {
-            alert("Si è verificato un errore durante il download del documento.");
-        }
+    function scaricaDoc(doc: Documento) {
+        const nomeFile = doc.filePath?.split('/').pop() || 'attestato_formativo.pdf';
+        gestisciDownloadStandard(
+            DocumentoService.downloadDocumento(doc.idDocumento),
+            nomeFile
+        );
     }
 
     function preparaEliminaDoc(doc: Documento) { docDaEliminare = doc; showDeleteDocModal = true; }

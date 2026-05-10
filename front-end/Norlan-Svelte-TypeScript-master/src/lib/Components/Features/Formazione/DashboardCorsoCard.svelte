@@ -24,9 +24,11 @@
         onAzioneCorso?: () => void;
         onAnnullaIscrizione?: () => void;
         onEliminaCorso?: () => void;
+        onDownloadAttestato?: () => void; // Aggiunta qui
     }
 
-    let { corso, ruolo, onDownloadMateriale, onValidaPresenze, onFirmaRegistro, onAzioneCorso, onAnnullaIscrizione, onEliminaCorso }: Props = $props();
+    // Destrutturata qui
+    let { corso, ruolo, onDownloadMateriale, onValidaPresenze, onFirmaRegistro, onAzioneCorso, onAnnullaIscrizione, onEliminaCorso, onDownloadAttestato }: Props = $props();
 
     const getStatoConfig = (stato: StatoCorso) => {
         switch (stato) {
@@ -161,7 +163,7 @@
                     </div>
                 {/if}
             {:else if corso.stato === 'COMPLETATO'}
-                <button onclick={onAzioneCorso} class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold uppercase text-white shadow-md transition-all hover:bg-emerald-700 hover:shadow-lg">
+                <button onclick={onDownloadAttestato} class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold uppercase text-white shadow-md transition-all hover:bg-emerald-700 hover:shadow-lg">
                     Scarica Attestato <Download size={16} />
                 </button>
             {:else if corso.stato === 'DA_INIZIARE'}

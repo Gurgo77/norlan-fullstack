@@ -2,20 +2,18 @@
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		Search, Loader2, FileText, ShieldAlert
+		Search, Loader2, FileText
 	} from 'lucide-svelte';
 
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
-	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DocCard, { type DocInfo } from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
-	let downloadError = $state('');
-
 	let utente = $state<DipendenteDTO | null>(null);
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
 
@@ -38,32 +36,13 @@
 		}
 	});
 
-	async function scaricaAttestato(idCorso: number | string) {
+	function scaricaAttestato(idCorso: number | string) {
 		if (!utente) return;
-		downloadError = '';
 
-		try {
-			const blob = await FormazioneService.downloadAttestato(Number(idCorso), utente.idUtente);
-
-			if (!blob || blob.size === 0) {
-				throw new Error("Il file restituito dal server è vuoto o corrotto.");
-			}
-
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `Attestato_Corso_${idCorso}_NorLan.pdf`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-
-		} catch (e) {
-			console.error("Errore nel download dell'attestato:", e);
-			downloadError = "Impossibile scaricare il file. Verifica che il documento sia presente o riprova più tardi.";
-
-			setTimeout(() => { downloadError = ''; }, 6000);
-		}
+		gestisciDownloadStandard(
+				FormazioneService.downloadAttestato(Number(idCorso), utente.idUtente),
+				`Attestato_Corso_${idCorso}_NorLan.pdf`
+		);
 	}
 
 	const attestatiDisponibili = $derived(
@@ -115,17 +94,6 @@
 					class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
 			/>
 		</div>
-
-		{#if downloadError}
-			<div in:scale out:fade class="max-w-md">
-				<AlertCard
-						titolo="Errore Download"
-						sottotitolo={downloadError}
-						variante="danger"
-						icona={ShieldAlert}
-				/>
-			</div>
-		{/if}
 	</div>
 
 	{#if isLoading}

@@ -10,8 +10,7 @@
 		AlertCircle,
 		Clock,
 		FileDown,
-		Loader2,
-		AlertTriangle
+		Loader2
 	} from 'lucide-svelte';
 
 	import { DocumentoService } from '$lib/services/DocumentoService';
@@ -20,16 +19,13 @@
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
-	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroCategoria = $state<ModuloServizio | 'TUTTI'>('TUTTI');
 	let documenti = $state<Documento[]>([]);
-
-	// Stati per il modale di errore
-	let showErrorModal = $state(false);
-	let errorMessage = $state('');
 
 	onMount(async () => {
 		const session = AuthService.getSession();
@@ -45,21 +41,11 @@
 		}
 	});
 
-	async function handleDownload(id: number, titolo: string) {
-		try {
-			const blob = await DocumentoService.downloadDocumento(id);
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `${titolo.replace(/\s+/g, '_')}.pdf`;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-		} catch (error) {
-			console.error(error);
-			errorMessage = 'Si è verificato un problema tecnico durante il download del file selezionato. Riprova più tardi.';
-			showErrorModal = true;
-		}
+	function handleDownload(id: number, titolo: string) {
+		gestisciDownloadStandard(
+				DocumentoService.downloadDocumento(id),
+				`${titolo.replace(/\s+/g, '_')}.pdf`
+		);
 	}
 
 	function getStatoDocumento(doc: Documento): 'VALIDO' | 'IN_SCADENZA' | 'SCADUTO' {
@@ -80,21 +66,17 @@
 					const stato = getStatoDocumento(d);
 					if (stato === 'SCADUTO') return 1;
 					if (stato === 'IN_SCADENZA') return 2;
-					return 3; // VALIDO
+					return 3;
 				};
 
 				const pesoA = getPesoStato(a);
 				const pesoB = getPesoStato(b);
 
-				// Prima ordina per stato di gravità
 				if (pesoA !== pesoB) return pesoA - pesoB;
-
-				// A parità di stato, ordina per data di scadenza (la più imminente prima)
 				return new Date(a.dataScadenza).getTime() - new Date(b.dataScadenza).getTime();
 			})
 	);
 
-	// Ricalcolo delle statistiche usando getStatoDocumento per essere precisi
 	const stats = $derived({
 		totali: documenti.length,
 		validi: documenti.filter((d) => getStatoDocumento(d) === 'VALIDO').length,
@@ -231,25 +213,6 @@
 		/>
 	</div>
 </div>
-
-<ModalCard bind:isOpen={showErrorModal} maxWidth="max-w-sm" headerClass="bg-red-600">
-	{#snippet title()}
-		<AlertTriangle size={20}/> <span class="font-black uppercase tracking-tighter">Errore Download</span>
-	{/snippet}
-
-	<div class="text-center py-4">
-		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-			<AlertTriangle size={40}/>
-		</div>
-		<p class="text-sm font-bold text-gray-500">{errorMessage}</p>
-	</div>
-
-	{#snippet footer()}
-		<button onclick={() => showErrorModal = false} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
-			Chiudi
-		</button>
-	{/snippet}
-</ModalCard>
 
 <style>
 	:global(body) {

@@ -3,8 +3,8 @@
 	import { fade, scale } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import {
-		FileText, Search, ShieldAlert, Clock,
-		AlertTriangle, X, Loader2, Trash2
+		Search, ShieldAlert, Clock,
+		AlertTriangle, Loader2, Trash2
 	} from 'lucide-svelte';
 
 	import { Documento } from '$lib/models/Documento';
@@ -13,6 +13,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import DocCard from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
@@ -97,15 +98,8 @@
 		}).length
 	});
 
-	async function scarica(id: number, filename: string) {
-		try {
-			const blob = await DocumentoService.downloadDocumento(id);
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = filename + ".pdf";
-			a.click();
-		} catch { alert("Errore nel download"); }
+	function scarica(id: number, filename: string) {
+		gestisciDownloadStandard(DocumentoService.downloadDocumento(id), `${filename}.pdf`);
 	}
 </script>
 

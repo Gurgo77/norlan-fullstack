@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { BookOpen, Loader2, Search, MessageSquare, Send, CheckCircle2, X } from 'lucide-svelte';
+	import { BookOpen, Loader2, Search, MessageSquare, Send, CheckCircle2 } from 'lucide-svelte';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
@@ -9,6 +9,7 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
 	interface MaterialeDidatticoDTO {
 		idMateriale: number;
@@ -100,20 +101,11 @@
 				.toUpperCase();
 	}
 
-	async function scaricaMateriale(idMateriale: number, titolo: string) {
-		try {
-			const blob = await FormazioneService.downloadMateriale(idMateriale);
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `${titolo.replace(/\s+/g, '_')}.pdf`;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-		} catch (error) {
-			console.error('Errore download materiale:', error);
-			alert('Impossibile scaricare il materiale al momento.');
-		}
+	function scaricaMateriale(idMateriale: number, titolo: string) {
+		gestisciDownloadStandard(
+				FormazioneService.downloadMateriale(idMateriale),
+				`${titolo.replace(/\s+/g, '_')}.pdf`
+		);
 	}
 
 	function apriModaleFeedback(iscrizione: IscrizioneConMateriali) {

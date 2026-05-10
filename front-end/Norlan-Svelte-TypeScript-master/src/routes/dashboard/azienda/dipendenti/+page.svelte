@@ -6,9 +6,8 @@
     import { fade, scale, slide } from 'svelte/transition';
     import {
         Users, UserPlus, Trash2, Search, Mail, Building2,
-        IdCard, Loader2, X, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, Download, Plus, Calendar, MessageSquare,
-        AlertCircle, CheckCircle, Clock, Edit3, Save, Lock
+        IdCard, Loader2, AlertTriangle, ChevronLeft,
+        FileText, ShieldCheck, Plus, Edit3, Save, Lock
     } from 'lucide-svelte';
 
     import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
@@ -24,6 +23,7 @@
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+    import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
     interface ServerError {
         response?: {
@@ -247,18 +247,9 @@
         }
     }
 
-    async function scaricaDoc(doc: any) {
-        try {
-            const b = await DocumentoService.downloadDocumento(doc.idDocumento || doc.id);
-            const u = URL.createObjectURL(b);
-            const a = document.createElement('a');
-            a.href = u;
-            a.download = doc.filePath ? doc.filePath.split('/').pop() : 'documento.pdf';
-            a.click();
-            URL.revokeObjectURL(u);
-        } catch (error) {
-            console.error(error);
-        }
+    function scaricaDoc(doc: any) {
+        const nomeFile = doc.filePath ? doc.filePath.split('/').pop() : 'documento.pdf';
+        gestisciDownloadStandard(DocumentoService.downloadDocumento(doc.idDocumento || doc.id), nomeFile);
     }
 
     function openNewDpiModal() {

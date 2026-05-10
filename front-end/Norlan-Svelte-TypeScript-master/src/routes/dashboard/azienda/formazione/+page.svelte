@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale, slide } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, X, Send, Trash2, User } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -11,8 +11,9 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
+	import { gestisciDownloadStandard } from '$lib/utils/downloadUtils';
 
-	interface CorsoStato { idCorso: number; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
+	interface CorsoStato { idCorso: number; idDocumento?: number; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
 	interface DipendenteFormazione { id: number; nomeCompleto: string; ruolo: string; corsi: CorsoStato[]; tuttiIdCorsiIscritto: number[]; }
 
 	let isLoading = $state(true);
@@ -27,8 +28,6 @@
 	let idDipendenteSelezionato = $state<number | ''>('');
 	let idCorsoSelezionato = $state<number | ''>('');
 	let isEnrolling = $state(false);
-	let enrollSuccess = $state(false);
-	let actionSuccess = $state<{type: 'DOC' | 'ISC' | 'DEL' | 'ERR', msg: string} | null>(null);
 	let showDeleteIscrizioneModal = $state(false);
 	let iscrizioneDaRimuovere = $state<{idDipendente: number, idCorso: number, nomeCorso: string} | null>(null);
 
@@ -52,14 +51,17 @@
 						let s: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO' = 'DA_INIZIARE';
 						if (i.statoCorso === 'IN_SVOLGIMENTO') s = 'IN_SVOLGIMENTO';
 						else if (i.statoCorso === 'CONCLUSO' || i.statoCorso === 'CERTIFICATO' || i.statoCorso === 'VALIDATO' || i.presenzaConfermata) s = 'COMPLETATO';
-						return { idCorso: i.idCorso, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
+						return { idCorso: i.idCorso, idDocumento: i.idDocumento, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
 					}),
 					tuttiIdCorsiIscritto: tuttiId
 				};
 			});
 			dipendenti = await Promise.all(promises);
-		} catch (error) { console.error('Si è verificato un errore durante il caricamento dei dati formativi aziendali:', error); }
-		finally { isLoading = false; }
+		} catch (error) {
+			console.error('Si è verificato un errore durante il caricamento dei dati formativi aziendali:', error);
+		} finally {
+			isLoading = false;
+		}
 	});
 
 	const filteredDipendenti = $derived(dipendenti.map(dip => {
@@ -78,7 +80,11 @@
 		return corsiDisponibili.filter(c => !dip.tuttiIdCorsiIscritto.includes(c.idCorso));
 	});
 
-	function apriModaleIscrizione() { idDipendenteSelezionato = ''; idCorsoSelezionato = ''; enrollSuccess = false; showModalIscrizione = true; }
+	function apriModaleIscrizione() {
+		idDipendenteSelezionato = '';
+		idCorsoSelezionato = '';
+		showModalIscrizione = true;
+	}
 
 	async function confermaIscrizione() {
 		if (idDipendenteSelezionato === '' || idCorsoSelezionato === '') return;
@@ -89,16 +95,22 @@
 			const dipendenteScelto = dipendenti.find(d => d.id === idDipendenteSelezionato);
 			if (corsoScelto && dipendenteScelto) {
 				dipendenteScelto.corsi = [...dipendenteScelto.corsi, { idCorso: corsoScelto.idCorso, titolo: corsoScelto.titolo.toUpperCase(), dataSvolgimento: formattaData(corsoScelto.dataOrario), stato: 'DA_INIZIARE' }];
-				dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso); dipendenti = [...dipendenti];
+				dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso);
+				dipendenti = [...dipendenti];
 			}
-			enrollSuccess = true;
-			setTimeout(() => { showModalIscrizione = false; enrollSuccess = false; }, 2000);
+			alert("Iscrizione completata con successo!");
+			showModalIscrizione = false;
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Operazione non riuscita: verificare i dati o l'iscrizione esistente." }; setTimeout(() => actionSuccess = null, 3000);
-		} finally { isEnrolling = false; }
+			alert("Operazione non riuscita: verificare i dati o l'iscrizione esistente.");
+		} finally {
+			isEnrolling = false;
+		}
 	}
 
-	function preparaRimuoviIscrizione(idDip: number, idCorso: number, nome: string) { iscrizioneDaRimuovere = { idDipendente: idDip, idCorso: idCorso, nomeCorso: nome }; showDeleteIscrizioneModal = true; }
+	function preparaRimuoviIscrizione(idDip: number, idCorso: number, nome: string) {
+		iscrizioneDaRimuovere = { idDipendente: idDip, idCorso: idCorso, nomeCorso: nome };
+		showDeleteIscrizioneModal = true;
+	}
 
 	async function confermaRimozioneIscrizione() {
 		if (!iscrizioneDaRimuovere) return;
@@ -106,27 +118,46 @@
 		try {
 			await FormazioneService.rimuoviIscrizione(iscrizioneDaRimuovere.idCorso, iscrizioneDaRimuovere.idDipendente);
 			dipendenti = dipendenti.map(dip => {
-				if (dip.id === iscrizioneDaRimuovere?.idDipendente) { return { ...dip, corsi: dip.corsi.filter(c => c.idCorso !== iscrizioneDaRimuovere?.idCorso), tuttiIdCorsiIscritto: dip.tuttiIdCorsiIscritto.filter(id => id !== iscrizioneDaRimuovere?.idCorso) }; }
+				if (dip.id === iscrizioneDaRimuovere?.idDipendente) {
+					return { ...dip, corsi: dip.corsi.filter(c => c.idCorso !== iscrizioneDaRimuovere?.idCorso), tuttiIdCorsiIscritto: dip.tuttiIdCorsiIscritto.filter(id => id !== iscrizioneDaRimuovere?.idCorso) };
+				}
 				return dip;
 			});
-			actionSuccess = { type: 'DEL', msg: "Iscrizione annullata correttamente." }; showDeleteIscrizioneModal = false; setTimeout(() => actionSuccess = null, 3000);
+			alert("Iscrizione annullata correttamente.");
+			showDeleteIscrizioneModal = false;
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Impossibile annullare l'iscrizione selezionata." }; setTimeout(() => actionSuccess = null, 3000);
-		} finally { isActionLoading = false; iscrizioneDaRimuovere = null; }
+			alert("Impossibile annullare l'iscrizione selezionata.");
+		} finally {
+			isActionLoading = false;
+			iscrizioneDaRimuovere = null;
+		}
 	}
 
-	async function scaricaOriginale(idDocumento: number) {
-		try {
-			const blob = await DocumentoService.downloadDocumento(idDocumento);
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a'); a.href = url; a.download = `Attestati_Originali_${idDocumento}.pdf`;
-			document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); a.remove();
-		} catch { actionSuccess = { type: 'ERR', msg: "Impossibile procedere con il download del file selezionato." }; setTimeout(() => actionSuccess = null, 3000); }
+	function scaricaOriginale(idDocumento: number) {
+		gestisciDownloadStandard(
+				DocumentoService.downloadDocumento(idDocumento),
+				`Attestati_Originali_${idDocumento}.pdf`
+		);
+	}
+
+	function scaricaAttestato(idDocumento: number | undefined, titoloCorso: string) {
+		if (!idDocumento) {
+			alert("Il documento dell'attestato non è ancora disponibile.");
+			return;
+		}
+		gestisciDownloadStandard(
+				DocumentoService.downloadDocumento(idDocumento),
+				`Attestato_${titoloCorso.replace(/\s+/g, '_')}.pdf`
+		);
 	}
 
 	function handleFileChange(event: Event, idDocumento: number) {
 		const input = event.target as HTMLInputElement;
-		if (input.files && input.files.length > 0) { fileFirmati[idDocumento] = input.files[0]; } else { delete fileFirmati[idDocumento]; }
+		if (input.files && input.files.length > 0) {
+			fileFirmati[idDocumento] = input.files[0];
+		} else {
+			delete fileFirmati[idDocumento];
+		}
 	}
 
 	async function consegnaAiDipendenti(idDocumento: number) {
@@ -134,24 +165,23 @@
 		isActionLoading = true;
 		try {
 			await DocumentoService.approvaDocumento(idDocumento);
-			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento); delete fileFirmati[idDocumento];
-			actionSuccess = { type: 'DOC', msg: "Documentazione consegnata e archiviata correttamente." }; setTimeout(() => actionSuccess = null, 4000);
+			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
+			delete fileFirmati[idDocumento];
+			alert("Documentazione consegnata e archiviata correttamente.");
 		} catch {
-			actionSuccess = { type: 'ERR', msg: "Si è verificato un problema durante la consegna degli attestati." }; setTimeout(() => actionSuccess = null, 3000);
-		} finally { isActionLoading = false; }
+			alert("Si è verificato un problema durante la consegna degli attestati.");
+		} finally {
+			isActionLoading = false;
+		}
 	}
 
-	function formattaData(dateStr: string) { if(!dateStr) return ''; return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+	function formattaData(dateStr: string) {
+		if(!dateStr) return '';
+		return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+	}
 </script>
 
 <div in:fade class="pb-20">
-	{#if actionSuccess}
-		<div class="fixed top-24 right-8 z-[100] {actionSuccess.type === 'DEL' ? 'bg-orange-600' : actionSuccess.type === 'ERR' ? 'bg-red-600' : 'bg-emerald-600'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 transition-all" in:scale out:fade>
-			{#if actionSuccess.type === 'ERR'}<AlertTriangle size={24} />{:else}<CheckCircle2 size={24} />{/if}
-			<p class="text-sm font-black uppercase tracking-tight">{actionSuccess.msg}</p>
-		</div>
-	{/if}
-
 	<div class="mb-10 flex flex-col lg:flex-row items-start justify-between gap-6">
 		<h1 class="text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">Formazione Dipendenti</h1>
 		<button onclick={apriModaleIscrizione} class="flex items-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white"><BookPlus size={18} /> Iscrivi a Nuovo Corso</button>
@@ -194,7 +224,12 @@
 				<h3 class="text-xl font-extrabold text-[#1B4B6B] uppercase border-b border-gray-200 pb-3 mb-6 flex items-center gap-3"><User size={24} class="text-[#1B4B6B]" /> {dip.nomeCompleto} <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg ml-2">{dip.ruolo}</span></h3>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 					{#each dip.corsiFiltrati as corso (corso.idCorso)}
-						<DashboardCorsoCard ruolo="azienda" corso={{ id: corso.idCorso, titolo: corso.titolo, stato: corso.stato, dataSvolgimento: corso.dataSvolgimento, luogo: 'Sede NorLan / Aula Virtuale' }} onAnnullaIscrizione={corso.stato === 'DA_INIZIARE' ? () => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.titolo) : undefined}/>
+						<DashboardCorsoCard
+								ruolo="azienda"
+								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: corso.stato, dataSvolgimento: corso.dataSvolgimento, luogo: 'Sede NorLan / Aula Virtuale' }}
+								onAnnullaIscrizione={corso.stato === 'DA_INIZIARE' ? () => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.titolo) : undefined}
+								onDownloadAttestato={() => scaricaAttestato(corso.idDocumento, corso.titolo)}
+						/>
 					{/each}
 				</div>
 			</div>
@@ -210,28 +245,20 @@
 		<BookPlus size={20}/> <span class="font-black uppercase tracking-tighter">Iscrizione Formativa</span>
 	{/snippet}
 
-	<div class="relative">
-		{#if enrollSuccess}
-			<div class="absolute inset-0 z-[60] bg-white flex flex-col items-center justify-center p-8 text-center" in:fade>
-				<CheckCircle2 size={80} class="text-emerald-500 mb-4" />
-				<h2 class="text-2xl font-black text-[#1B4B6B] uppercase">Iscrizione Completata</h2>
-			</div>
-		{/if}
-		<div class="space-y-6">
-			<div class="space-y-2">
-				<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Dipendente *</label>
-				<select bind:value={idDipendenteSelezionato} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all">
-					<option value="" disabled>-- Seleziona --</option>
-					{#each dipendenti as dip (dip.id)}<option value={dip.id}>{dip.nomeCompleto}</option>{/each}
-				</select>
-			</div>
-			<div class="space-y-2">
-				<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Corso *</label>
-				<select bind:value={idCorsoSelezionato} disabled={idDipendenteSelezionato === ''} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all disabled:opacity-50">
-					<option value="" disabled>{idDipendenteSelezionato === '' ? '-- Seleziona prima un dipendente --' : '-- Seleziona corso --'}</option>
-					{#each corsiSelezionabili as corso (corso.idCorso)}<option value={corso.idCorso}>{corso.titolo} - {formattaData(corso.dataOrario)}</option>{/each}
-				</select>
-			</div>
+	<div class="space-y-6">
+		<div class="space-y-2">
+			<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Dipendente *</label>
+			<select bind:value={idDipendenteSelezionato} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all">
+				<option value="" disabled>-- Seleziona --</option>
+				{#each dipendenti as dip (dip.id)}<option value={dip.id}>{dip.nomeCompleto}</option>{/each}
+			</select>
+		</div>
+		<div class="space-y-2">
+			<label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Corso *</label>
+			<select bind:value={idCorsoSelezionato} disabled={idDipendenteSelezionato === ''} class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl font-extrabold text-xs uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B] transition-all disabled:opacity-50">
+				<option value="" disabled>{idDipendenteSelezionato === '' ? '-- Seleziona prima un dipendente --' : '-- Seleziona corso --'}</option>
+				{#each corsiSelezionabili as corso (corso.idCorso)}<option value={corso.idCorso}>{corso.titolo} - {formattaData(corso.dataOrario)}</option>{/each}
+			</select>
 		</div>
 	</div>
 
