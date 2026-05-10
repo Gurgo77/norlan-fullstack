@@ -23,8 +23,8 @@
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-    import {caricaDettagliEntita} from "$lib/utils/dettaglioUtils";
-    import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
+    import { caricaDettagliEntita } from "$lib/utils/dettaglioUtils";
+    import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
     import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
     interface ServerError {
@@ -232,16 +232,18 @@
 
     async function confermaEliminazione() {
         if (!dipendenteDaEliminare) return;
-        try {
-            await LavoratoreService.delete(dipendenteDaEliminare.idUtente);
+
+        const res = await eliminaUtenteUniversale('DIPENDENTE', dipendenteDaEliminare.idUtente);
+
+        if (res.error) {
+            alert(res.msg);
+        } else {
             lavoratori = lavoratori.filter(l => String(l.idUtente) !== String(dipendenteDaEliminare?.idUtente));
             showDeleteModal = false;
             if (selectedDipendente && String(selectedDipendente.idUtente) === String(dipendenteDaEliminare.idUtente)) {
                 selectedDipendente = null;
             }
             dipendenteDaEliminare = null;
-        } catch (error) {
-            console.error(error);
         }
     }
 

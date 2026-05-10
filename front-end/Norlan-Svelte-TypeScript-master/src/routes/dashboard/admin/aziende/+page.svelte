@@ -23,8 +23,8 @@
 	import AziendaCard from '$lib/Components/Features/Anagrafica/AziendaCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
-	import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
-	import {uploadDocumentoUniversale, scaricaDocumentoUniversale, eliminaDocumentoUniversale} from '$lib/utils/documentoUtils';
+	import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
+	import { uploadDocumentoUniversale, scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
@@ -166,16 +166,21 @@
 
 	async function confermaEliminaDip() {
 		if (!dipDaEliminare || !selectedAzienda) return;
-		try {
-			await LavoratoreService.delete(dipDaEliminare.idUtente);
+
+		const res = await eliminaUtenteUniversale('DIPENDENTE', dipDaEliminare.idUtente);
+
+		if (res.error) {
+			alert(res.msg);
+		} else {
 			dipendentiCorrenti = dipendentiCorrenti.filter(d => d.idUtente !== dipDaEliminare?.idUtente);
 			if (dipendentiCorrenti.length === 0) {
 				dynamicHasDipendenti = false;
 				const idx = aziende.findIndex(a => a.idUtente === selectedAzienda?.idUtente);
 				if (idx !== -1) aziende[idx].hasDipendenti = false;
 			}
-			showDeleteDipModal = false; dipDaEliminare = null;
-		} catch { alert("Errore durante l'eliminazione del dipendente."); }
+			showDeleteDipModal = false;
+			dipDaEliminare = null;
+		}
 	}
 
 	async function salvaNuovoDipendente() {
@@ -320,11 +325,15 @@
 
 	async function confermaEliminazione() {
 		if (isConfermaValida && aziendaDaEliminare) {
-			try {
-				await AnagraficaService.deleteAzienda(aziendaDaEliminare.idUtente);
+			const res = await eliminaUtenteUniversale('AZIENDA', aziendaDaEliminare.idUtente);
+
+			if (res.error) {
+				alert(res.msg);
+			} else {
 				aziende = aziende.filter(a => a.idUtente !== aziendaDaEliminare?.idUtente);
-				showDeleteModal = false; selectedAzienda = null;
-			} catch { alert("Errore durante l'eliminazione dell'azienda."); }
+				showDeleteModal = false;
+				selectedAzienda = null;
+			}
 		}
 	}
 

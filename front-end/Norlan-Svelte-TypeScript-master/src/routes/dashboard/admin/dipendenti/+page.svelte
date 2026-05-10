@@ -20,8 +20,9 @@
     import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
-    import {creaUtenteUniversale, aggiornaUtenteUniversale} from '$lib/utils/anagraficaUtils';
-    import {scaricaDocumentoUniversale, eliminaDocumentoUniversale} from '$lib/utils/documentoUtils';
+    import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
+    import { scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
+
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
         idAzienda?: string | number;
@@ -271,16 +272,18 @@
 
     async function confermaEliminazione() {
         if (!dipendenteDaEliminare) return;
-        try {
-            await LavoratoreService.delete(dipendenteDaEliminare.idUtente);
+
+        const res = await eliminaUtenteUniversale('DIPENDENTE', dipendenteDaEliminare.idUtente);
+
+        if (res.error) {
+            alert(res.msg);
+        } else {
             lavoratori = lavoratori.filter(l => String(l.idUtente) !== String(dipendenteDaEliminare?.idUtente));
             showDeleteModal = false;
             if (selectedDipendente && String(selectedDipendente.idUtente) === String(dipendenteDaEliminare.idUtente)) {
                 selectedDipendente = null;
             }
             dipendenteDaEliminare = null;
-        } catch {
-            alert("Si è verificato un errore durante l'eliminazione del dipendente.");
         }
     }
 

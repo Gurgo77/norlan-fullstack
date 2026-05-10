@@ -16,7 +16,7 @@
     import DocenteCard from '$lib/Components/Features/Anagrafica/DocenteDashboardCard.svelte';
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
-    import { creaUtenteUniversale, aggiornaUtenteUniversale } from '$lib/utils/anagraficaUtils';
+    import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
@@ -156,14 +156,16 @@
 
     async function confermaEliminazione() {
         if (!docenteDaEliminare) return;
-        try {
-            await AnagraficaService.deleteDocente(docenteDaEliminare.idUtente);
+
+        const res = await eliminaUtenteUniversale('DOCENTE', docenteDaEliminare.idUtente);
+
+        if (res.error) {
+            alert(res.msg);
+        } else {
             docenti = docenti.filter(d => d.idUtente !== docenteDaEliminare?.idUtente);
             showDeleteModal = false;
             if (selectedDocente?.idUtente === docenteDaEliminare.idUtente) selectedDocente = null;
             docenteDaEliminare = null;
-        } catch (error) {
-            console.error("Errore durante la rimozione del docente dal sistema:", error);
         }
     }
 </script>

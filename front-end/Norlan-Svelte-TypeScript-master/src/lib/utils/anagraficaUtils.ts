@@ -37,10 +37,11 @@ export async function creaUtenteUniversale<T = any>(
 	} catch (error: any) {
 		console.error(`[AnagraficaUtils] Errore creazione ${tipo}:`, error);
 		const backendMsg = error.response?.data;
-		const msg =
-			typeof backendMsg === 'string'
-				? backendMsg
-				: 'Operazione fallita. Verificare i dati e riprovare.';
+
+		const msg = typeof backendMsg === 'string'
+			? backendMsg
+			: backendMsg?.msg || backendMsg?.message || 'Operazione fallita. Verificare i dati e riprovare.';
+
 		return { error: true, data: null, msg };
 	}
 }
@@ -78,7 +79,59 @@ export async function aggiornaUtenteUniversale<T = any>(
 	} catch (error: any) {
 		console.error(`[AnagraficaUtils] Errore aggiornamento ${tipo}:`, error);
 		const backendMsg = error.response?.data;
-		const msg = typeof backendMsg === 'string' ? backendMsg : "Errore durante l'aggiornamento.";
+
+		const msg = typeof backendMsg === 'string'
+			? backendMsg
+			: backendMsg?.msg || backendMsg?.message || "Errore durante l'aggiornamento.";
+
 		return { error: true, data: null, msg };
+	}
+}
+
+export async function eliminaUtenteUniversale(
+	tipo: UserType,
+	id: number | string
+): Promise<{ error: boolean; msg: string }> {
+	try {
+		switch (tipo) {
+			case 'AZIENDA': {
+				await AnagraficaService.deleteAzienda(id);
+				break;
+			}
+			case 'DOCENTE': {
+				await AnagraficaService.deleteDocente(id);
+				break;
+			}
+			case 'DIPENDENTE': {
+				await LavoratoreService.delete(id);
+				break;
+			}
+			default:
+				throw new Error(`Tipo utente "${tipo}" non supportato.`);
+		}
+
+		return {
+			error: false,
+			msg: 'Utente eliminato correttamente.'
+		};
+	} catch (error: any) {
+		console.error(`[AnagraficaUtils] Errore eliminazione ${tipo}:`, error);
+
+		let msg = "Impossibile eliminare l'utente.";
+		const backendMsg = error.response?.data;
+
+		if (typeof backendMsg === 'string') {
+			msg = backendMsg;
+		} else if (backendMsg?.msg) {
+			msg = backendMsg.msg;
+		} else if (backendMsg?.message) {
+			msg = backendMsg.message;
+		} else if (error.response?.status === 409) {
+			msg = "Impossibile eliminare: l'utente ha documenti, corsi o dati collegati che lo bloccano nel database.";
+		} else if (error.response?.status === 500) {
+			msg = "Errore interno del server durante l'eliminazione.";
+		}
+
+		return { error: true, msg };
 	}
 }
