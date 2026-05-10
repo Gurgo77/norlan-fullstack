@@ -10,19 +10,16 @@
 	} from 'lucide-svelte';
 
 	import { AuthService } from '$lib/services/AuthService';
-	import { SistemaService } from '$lib/services/SistemaService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import type { AziendaData } from '$lib/models/Azienda';
-	import type { Notifica } from '$lib/models/Notifica';
 	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
+	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte.ts';
 
 	let { children } = $props();
 	let aziendaNome = $state('Caricamento...');
 	let aziendaEmail = $state('...');
-	let notificheCount = $state<number>(0);
-	let showNotifiche = $state(false);
-	let listaNotifiche = $state<Notifica[]>([]);
-	let isLoadingNotifiche = $state(false);
+
+	const notificheManager = createNotificheManager();
 
 	const menuItems = [
 		{ href: '/dashboard/azienda', label: 'Dashboard', icon: LayoutDashboard },
@@ -58,60 +55,23 @@
 		aziendaEmail = session.email;
 
 		try {
-			const [count, profile] = await Promise.all([
-				SistemaService.countNotificheNonLette(session.idUtente),
-				AnagraficaService.getAziendaById(session.idUtente)
-			]);
-
-			notificheCount = count;
-
+			const profile = await AnagraficaService.getAziendaById(session.idUtente);
 			const aziendaData = profile as AziendaData;
 			aziendaNome = aziendaData.ragioneSociale;
+
+			await notificheManager.init(session.idUtente);
 		} catch (error) {
 			console.error("Si è verificato un errore durante il recupero delle informazioni del profilo aziendale:", error);
 			aziendaNome = "Area Azienda";
 		}
 	});
 
-	async function handleToggleNotifiche(event: Event) {
-		event.stopPropagation();
-		showNotifiche = !showNotifiche;
-
-		if (showNotifiche) {
-			isLoadingNotifiche = true;
-			const session = AuthService.getSession();
-			if (session) {
-				try {
-					listaNotifiche = await SistemaService.getNotificheNonLette(session.idUtente);
-				} catch (error) {
-					console.error("Si è verificato un problema tecnico durante il caricamento dell'elenco notifiche:", error);
-				} finally {
-					isLoadingNotifiche = false;
-				}
-			}
-		}
-	}
-
-	async function handleLeggiNotifica(idNotifica: number) {
-		try {
-			await SistemaService.segnaLetta(idNotifica);
-			listaNotifiche = listaNotifiche.filter(n => n.idNotifica !== idNotifica);
-			notificheCount = Math.max(0, notificheCount - 1);
-		} catch (error) {
-			console.error("Impossibile aggiornare lo stato della notifica (lettura fallita):", error);
-		}
-	}
-
-	function closeNotifiche() {
-		if (showNotifiche) showNotifiche = false;
-	}
-
 	async function handleLogout() {
 		await AuthService.logout();
 	}
 </script>
 
-<svelte:window onclick={closeNotifiche} />
+<svelte:window onclick={notificheManager.close} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
 	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
@@ -160,29 +120,29 @@
 			<div class="flex items-center gap-6">
 				<div class="relative" onclick={(e) => e.stopPropagation()}>
 					<button
-							onclick={handleToggleNotifiche}
+							onclick={notificheManager.toggle}
 							class="relative p-2 text-gray-400 hover:text-[#1B4B6B] transition-colors focus:outline-none">
 						<Bell size={22} />
-						{#if notificheCount > 0}
-							<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheCount}</span>
+						{#if notificheManager.count > 0}
+							<span class="absolute top-1 right-1 w-4 h-4 bg-red-600 border-2 border-white rounded-full text-[10px] text-white flex items-center justify-center font-bold">{notificheManager.count}</span>
 						{/if}
 					</button>
 
-					{#if showNotifiche}
+					{#if notificheManager.isOpen}
 						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
 							<div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">
 								<h3 class="font-black text-[#1B4B6B] uppercase text-xs">Notifiche</h3>
-								<span class="text-[10px] font-bold text-gray-400 uppercase">{notificheCount} Da leggere</span>
+								<span class="text-[10px] font-bold text-gray-400 uppercase">{notificheManager.count} Da leggere</span>
 							</div>
 
 							<div class="max-h-96 overflow-y-auto custom-scrollbar-data">
-								{#if isLoadingNotifiche}
+								{#if notificheManager.isLoading}
 									<div class="p-8 flex justify-center items-center">
 										<Loader2 class="animate-spin text-[#1B4B6B]" size={24} />
 									</div>
-								{:else if listaNotifiche.length > 0}
-									{#each listaNotifiche as notifica (notifica.idNotifica)}
-										<NotificaItem {notifica} onLeggi={handleLeggiNotifica} />
+								{:else if notificheManager.list.length > 0}
+									{#each notificheManager.list as notifica (notifica.idNotifica)}
+										<NotificaItem {notifica} onLeggi={notificheManager.leggi} />
 									{/each}
 								{:else}
 									<div class="p-8 text-center text-gray-400">
