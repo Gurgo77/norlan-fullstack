@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { base, resolveRoute } from '$app/paths';
+	import { base } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import {
 		LayoutDashboard, MessageSquare, GraduationCap,

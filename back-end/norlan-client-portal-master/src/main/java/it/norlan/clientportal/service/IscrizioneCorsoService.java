@@ -6,6 +6,7 @@ import it.norlan.clientportal.model.IscrizioneCorso.IscrizioneId;
 import it.norlan.clientportal.repository.IscrizioneCorsoRepository;
 import it.norlan.clientportal.repository.UtenteRepository;
 import it.norlan.clientportal.repository.CorsoFormazioneRepository;
+import it.norlan.clientportal.repository.FeedbackRepository; // <-- AGGIUNTO IMPORT
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,9 @@ public class IscrizioneCorsoService {
 
     @Autowired
     private NotificaService notificaService;
+
+    @Autowired
+    private FeedbackRepository feedbackRepository; // <-- AGGIUNTA DEPENDENCY INJECTION
 
     @Transactional(readOnly = true)
     public List<IscrizioneCorso> findAll() {
@@ -101,10 +105,10 @@ public class IscrizioneCorsoService {
 
         String messaggioEmailDocente =
                 "Il registro del corso <b>" +
-                corso.getTitolo() +
-                "</b> è stato aggiornato.<br>" +
-                "Il dipendente (" + utente.getEmail() +
-                ") è stato aggiunto alla lista dei partecipanti in aula.";
+                        corso.getTitolo() +
+                        "</b> è stato aggiornato.<br>" +
+                        "Il dipendente (" + utente.getEmail() +
+                        ") è stato aggiunto alla lista dei partecipanti in aula.";
 
         notificaService.inviaNotifica(
                 corso.getDocente(),
@@ -158,6 +162,11 @@ public class IscrizioneCorsoService {
         if (iscrizione.getId() != null) {
             dto.setIdUtente(iscrizione.getId().getIdUtente());
             dto.setIdCorso(iscrizione.getId().getIdCorso());
+            boolean hasFeedback = feedbackRepository
+                    .findByIscrizione_Id_IdUtenteAndIscrizione_Id_IdCorso(dto.getIdUtente(), dto.getIdCorso())
+                    .isPresent();
+
+            dto.setFeedbackInviato(hasFeedback);
         }
 
         if (iscrizione.getUtente() != null) {
@@ -167,20 +176,15 @@ public class IscrizioneCorsoService {
         if (iscrizione.getCorso() != null) {
             dto.setTitoloCorso(iscrizione.getCorso().getTitolo());
             dto.setDataOrarioCorso(iscrizione.getCorso().getDataOrario());
+            if (iscrizione.getCorso().getStato() != null) {
+                dto.setStatoCorso(iscrizione.getCorso().getStato().name());
+            }
         }
 
         dto.setPresenzaConfermata(iscrizione.getPresenzaConfermata());
 
         if (iscrizione.getDocumentoAttestato() != null) {
             dto.setIdDocumento(iscrizione.getDocumentoAttestato().getIdDocumento());
-        }
-
-        if (iscrizione.getCorso() != null) {
-            dto.setTitoloCorso(iscrizione.getCorso().getTitolo());
-            dto.setDataOrarioCorso(iscrizione.getCorso().getDataOrario());
-            if (iscrizione.getCorso().getStato() != null) {
-                dto.setStatoCorso(iscrizione.getCorso().getStato().name());
-            }
         }
 
         return dto;

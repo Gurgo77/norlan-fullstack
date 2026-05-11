@@ -80,7 +80,7 @@
             </div>
             {#if stato || data}
                 <div class="text-right shrink-0">
-                    {#if stato}
+                    {#if stato && stato.trim() !== ''}
                         <span class="text-[10px] font-black uppercase block {t.stato}">{stato}</span>
                     {/if}
                     {#if data}
@@ -103,7 +103,7 @@
         </div>
         {#if stato || data}
             <div class="text-right shrink-0">
-                {#if stato}
+                {#if stato && stato.trim() !== ''}
                     <span class="text-[10px] font-black uppercase block {t.stato}">{stato}</span>
                 {/if}
                 {#if data}

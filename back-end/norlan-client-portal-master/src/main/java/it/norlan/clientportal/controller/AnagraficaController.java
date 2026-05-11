@@ -116,6 +116,14 @@ public class AnagraficaController {
     @PutMapping("/docenti/{id}")
     public ResponseEntity<DocenteDTO> updateDocente(@PathVariable Integer id, @RequestBody Docente docenteDati) {
         return docenteService.findById(id).map(docenteEsistente -> {
+
+            if (docenteDati.getNome() != null && !docenteDati.getNome().isBlank()) {
+                docenteEsistente.setNome(docenteDati.getNome());
+            }
+            if (docenteDati.getCognome() != null && !docenteDati.getCognome().isBlank()) {
+                docenteEsistente.setCognome(docenteDati.getCognome());
+            }
+
             docenteEsistente.setSpecializzazioneTecnica(docenteDati.getSpecializzazioneTecnica());
             if (docenteDati.getEmail() != null) {
                 docenteEsistente.setEmail(docenteDati.getEmail());
@@ -135,7 +143,7 @@ public class AnagraficaController {
 
     @GetMapping("/admin/{id}")
     public ResponseEntity<AdminDTO> getAdmin(@PathVariable Long id) {
-         return adminService.getUnicoAdmin()
+        return adminService.getUnicoAdmin()
                 .map(admin -> ResponseEntity.ok(adminService.convertToDTO(admin)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -143,7 +151,7 @@ public class AnagraficaController {
     @PutMapping("/admin/{id}")
     public ResponseEntity<AdminDTO> updateAdmin(@PathVariable Integer id, @RequestBody AdminDTO adminDati) {
         try {
-             Admin aggiornato = adminService.aggiornaAdmin(id, adminDati);
+            Admin aggiornato = adminService.aggiornaAdmin(id, adminDati);
             return ResponseEntity.ok(adminService.convertToDTO(aggiornato));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

@@ -4,12 +4,7 @@
     import { goto } from '$app/navigation';
     import { resolveRoute } from '$app/paths';
     import { fade, scale } from 'svelte/transition';
-    import {
-        Users, UserPlus, Trash2, Search, Mail, Building2,
-        IdCard, Loader2, AlertTriangle, ChevronLeft,
-        FileText, ShieldCheck, MessageSquare, AlertCircle, CheckCircle, Clock, Edit3
-    } from 'lucide-svelte';
-
+    import {Users, UserPlus, Trash2, Search, Mail, Building2, IdCard, Loader2, AlertTriangle, ChevronLeft, FileText, ShieldCheck, MessageSquare, Edit3} from 'lucide-svelte';
     import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { Azienda, type AziendaData } from '$lib/models/Azienda';
@@ -337,10 +332,21 @@
         }
     }
 
-    function formattaScadenza(data?: string) {
-        if (!data || data === '9999-12-31') return 'Senza scadenza';
-        return new Date(data).toLocaleDateString();
-    }
+    const dettagliItems = $derived.by(() => {
+        const dip = selectedDipendente;
+        if (!dip) return [];
+
+        return [
+            { label: 'Codice Fiscale', value: dip.codiceFiscale, icon: IdCard, isMono: true },
+            {
+                label: 'Email di Contatto',
+                value: dip.email || 'Nessuna email fornita',
+                icon: Mail,
+                onClick: dip.email ? () => apreGmail(dip.email as string) : undefined
+            },
+            { label: 'Posizione', value: 'Dipendente Operativo', icon: Building2 }
+        ] as any[];
+    });
 </script>
 
 <div in:fade class="max-w-7xl mx-auto p-6">
@@ -418,18 +424,14 @@
             <button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
 
             <DettagliCard
-                    nome={selectedDipendente.nome}
-                    cognome={selectedDipendente.cognome}
-                    sottotitolo={selectedDipendente.nomeAzienda}
+                    nome={selectedDipendente?.nome || ''}
+                    cognome={selectedDipendente?.cognome || ''}
+                    sottotitolo={selectedDipendente?.nomeAzienda || ''}
                     onEdit={apriModaleModifica}
                     onMail={() => apreGmail(selectedDipendente?.email || '')}
                     onContact={() => vaiInChat(selectedDipendente?.idUtente)}
                     onDelete={() => preparaEliminazione(selectedDipendente)}
-                    items={[
-                    { label: 'Codice Fiscale', value: selectedDipendente.codiceFiscale, icon: IdCard, isMono: true },
-                    { label: 'Email di Contatto', value: selectedDipendente.email || 'Nessuna email fornita', icon: Mail },
-                    { label: 'Posizione', value: 'Dipendente Operativo', icon: Building2 }
-                ]}
+                    items={dettagliItems}
             />
 
             {#if isLoadingDettaglio}

@@ -12,11 +12,8 @@
 
     import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
     import { AuthService } from '$lib/services/AuthService';
-    import { DocumentoService } from '$lib/services/DocumentoService';
-    import { FormazioneService } from '$lib/services/FormazioneService';
     import { Documento } from '$lib/models/Documento';
     import type { AssegnazioneDPI } from '$lib/models/AssegnazioneDPI';
-    import StatCard from '$lib/Components/UI/StatCard.svelte';
     import { AnagraficaService } from "$lib/services/AnagraficaService";
     import AlertCard from '$lib/Components/UI/AlertCard.svelte';
     import DipendenteCard from '$lib/Components/Features/Anagrafica/DipendenteCard.svelte';
@@ -27,13 +24,6 @@
     import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
     import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
     import { ordinaPerScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
-
-    interface ServerError {
-        response?: {
-            status?: number;
-            data?: string;
-        };
-    }
 
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
@@ -102,6 +92,12 @@
     const sortedDpiCorrenti = $derived(
         ordinaPerScadenza(dpiCorrenti, 'dataScadenzaRevisione')
     );
+
+    const getDettagliItems = (dip: DipendenteEsteso) => [
+        { label: 'Codice Fiscale', value: dip.codiceFiscale, icon: IdCard as any, isMono: true },
+        { label: 'Email di Contatto', value: dip.email || 'Indirizzo non disponibile', icon: Mail as any },
+        { label: 'Posizione', value: 'Dipendente Operativo', icon: Building2 as any }
+    ];
 
     onMount(async () => {
         try {
@@ -365,11 +361,7 @@
                     onMail={() => apreGmail(selectedDipendente?.email || '')}
                     onContact={() => vaiInChat(selectedDipendente?.idUtente)}
                     onDelete={() => preparaEliminazione(selectedDipendente)}
-                    items={[
-                    { label: 'Codice Fiscale', value: selectedDipendente.codiceFiscale, icon: IdCard, isMono: true },
-                    { label: 'Email di Contatto', value: selectedDipendente.email || 'Indirizzo non disponibile', icon: Mail },
-                    { label: 'Posizione', value: 'Dipendente Operativo', icon: Building2 }
-                ]}
+                    items={getDettagliItems(selectedDipendente)}
             />
 
             {#if isLoadingDettaglio}
@@ -387,7 +379,7 @@
 
                         {#if sortedDocumentiCorrenti.length > 0}
                             <div class="space-y-4">
-                                {#each sortedDocumentiCorrenti as doc (doc.idDocumento || doc.id || Math.random())}
+                                {#each sortedDocumentiCorrenti as doc (doc.idDocumento || Math.random())}
                                     <DettagliDocCard
                                             tipo="ATTESTATO"
                                             titolo={(doc.tipologia || 'Documento').replace(/_/g, ' ')}

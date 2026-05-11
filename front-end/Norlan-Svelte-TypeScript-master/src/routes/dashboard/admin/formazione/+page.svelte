@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale, slide } from 'svelte/transition';
-	import { Plus, X, Trash2, Search, Calendar, MapPin, Loader2, User, CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users, BarChart, Star, BookOpen } from 'lucide-svelte';
+	import { fade, scale } from 'svelte/transition';
+	import { Plus, Trash2, Search, Calendar, Loader2, User, CheckSquare, UploadCloud, CheckCircle2, Clock, Building2, Users, BarChart, Star, BookOpen, FileText, Download } from 'lucide-svelte';
 
 	import { CorsoFormazione } from '$lib/models/CorsoFormazione';
 	import { Docente, type DocenteData } from '$lib/models/Docente';
@@ -18,6 +18,11 @@
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
+	interface CorsoConMateriali extends CorsoFormazione {
+		materiali: any[];
+		isLoadingMateriali: boolean;
+	}
+
 	interface FeedbackStatsDTO {
 		idCorso: number;
 		mediaDocenza: number;
@@ -26,7 +31,7 @@
 		commenti: string[];
 	}
 
-	let corsi = $state<CorsoFormazione[]>([]);
+	let corsi = $state<CorsoConMateriali[]>([]);
 	let docenti = $state<Docente[]>([]);
 	let dipendenti = $state<DipendenteDTO[]>([]);
 	let isLoading = $state(true);
@@ -38,6 +43,7 @@
 	let showModalUpload = $state(false);
 	let showModalFeedback = $state(false);
 	let showModalElimina = $state(false);
+	let showModalMateriali = $state(false);
 
 	let selectedCorso = $state<CorsoFormazione | null>(null);
 	let idCorsoDaEliminare = $state<number | null>(null);
@@ -48,6 +54,10 @@
 
 	let isLoadingFeedback = $state(false);
 	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
+
+	let materialiSelezionati = $state<any[]>([]);
+	let corsoSelezionatoTitolo = $state('');
+	let isLoadingMateriali = $state(false);
 
 	let formCorso = $state<Partial<CorsoFormazioneRequest>>({
 		titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined
@@ -106,7 +116,28 @@
 				AnagraficaService.getAllDocenti(),
 				AnagraficaService.getAllDipendenti()
 			]);
-			corsi = corsiRes;
+
+			corsi = corsiRes.map(c => ({
+				...c,
+				materiali: [],
+				isLoadingMateriali: true
+			}));
+
+			for (let i = 0; i < corsi.length; i++) {
+				if (corsi[i].stato === StatoCorso.IN_SVOLGIMENTO) {
+					try {
+						const mats = await FormazioneService.getMaterialiByCorso(corsi[i].idCorso);
+						corsi[i].materiali = mats;
+					} catch (e) {
+						console.warn("Errore caricamento materiali per corso", corsi[i].idCorso);
+					} finally {
+						corsi[i].isLoadingMateriali = false;
+					}
+				} else {
+					corsi[i].isLoadingMateriali = false;
+				}
+			}
+
 			docenti = (docentiRes as DocenteData[]).map(d => new Docente(d));
 			dipendenti = dipendentiRes as DipendenteDTO[];
 		} catch (error) {
@@ -121,24 +152,21 @@
 		isSaving = true;
 		try {
 			const payload = {
-				titolo: formCorso.titolo!,
-				dataOrario: new Date(formCorso.dataOrario!).toISOString(),
-				luogoFisico: formCorso.luogoFisico!,
-				idDocente: formCorso.idDocente!,
-				capacitaMassima: 50
-			} as CorsoFormazioneRequest;
+				titolo: formCorso.titolo as string,
+				dataOrario: `${formCorso.dataOrario}T23:59:59`,
+				luogoFisico: formCorso.luogoFisico as string,
+				docente: {
+					idUtente: formCorso.idDocente as number
+				}
+			} as any;
 
 			const nuovo = await FormazioneService.createCorso(payload);
-			corsi = [...corsi, nuovo];
+			const nuovoEsteso = { ...nuovo, materiali: [], isLoadingMateriali: false };
+			corsi = [...corsi, nuovoEsteso];
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
 		} catch (error) {
-			const err = error as { response?: { status?: number } };
-			if (err.response?.status === 409) {
-				alert("Impossibile creare il corso: i dati inseriti sono in conflitto.");
-			} else {
-				alert("Si è verificato un errore durante la programmazione del corso.");
-			}
+			alert("Si è verificato un errore durante la programmazione del corso.");
 		} finally {
 			isSaving = false;
 		}
@@ -156,7 +184,7 @@
 			corsi = corsi.filter(c => c.idCorso !== idCorsoDaEliminare);
 			showModalElimina = false;
 			idCorsoDaEliminare = null;
-		} catch (error) {
+		} catch {
 			alert("Si è verificato un errore durante l'eliminazione.");
 		}
 	}
@@ -189,9 +217,9 @@
 		isActionLoading = true;
 		try {
 			await FormazioneService.validaPresenzeAdmin(selectedCorso.idCorso, presenzeSelezionate);
-			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.ATTESA_FIRMA_DOCENTE } as CorsoFormazione : c);
+			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.ATTESA_FIRMA_DOCENTE } as CorsoConMateriali : c);
 			showModalPresenze = false;
-		} catch (error) {
+		} catch {
 			alert("Si è verificato un errore durante la validazione del registro.");
 		} finally {
 			isActionLoading = false;
@@ -235,9 +263,9 @@
 			const payload = aziendeCoinvolte.map(a => ({ idAzienda: a.idAzienda, file: fileUploads[a.idAzienda] }));
 			await FormazioneService.distribuisciAttestati(selectedCorso.idCorso, payload);
 			alert("Attestati distribuiti correttamente.");
-			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoFormazione : c);
+			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.CERTIFICATO } as CorsoConMateriali : c);
 			showModalUpload = false;
-		} catch (error) {
+		} catch {
 			alert("Si è verificato un errore durante il caricamento degli attestati.");
 		} finally {
 			isActionLoading = false;
@@ -256,6 +284,37 @@
 			showModalFeedback = false;
 		} finally {
 			isLoadingFeedback = false;
+		}
+	}
+
+	async function apriModaleMateriali(corso: CorsoFormazione) {
+		corsoSelezionatoTitolo = corso.titolo;
+		materialiSelezionati = [];
+		showModalMateriali = true;
+		isLoadingMateriali = true;
+		try {
+			materialiSelezionati = await FormazioneService.getMaterialiByCorso(corso.idCorso);
+		} catch {
+			alert("Errore nel recupero materiali");
+		} finally {
+			isLoadingMateriali = false;
+		}
+	}
+
+	async function scaricaMateriale(idMateriale: number, path: string) {
+		try {
+			const blob = await FormazioneService.downloadMateriale(idMateriale);
+			const nomeFile = path ? path.split('/').pop() : 'materiale.pdf';
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = nomeFile as string;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
+		} catch {
+			alert("Impossibile scaricare il file. Riprova.");
 		}
 	}
 
@@ -364,8 +423,18 @@
                                     titolo: corso.titolo,
                                     stato: 'IN_SVOLGIMENTO',
                                     dataSvolgimento: formattaData(corso.dataOrario),
-                                    luogo: corso.luogoFisico
+                                    luogo: corso.luogoFisico,
+                                    materiali: (corso.materiali || []).map(m => ({
+                                        id: m.idMateriale,
+                                        titolo: m.titoloDocumento,
+                                        path: m.percorsoFile
+                                    }))
                                 }}
+									onAzioneCorso={() => apriModaleMateriali(corso)}
+									onDownloadMateriale={(id) => {
+                                const materiale = corso.materiali?.find(m => m.idMateriale === id);
+                                scaricaMateriale(id, materiale?.percorsoFile);
+                            }}
 							/>
 						</div>
 					{/each}
@@ -438,6 +507,50 @@
 		</div>
 	{/if}
 </div>
+
+<ModalCard bind:isOpen={showModalMateriali} maxWidth="max-w-md">
+	{#snippet title()}
+		<FileText size={20}/> <span class="font-black uppercase tracking-tighter">Materiale Didattico</span>
+	{/snippet}
+
+	<div class="p-4 space-y-6">
+		<div>
+			<p class="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Corso in svolgimento</p>
+			<h3 class="text-sm font-extrabold uppercase leading-tight text-[#1B4B6B]">{corsoSelezionatoTitolo}</h3>
+		</div>
+
+		{#if isLoadingMateriali}
+			<div class="py-6 text-center"><Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={24} /></div>
+		{:else if materialiSelezionati.length > 0}
+			<div class="space-y-3">
+				{#each materialiSelezionati as mat}
+					<button
+							onclick={() => scaricaMateriale(mat.idMateriale, mat.percorsoFile)}
+							class="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group border border-gray-100"
+					>
+						<div class="flex items-center gap-3 overflow-hidden text-left">
+							<div class="p-2 bg-white rounded-lg shadow-sm shrink-0">
+								<FileText size={16} class="text-[#1B4B6B]" />
+							</div>
+							<span class="text-xs font-bold text-[#1B4B6B] uppercase truncate block">{mat.titoloDocumento}</span>
+						</div>
+						<Download size={16} class="text-gray-400 group-hover:text-[#1B4B6B] transition-colors shrink-0 ml-2" />
+					</button>
+				{/each}
+			</div>
+		{:else}
+			<div class="p-8 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-white">
+				<p class="text-[10px] font-bold text-gray-300 uppercase italic">Nessun file condiviso finora.</p>
+			</div>
+		{/if}
+	</div>
+
+	{#snippet footer()}
+		<button onclick={() => showModalMateriali = false} class="w-full py-4 bg-gray-100 text-gray-600 font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all">
+			Chiudi
+		</button>
+	{/snippet}
+</ModalCard>
 
 <ModalCard bind:isOpen={showModalNuovo} maxWidth="max-w-xl">
 	{#snippet title()}

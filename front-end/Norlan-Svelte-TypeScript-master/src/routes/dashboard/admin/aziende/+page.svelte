@@ -13,8 +13,8 @@
 
 	import { Azienda, type AziendaData } from '$lib/models/Azienda';
 	import { Documento } from '$lib/models/Documento';
-	import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
-	import { LavoratoreService, type DipendenteDTO, type DipendenteRequest } from '$lib/services/LavoratoreService';
+	import { AnagraficaService } from '$lib/services/AnagraficaService';
+	import { type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { DocumentoService } from '$lib/services/DocumentoService';
 	import { ModuloServizio, TipoDocumento } from '$lib/models/Enums';
 	import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
@@ -349,6 +349,16 @@
 			dataScadenza: formattaDataScadenza(doc.dataScadenza)
 		};
 	}
+
+	const dettagliItems = $derived(selectedAzienda ? [
+		{ label: 'Partita IVA', value: selectedAzienda.partitaIva, icon: Building2, isMono: true },
+		{ label: 'Email Accesso', value: selectedAzienda.email, icon: Mail},
+		{ label: 'PEC Certificata', value: selectedAzienda.pec || 'N.D.', icon: Mail },
+		{ label: 'Sede Legale', value: selectedAzienda.sedeLegale || 'N.D.', icon: MapPin },
+		{ label: 'Telefono', value: selectedAzienda.telefono || 'N.D.', icon: Phone },
+		{ label: 'Cellulare', value: selectedAzienda.cellulare || 'N.D.', icon: Phone },
+		{ label: 'Referente', value: selectedAzienda.referenteAziendale || 'Non assegnato', icon: UserCheck }
+	] as any[] : []);
 </script>
 
 <div in:fade class="max-w-7xl mx-auto p-6">
@@ -398,15 +408,7 @@
 					onMail={() => apreGmail(selectedAzienda?.email || '')}
 					onContact={() => vaiInChat(selectedAzienda?.idUtente || '')}
 					onDelete={() => preparaEliminazione(selectedAzienda)}
-					items={[
-                 { label: 'Partita IVA', value: selectedAzienda.partitaIva, icon: Building2, isMono: true },
-                 { label: 'Email Accesso', value: selectedAzienda.email, icon: Mail },
-                 { label: 'PEC Certificata', value: selectedAzienda.pec || 'N.D.', icon: Mail },
-                 { label: 'Sede Legale', value: selectedAzienda.sedeLegale || 'N.D.', icon: MapPin },
-                 { label: 'Telefono', value: selectedAzienda.telefono || 'N.D.', icon: Phone },
-                 { label: 'Cellulare', value: selectedAzienda.cellulare || 'N.D.', icon: Phone },
-                 { label: 'Referente', value: selectedAzienda.referenteAziendale || 'Non assegnato', icon: UserCheck }
-             ]}
+					items={dettagliItems}
 			/>
 
 			<div in:slide class="space-y-8 mb-16 mt-12">
@@ -430,8 +432,8 @@
 										onDownload={() => scaricaDoc(doc.idDocumento)}
 										onDelete={() => preparaEliminaDoc(doc)}
 										onManage={getInfoScadenza(doc.dataScadenza).stato === 'DANGER'
-										? () => preparaAggiornamento(doc.idDocumento)
-									: undefined}
+                               ? () => preparaAggiornamento(doc.idDocumento)
+                            : undefined}
 								/>
 							</div>
 						{/each}

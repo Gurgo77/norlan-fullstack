@@ -12,12 +12,6 @@
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
-    interface ServerError {
-        response?: {
-            data?: string;
-        };
-    }
-
     let isLoading = $state(true);
     let isSaving = $state(false);
     let azienda = $state<AziendaData | null>(null);
@@ -48,22 +42,32 @@
         isLoading = false;
     });
 
-    async function handleSave() {
+    async function salvaDati() {
         if (!azienda) return;
         isSaving = true;
         try {
             await AnagraficaService.updateAzienda(azienda.idUtente, azienda);
             showSuccessMessage = true;
             setTimeout(() => (showSuccessMessage = false), 3000);
-        } catch (error) {
-            console.error("Il sistema ha riscontrato un errore critico durante il salvataggio delle modifiche anagrafiche:", error);
-            alert("Impossibile completare l'operazione di salvataggio. Riprovare o contattare il supporto tecnico.");
+        } catch (error: any) {
+            console.error("Errore durante il salvataggio:", error);
+
+            const status = error.response?.status;
+            const errorMsg = typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.message || '');
+
+            if (status === 409) {
+                alert(`ATTENZIONE (Conflitto nei Dati):\nL'Email, la PEC o la Partita IVA che stai provando a inserire risulta GIÀ REGISTRATA per un'altra azienda nel sistema.\n\nMessaggio dal server: ${errorMsg}`);
+            } else if (status === 400) {
+                alert(`ATTENZIONE (Dati non validi):\nAlcuni campi obbligatori sono mancanti o scritti in un formato non accettato.\n\nMessaggio dal server: ${errorMsg}`);
+            } else {
+                alert(`Impossibile completare l'operazione di salvataggio.\n\nMessaggio dal server: ${errorMsg}`);
+            }
         } finally {
             isSaving = false;
         }
     }
 
-    async function handlePasswordChange() {
+    async function cambiaPassword() {
         passwordError = '';
         passwordSuccessMessage = '';
 
@@ -251,7 +255,7 @@
                                     <p class="text-emerald-500 text-[10px] font-black uppercase tracking-widest ml-1">{passwordSuccessMessage}</p>
                                 {/if}
                                 <button
-                                        onclick={handlePasswordChange}
+                                        onclick={cambiaPassword}
                                         disabled={isChangingPassword}
                                         class="w-full bg-[#1B4B6B] text-white p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#153a54] transition-all disabled:opacity-50">
                                     {#if isChangingPassword}
@@ -274,7 +278,7 @@
                         {/if}
 
                         <button
-                                onclick={handleSave}
+                                onclick={salvaDati}
                                 disabled={isSaving}
                                 class="bg-[#1B4B6B] text-white px-12 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#153a54] transition-all shadow-xl shadow-blue-900/10 disabled:opacity-50">
                             {#if isSaving}

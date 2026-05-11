@@ -18,4 +18,5 @@ public class IscrizioneCorsoDTO {
     private Boolean presenzaConfermata;
     private Integer idDocumento;
     private String statoCorso;
+    private Boolean feedbackInviato;
 }

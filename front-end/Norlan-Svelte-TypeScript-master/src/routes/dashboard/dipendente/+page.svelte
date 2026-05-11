@@ -2,11 +2,10 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
-	import { goto } from '$app/navigation';
 	import {
-		HardHat, Calendar, FileBadge, Download, MessageSquare, AlertTriangle,
-		CheckCircle2, X, Send, Loader2, User, ShieldCheck, LayoutDashboard,
-		BookOpen, PlayCircle
+		HardHat, FileBadge, MessageSquare, AlertTriangle,
+		CheckCircle2, X, Send, Loader2, ShieldCheck, LayoutDashboard,
+		BookOpen, Clock, Calendar
 	} from 'lucide-svelte';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
@@ -14,241 +13,254 @@
 	import { ChatService } from '$lib/services/ChatService';
 	import { Messaggio } from '$lib/models/Messaggio';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
-	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
-	import DashboardCorsoCard, { type DashboardCorso } from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
-	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
-	import { getInfoScadenza, formattaDataScadenza, ordinaPerScadenza } from '$lib/utils/scadenzeUtils';
-
-	interface Impegno { id: number; titolo: string; data: string; timestamp: number; }
-	interface Dpi { id: number; nome: string; matricola: string; stato: 'OK' | 'WARNING' | 'DANGER'; revisione: string; timestamp: number; }
-	interface Materiale { id: number; titolo: string; data: string; }
-	interface DpiBackendData { idAssegnazione?: number; id?: number; tipo?: string; nomeDpi?: string; dataScadenzaRevisione?: string; dataScadenza?: string; note?: string; }
+	import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
+	import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utente = $state<DipendenteDTO | null>(null);
-	let isChatOpen = $state(false);
-	let chatMessage = $state('');
-	let chatService = $state<ChatService | null>(null);
-	let messaggiChat = $state<Messaggio[]>([]);
+	let isChatOpen = $state(false), chatMessage = $state('');
+	let chatService = $state<ChatService | null>(null), messaggiChat = $state<Messaggio[]>([]);
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
-	const STAFF_ID = 1;
+
 	let statoFormazione = $state<'OK' | 'WARNING' | 'DANGER'>('OK');
 	let statoDPI = $state<'OK' | 'WARNING' | 'DANGER'>('OK');
-	let impegni = $state<Impegno[]>([]);
-	let dotazioniDPI: {
-        id: number;
-        nome: string;
-        matricola: string;
-        stato: "OK" | "WARNING" | "DANGER";
-        revisione: string;
-        dataOriginale: string
-    }[] = $state<Dpi[]>([]);
-	let materiali = $state<Materiale[]>([]);
-	let ultimoCorsoAttivo = $state<DashboardCorso | null>(null);
+	let impegni = $state<any[]>([]), dotazioniDPI = $state<any[]>([]), materiali = $state<any[]>([]);
 
-	const dataOggi = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+	const dataOggi = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
-	function scrollChat() { if (chatScrollContainer) { setTimeout(() => chatScrollContainer!.scrollTop = chatScrollContainer!.scrollHeight, 50); } }
+	const status = $derived.by(() => {
+		if (statoDPI === 'DANGER') return { label: 'CRITICO', color: 'bg-red-500', icon: AlertTriangle };
+		if (statoFormazione === 'WARNING' || statoDPI === 'WARNING') return { label: 'ATTENZIONE', color: 'bg-[#1B4B6B]', icon: Clock };
+		return { label: 'A NORMA', color: 'bg-[#1B4B6B]', icon: ShieldCheck };
+	});
+
+	function scrollChat() { if (chatScrollContainer) setTimeout(() => chatScrollContainer!.scrollTop = chatScrollContainer!.scrollHeight, 50); }
 
 	onMount(async () => {
 		currentUser = AuthService.getSession();
-		const token = AuthService.getToken();
-		if (!currentUser || !token) return;
-
+		if (!currentUser) return;
 		try {
 			const [dipData, dpiDataRaw, iscrizioniData, cronologiaChat] = await Promise.all([
 				LavoratoreService.getById(currentUser.idUtente),
 				LavoratoreService.getDpiByLavoratore(currentUser.idUtente),
 				FormazioneService.getIscrizioniUtente(currentUser.idUtente),
-				ChatService.getCronologia(currentUser.idUtente, STAFF_ID)
+				ChatService.getCronologia(currentUser.idUtente, 1)
 			]);
-
 			utente = dipData;
 			messaggiChat = cronologiaChat;
 
-			const oggi = new Date().getTime();
-			const dpiData = (dpiDataRaw as unknown as DpiBackendData[]);
-
-			dotazioniDPI = dpiData.map((d) => {
+			dotazioniDPI = (dpiDataRaw as any[]).map(d => {
 				const dataScad = d.dataScadenzaRevisione || d.dataScadenza || '';
 				const info = getInfoScadenza(dataScad);
-
 				return {
 					id: d.idAssegnazione || d.id || 0,
-					nome: (d.tipo || d.nomeDpi || 'Dispositivo').replace(/_/g, ' '),
-					matricola: d.note || `ID-${d.idAssegnazione || d.id || 0}`,
+					nome: (d.tipo || d.nomeDpi || 'DPI').replace(/_/g, ' '),
 					stato: info.stato,
 					revisione: formattaDataScadenza(dataScad),
-					dataOriginale: dataScad as string,
-					timestamp: dataScad ? new Date(dataScad).getTime() : 0
+					ts: dataScad ? new Date(dataScad).getTime() : 0
 				};
-			}).sort((a, b) => {
-				const priorita = { 'DANGER': 1, 'WARNING': 2, 'OK': 3 };
-				if (priorita[a.stato] !== priorita[b.stato]) return priorita[a.stato] - priorita[b.stato];
-				return a.timestamp - b.timestamp;
-			});
+			}).sort((a, b) => a.ts - b.ts);
 
-			if (dotazioniDPI.some(d => d.stato === 'DANGER')) statoDPI = 'DANGER';
-			else if (dotazioniDPI.some(d => d.stato === 'WARNING')) statoDPI = 'WARNING';
-			else statoDPI = 'OK';
+			statoDPI = dotazioniDPI.some(d => d.stato === 'DANGER') ? 'DANGER' : dotazioniDPI.some(d => d.stato === 'WARNING') ? 'WARNING' : 'OK';
 
-			let hasCorsiImminenti = false;
-			const tempImpegni: Impegno[] = [];
-			const tempMateriali: Materiale[] = [];
+			let hasCorsi = false;
+			iscrizioniData.forEach(i => {
+				const statoCorso = i.statoCorso || '';
 
-			iscrizioniData.forEach((i) => {
-				if (i.statoCorso === 'PROGRAMMATO' || i.statoCorso === 'IN_SVOLGIMENTO') {
-					hasCorsiImminenti = true;
-					tempImpegni.push({
+				if (['PROGRAMMATO', 'IN_SVOLGIMENTO'].includes(statoCorso)) {
+					hasCorsi = true;
+					impegni.push({
 						id: i.idCorso,
-						titolo: i.titoloCorso,
-						data: formattaDataScadenza(i.dataOrarioCorso) + ' ore ' + new Date(i.dataOrarioCorso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-						timestamp: new Date(i.dataOrarioCorso).getTime()
+						titolo: i.titoloCorso || 'Corso in programma',
+						data: formattaDataScadenza(i.dataOrarioCorso || ''),
+						ts: i.dataOrarioCorso ? new Date(i.dataOrarioCorso).getTime() : 0
 					});
 				}
 				if (i.presenzaConfermata && i.idDocumento) {
-					tempMateriali.push({
+					materiali.push({
 						id: i.idCorso,
-						titolo: i.titoloCorso,
-						data: formattaDataScadenza(i.dataOrarioCorso)
+						titolo: i.titoloCorso || 'Attestato',
+						data: formattaDataScadenza(i.dataOrarioCorso || '')
 					});
 				}
 			});
+			impegni.sort((a, b) => a.ts - b.ts);
+			statoFormazione = hasCorsi ? 'WARNING' : 'OK';
 
-			impegni = tempImpegni.sort((a, b) => a.timestamp - b.timestamp);
-			materiali = tempMateriali;
-			statoFormazione = hasCorsiImminenti ? 'WARNING' : 'OK';
-
-			const priorityCourse = iscrizioniData.find(i => i.statoCorso === 'IN_SVOLGIMENTO') ||
-					iscrizioniData.find(i => i.statoCorso === 'PROGRAMMATO');
-
-			if (priorityCourse) {
-				ultimoCorsoAttivo = {
-					id: priorityCourse.idCorso,
-					titolo: priorityCourse.titoloCorso,
-					stato: priorityCourse.statoCorso === 'IN_SVOLGIMENTO' ? 'IN_SVOLGIMENTO' : 'DA_INIZIARE',
-					dataSvolgimento: formattaDataScadenza(priorityCourse.dataOrarioCorso).toUpperCase(),
-					luogo: 'Sede NorLan / Aula Virtuale'
-				};
-			}
-
-			chatService = new ChatService(
-					(msg: Messaggio) => {
-						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
-							messaggiChat = [...messaggiChat, msg];
-							scrollChat();
-						}
-					},
-					(err: string) => console.error(err)
-			);
-			chatService.connect(token, currentUser.idUtente);
-
-		} catch (error) {
-			console.error(error);
-		} finally {
-			isLoading = false;
-			setTimeout(scrollChat, 100);
-		}
+			chatService = new ChatService((msg) => { if (msg.idMittente === 1 || msg.idMittente === currentUser?.idUtente) { messaggiChat = [...messaggiChat, msg]; scrollChat(); } }, console.error);
+			chatService.connect(AuthService.getToken()!, currentUser.idUtente);
+		} catch (error) { console.error(error); } finally { isLoading = false; setTimeout(scrollChat, 100); }
 	});
 
-	onDestroy(() => { if (chatService) chatService.disconnect(); });
+	onDestroy(() => chatService?.disconnect());
 
 	function inviaMessaggioChat() {
 		if (!chatMessage.trim() || !chatService || !currentUser || !utente) return;
-		chatService.sendMessage({ idMittente: currentUser.idUtente, idDestinatario: STAFF_ID, testo: chatMessage });
-		const msgMock = new Messaggio({ idMessaggio: Date.now(), idMittente: currentUser.idUtente, nomeMittente: utente.nome ?? 'Lavoratore', idDestinatario: STAFF_ID, testo: chatMessage, timestampInvio: new Date().toISOString(), letto: false });
-		messaggiChat = [...messaggiChat, msgMock]; chatMessage = ''; scrollChat();
-	}
-
-	function richiediSostituzioneDpi(idDpi: number | string) {
-		const dpi = dotazioniDPI.find(d => d.id === idDpi);
-		if (!dpi) return;
-		const testo = `Salve, vorrei segnalare la necessità di sostituire o revisionare il seguente dispositivo: ${dpi.nome} (Matricola: ${dpi.matricola}).`;
-		goto(`/dashboard/dipendente/messaggi?testo=${encodeURIComponent(testo)}`);
+		chatService.sendMessage({ idMittente: currentUser.idUtente, idDestinatario: 1, testo: chatMessage });
+		messaggiChat = [...messaggiChat, new Messaggio({ idMessaggio: Date.now(), idMittente: currentUser.idUtente, nomeMittente: utente.nome ?? 'Lavoratore', idDestinatario: 1, testo: chatMessage, timestampInvio: new Date().toISOString(), letto: false })];
+		chatMessage = ''; scrollChat();
 	}
 </script>
 
-<div in:fade class="mx-auto max-w-7xl space-y-8 pb-10">
-	<div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-		<div>
-			<div class="mb-2 flex items-center gap-3">
-				<div class="rounded-xl bg-[#1B4B6B] p-2 text-white shadow-sm"><LayoutDashboard size={20} /></div>
-				<p class="text-[10px] font-black uppercase tracking-widest text-gray-400">{dataOggi}</p>
-			</div>
-			<h1 class="text-4xl font-black uppercase tracking-tighter text-[#1B4B6B]">Benvenuto {utente?.nome}</h1>
-			<p class="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">Area Riservata Lavoratore</p>
+<div in:fade class="max-w-[1400px] mx-auto pb-24 p-4 md:p-8">
+
+	<div class="mb-8">
+		<div class="flex items-center gap-2 text-[#1B4B6B] mb-2">
+			<LayoutDashboard size={18} />
+			<p class="text-xs font-black uppercase tracking-widest text-gray-500">{dataOggi}</p>
 		</div>
+		<h1 class="text-3xl md:text-5xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter leading-none">
+			Ciao, {utente?.nome || 'Utente'}
+		</h1>
+		<p class="text-sm font-bold text-gray-400 mt-2 uppercase tracking-wide">La tua area personale NorLan</p>
 	</div>
+
 	{#if isLoading}
-		<div class="flex flex-col items-center justify-center gap-4 py-32">
-			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" /><span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Accesso ai registri...</span>
-		</div>
+		<div class="flex flex-col items-center justify-center py-32"><Loader2 size={40} class="animate-spin text-[#1B4B6B]" /></div>
 	{:else}
-		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-			<StatCard titolo="Formazione" valore={statoFormazione === 'OK' ? 'In Regola' : 'Corsi Pendenti'} icona={statoFormazione === 'OK' ? CheckCircle2 : AlertTriangle} href={resolveRoute('/dashboard/dipendente/corsi')} />
-			<StatCard titolo="Attrezzature" valore={statoDPI === 'OK' ? 'DPI Verificati' : 'Revisioni Scadute'} icona={HardHat} href={resolveRoute('/dashboard/dipendente/dpi')} />
+		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+			<div class="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+				<div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none text-[#1B4B6B]">
+					<status.icon size={100} />
+				</div>
+				<div class="w-14 h-14 rounded-2xl flex items-center justify-center {status.color} text-white shrink-0 shadow-lg relative z-10">
+					<status.icon size={24} />
+				</div>
+				<div class="relative z-10">
+					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Stato Globale</p>
+					<h2 class="text-xl font-black text-[#1B4B6B] uppercase leading-none mt-1">{status.label}</h2>
+				</div>
+			</div>
+			<StatCard titolo="Formazione" valore={statoFormazione === 'OK' ? 'In Regola' : 'Da Svolgere'} icona={statoFormazione === 'OK' ? CheckCircle2 : AlertTriangle} bgIcona={statoFormazione === 'DANGER' ? "bg-red-100" : "bg-[#1B4B6B]/10"} testoIcona={statoFormazione === 'DANGER' ? "text-red-600" : "text-[#1B4B6B]"} href={resolveRoute('/dashboard/dipendente/corsi')} />
+			<StatCard titolo="Stato DPI" valore={statoDPI === 'OK' ? 'Verificati' : 'Scaduti'} icona={HardHat} bgIcona={statoDPI === 'DANGER' ? "bg-red-100" : "bg-[#1B4B6B]/10"} testoIcona={statoDPI === 'DANGER' ? "text-red-600" : "text-[#1B4B6B]"} href={resolveRoute('/dashboard/dipendente/dpi')} />
+			<StatCard titolo="Attestati" valore={materiali.length} icona={FileBadge} bgIcona="bg-[#1B4B6B]/10" testoIcona="text-[#1B4B6B]" href={resolveRoute('/dashboard/dipendente/attestati')} />
 		</div>
-		{#if ultimoCorsoAttivo}
-			<div transition:fade>
-				<h3 class="mb-4 flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"><PlayCircle size={20} class="text-blue-500" /> Corso in Evidenza</h3>
-				<DashboardCorsoCard ruolo="dipendente" corso={ultimoCorsoAttivo} />
+
+		<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+			<div class="lg:col-span-8 flex flex-col gap-10">
+
+				{#if impegni.length > 0}
+					<section>
+						<div class="flex justify-between items-center mb-4 px-2">
+							<div>
+								<div class="flex items-center gap-2 text-[#1B4B6B] mb-1">
+									<BookOpen size={16} />
+									<span class="text-[10px] font-black uppercase tracking-widest text-gray-500">In Programma</span>
+								</div>
+								<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">I tuoi Corsi</h2>
+							</div>
+							<a href={resolveRoute('/dashboard/dipendente/corsi')} class="text-[9px] font-black text-[#1B4B6B] uppercase hover:underline">
+								Tutti
+							</a>
+						</div>
+
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							{#each impegni.slice(0, 4) as imp}
+								<div class="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 hover:border-[#1B4B6B]/30 hover:bg-white transition-all group flex flex-col justify-center gap-2">
+									<div class="flex items-center gap-2">
+										<Calendar size={14} class="text-[#1B4B6B]/70" />
+										<span class="text-[10px] font-bold text-[#1B4B6B] uppercase">{imp.data}</span>
+									</div>
+									<p class="text-xs font-black text-[#1B4B6B] uppercase line-clamp-2 leading-snug" title={imp.titolo}>{imp.titolo}</p>
+								</div>
+							{/each}
+						</div>
+					</section>
+				{/if}
+
+				{#if materiali.length > 0}
+					<section>
+						<div class="flex justify-between items-center mb-4 px-2">
+							<div>
+								<div class="flex items-center gap-2 text-[#1B4B6B] mb-1">
+									<FileBadge size={16} />
+									<span class="text-[10px] font-black uppercase tracking-widest text-gray-500">Documentazione</span>
+								</div>
+								<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Ultimi Attestati</h2>
+							</div>
+							<a href={resolveRoute('/dashboard/dipendente/attestati')} class="text-[9px] font-black text-[#1B4B6B] uppercase hover:underline">
+								Archivio
+							</a>
+						</div>
+						<div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-3 space-y-2">
+							{#each materiali.slice(0, 4) as mat}
+								<div class="flex items-center bg-gray-50/50 p-4 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
+									<div class="flex flex-col min-w-0 w-full">
+										<p class="text-xs font-black text-[#1B4B6B] uppercase truncate mb-1" title={mat.titolo}>{mat.titolo}</p>
+										<p class="text-[10px] text-gray-400 font-bold uppercase">{mat.data}</p>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</section>
+				{/if}
+
 			</div>
-		{/if}
-		<div class="grid grid-cols-1 gap-8 xl:grid-cols-3">
-			<div class="space-y-8 xl:col-span-2">
-				<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
-					<h3 class="mb-6 flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"><Calendar size={20} class="text-blue-500" /> Prossime Scadenze Corsi</h3>
-					<div class="custom-scrollbar-data max-h-[400px] space-y-4 overflow-y-auto pr-2">
-						{#each impegni as imp}
-							<AlertCard titolo={imp.titolo} sottotitolo="Attività formativa obbligatoria" variante="info" icona={BookOpen} data={imp.data} href={resolveRoute('/dashboard/dipendente/corsi')} />
-						{:else}
-							<div class="py-6 text-center text-[10px] font-bold uppercase text-gray-300">Nessuna lezione programmata</div>
-						{/each}
-					</div>
-				</div>
-				<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
-					<div class="mb-6 flex items-center justify-between">
-						<h3 class="flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"><ShieldCheck size={20} class="text-emerald-500" /> Dispositivi di Protezione (DPI)</h3>
-						<a href={resolveRoute('/dashboard/dipendente/dpi')} class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi tutti</a>
-					</div>
-					<div class="custom-scrollbar-data max-h-[400px] space-y-4 overflow-y-auto pr-4">
-						{#each dotazioniDPI as dpi}
-							<div in:scale><DpiCard ruolo="dipendente" dpi={{ id: dpi.id, nome: dpi.nome, matricola: dpi.matricola, stato: dpi.stato, dataRevisione: dpi.revisione }} onRichiediSostituzione={richiediSostituzioneDpi} /></div>
-						{:else}
-							<div class="py-6 text-center text-[10px] font-bold uppercase text-gray-300">Nessun DPI assegnato</div>
-						{/each}
-					</div>
-				</div>
-				<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
-					<div class="mb-6 flex items-center justify-between"><h3 class="flex items-center gap-2 text-lg font-black uppercase tracking-tighter text-[#1B4B6B]"><FileBadge size={20} class="text-purple-500" /> Attestati Conseguiti</h3><a href={resolveRoute('/dashboard/dipendente/attestati')} class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline">Vedi archivio</a></div>
-					<div class="custom-scrollbar-data max-h-[300px] space-y-3 overflow-y-auto pr-2">
-						{#each materiali as mat}
-							<div class="group flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-all hover:bg-white hover:shadow-md"><div class="flex items-center gap-4"><div class="shrink-0 rounded-xl bg-purple-100 p-2 text-purple-600"><FileBadge size={16} /></div><div><span class="block text-xs font-bold uppercase text-[#1B4B6B]">{mat.titolo}</span><span class="mt-0.5 block text-[9px] font-black uppercase text-gray-400">Data: {mat.data}</span></div></div><a href={resolveRoute('/dashboard/dipendente/attestati')} class="ml-4 shrink-0 rounded-lg border border-gray-200 bg-white p-2 text-gray-400 transition-colors hover:border-[#1B4B6B] hover:text-[#1B4B6B]"><Download size={16} /></a></div>
-						{:else}
-							<div class="py-6 text-center text-[10px] font-bold uppercase text-gray-300">Nessun attestato conseguito</div>
-						{/each}
-					</div>
-				</div>
+
+			<div class="lg:col-span-4">
+				{#if dotazioniDPI.length > 0}
+					<section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-gray-100 relative overflow-hidden h-full flex flex-col">
+						<div class="absolute -top-10 -right-10 text-[#1B4B6B]/5 pointer-events-none">
+							<HardHat size={200} />
+						</div>
+
+						<div class="relative z-10 flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+							<div>
+								<div class="flex items-center gap-2 text-[#1B4B6B] mb-1">
+									<HardHat size={16} />
+									<span class="text-[10px] font-black uppercase tracking-widest text-gray-500">Equipaggiamento</span>
+								</div>
+								<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tight">DPI Dotazione</h2>
+							</div>
+							<a href={resolveRoute('/dashboard/dipendente/dpi')} class="text-[9px] font-black text-[#1B4B6B] uppercase hover:underline">
+								Tutti
+							</a>
+						</div>
+
+						<div class="relative z-10 space-y-3 flex-1">
+							{#each dotazioniDPI.slice(0, 5) as dpi}
+								<div class="bg-gray-50/50 rounded-2xl p-1 border border-gray-100 hover:border-[#1B4B6B]/20 transition-colors">
+									<DettagliDocCard tipo="DPI" titolo={dpi.nome} dataScadenza={dpi.revisione} />
+								</div>
+							{/each}
+						</div>
+					</section>
+				{/if}
 			</div>
-			<div class="space-y-8">
-				<div class="flex flex-col items-center rounded-[2.5rem] bg-gray-100 p-8 text-center"><div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#1B4B6B] shadow-sm"><User size={32} /></div><h4 class="text-sm font-black uppercase text-[#1B4B6B]">{utente?.cognome} {utente?.nome}</h4><p class="mb-6 text-[9px] font-bold uppercase text-gray-400">{utente?.codiceFiscale}</p><a href={resolveRoute('/dashboard/dipendente/account')} class="w-full rounded-xl border border-gray-200 bg-white py-3 text-[10px] font-black uppercase text-[#1B4B6B] transition-all hover:bg-gray-50">Gestisci Profilo</a></div>
-			</div>
+
 		</div>
 	{/if}
 </div>
 
 <div class="fixed bottom-8 right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
-		<div transition:scale={{ duration: 200, start: 0.9 }} class="mb-4 flex h-96 w-80 flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-2xl"><div class="flex items-center justify-between bg-[#1B4B6B] p-5 text-white"><span class="text-xs font-black uppercase tracking-widest">Supporto NorLan</span><button onclick={() => (isChatOpen = false)}><X size={16} /></button></div><div bind:this={chatScrollContainer} class="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4">{#each messaggiChat as msg}<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}"><div class="max-w-[80%] p-3 text-xs rounded-2xl {msg.idMittente === currentUser?.idUtente ? 'rounded-tr-none bg-[#1B4B6B] text-white' : 'rounded-tl-none bg-white text-[#1B4B6B] shadow-sm'}">{msg.testo}</div></div>{/each}</div><form class="flex gap-2 border-t bg-white p-3" onsubmit={(e) => { e.preventDefault(); inviaMessaggioChat(); }}><input bind:value={chatMessage} type="text" placeholder="Scrivi..." class="flex-1 rounded-xl border-none bg-gray-50 px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-[#1B4B6B]/10" /><button type="submit" class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1B4B6B] text-white transition-opacity hover:opacity-90"><Send size={14} /></button></form></div>
+		<div transition:scale={{ duration: 200, start: 0.9 }} class="mb-4 flex h-96 w-80 flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-2xl">
+			<div class="flex items-center justify-between bg-[#1B4B6B] p-5 text-white">
+				<span class="text-xs font-black uppercase tracking-widest">Supporto</span>
+				<button onclick={() => (isChatOpen = false)}><X size={16} /></button>
+			</div>
+			<div bind:this={chatScrollContainer} class="flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4 custom-scrollbar">
+				{#each messaggiChat as msg}
+					<div class="flex {msg.idMittente === currentUser?.idUtente ? 'justify-end' : 'justify-start'}">
+						<div class="max-w-[80%] p-3 text-xs rounded-2xl {msg.idMittente === currentUser?.idUtente ? 'rounded-tr-none bg-[#1B4B6B] text-white' : 'rounded-tl-none bg-white text-[#1B4B6B] shadow-sm'}">{msg.testo}</div>
+					</div>
+				{/each}
+			</div>
+			<form class="flex gap-2 border-t bg-white p-3" onsubmit={(e) => { e.preventDefault(); inviaMessaggioChat(); }}>
+				<input bind:value={chatMessage} type="text" placeholder="Scrivi..." class="flex-1 rounded-xl border-none bg-gray-50 px-4 py-2 text-xs outline-none focus:ring-2 focus:ring-[#1B4B6B]/10" />
+				<button type="submit" class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1B4B6B] text-white"><Send size={14} /></button>
+			</form>
+		</div>
 	{/if}
-	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="flex h-16 w-16 items-center justify-center rounded-full bg-[#1B4B6B] text-white shadow-2xl transition-transform hover:scale-110"><MessageSquare size={24} /></button>
+	<button onclick={() => { isChatOpen = !isChatOpen; if (isChatOpen) setTimeout(scrollChat, 50); }} class="flex h-16 w-16 items-center justify-center rounded-full bg-[#1B4B6B] text-white shadow-2xl hover:scale-110 transition-transform">
+		<MessageSquare size={24} />
+	</button>
 </div>
 
 <style>
-	:global(body) { background-color: #f9fafb; }
+	:global(body) { background-color: #F8FAFC; }
 	.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-	.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-	.custom-scrollbar-data::-webkit-scrollbar { width: 5px; }
-	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+	.custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
 </style>

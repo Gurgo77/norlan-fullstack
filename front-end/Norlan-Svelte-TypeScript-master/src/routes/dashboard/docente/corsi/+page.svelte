@@ -1,41 +1,58 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { X, Search, Calendar, Loader2, CheckSquare, UploadCloud, CheckCircle2, Clock, BarChart3, Star, BookOpen, Play, AlertTriangle, Send, FileText, Download } from 'lucide-svelte';
+	import {
+		Search, Loader2, CheckSquare, UploadCloud, CheckCircle2,
+		Clock, BarChart3, Star, BookOpen, Play, AlertTriangle,
+		Send, FileText, Download, Trash2, Calendar
+	} from 'lucide-svelte';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
-	import { StatoCorso, ModuloServizio, TipoDocumento } from '$lib/models/Enums';
+	import { StatoCorso } from '$lib/models/Enums';
 	import type { IscrizioneCorso } from '$lib/models/IscrizioneCorso';
 	import { AuthService } from '$lib/services/AuthService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { FeedbackService } from '$lib/services/FeedbackService';
-	import { DocumentoService } from '$lib/services/DocumentoService';
 	import httpClient from '$lib/api/httpClient';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
-	import { scaricaDocumentoUniversale, uploadDocumentoUniversale } from '$lib/utils/documentoUtils';
 
-	interface CorsoFormazioneEsteso extends CorsoFormazione { numeroIscritti?: number; isLoadingIscritti?: boolean; }
-	interface FeedbackStatsDTO { idCorso: number; mediaDocenza: number; mediaContenuti: number; totaleFeedback: number; commenti: string[]; }
+	interface CorsoFormazioneEsteso extends CorsoFormazione {
+		numeroIscritti?: number;
+		isLoadingIscritti?: boolean;
+	}
+	interface FeedbackStatsDTO {
+		idCorso: number;
+		mediaDocenza: number;
+		mediaContenuti: number;
+		totaleFeedback: number;
+		commenti: string[];
+	}
 
 	let isLoading = $state(true);
 	let corsi = $state<CorsoFormazioneEsteso[]>([]);
 	let queryRicerca = $state('');
 	let filtroStato = $state<StatoCorso | ''>('');
+
 	let showModalFirma = $state(false);
 	let showModalMateriale = $state(false);
 	let showModalFeedback = $state(false);
-	let actionSuccess = $state<{type: 'OK' | 'ERR', msg: string} | null>(null);
 	let showCambioStatoModal = $state(false);
+	let showModalEliminaMateriale = $state(false);
+
+	let actionSuccess = $state<{type: 'OK' | 'ERR', msg: string} | null>(null);
 	let corsoDaCambiareStato = $state<CorsoFormazioneEsteso | null>(null);
 	let nuovoStatoPrevisto = $state<StatoCorso | null>(null);
 	let isActionLoading = $state(false);
 	let selectedCorso = $state<CorsoFormazioneEsteso | null>(null);
 	let iscrittiPresenti = $state<IscrizioneCorso[]>([]);
+
 	let isUploadingMateriale = $state(false);
 	let selectedCorsoMateriale = $state<CorsoFormazione | null>(null);
 	let fileMateriale = $state<File | null>(null);
 	let titoloMateriale = $state('');
+	let idMaterialeDaEliminare = $state<number | null>(null);
+
 	let isLoadingFeedback = $state(false);
 	let statsFeedback = $state<FeedbackStatsDTO | null>(null);
 	let materialiCaricati = $state<any[]>([]);
@@ -76,7 +93,6 @@
 	const corsiConclusiAttesaAdmin = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.CONCLUSO));
 	const corsiInSvolgimento = $derived(corsiFiltrati.filter(c => c.stato === StatoCorso.IN_SVOLGIMENTO));
 	const corsiProgrammati = $derived(corsiFiltrati.filter(c => !c.stato || c.stato === StatoCorso.PROGRAMMATO));
-
 	const corsiArchiviati = $derived(corsi.filter(c => (c.stato === StatoCorso.VALIDATO || c.stato === StatoCorso.CERTIFICATO) && (c.titolo || '').toLowerCase().includes(queryRicerca.toLowerCase())));
 
 	function triggerBanner(msg: string, type: 'OK' | 'ERR' = 'OK') { actionSuccess = { type, msg }; setTimeout(() => actionSuccess = null, 4000); }
@@ -109,34 +125,72 @@
 	}
 
 	async function scaricaMateriale(idMateriale: number, path: string) {
-		await scaricaDocumentoUniversale(idMateriale, path);
+		try {
+			const blob = await FormazioneService.downloadMateriale(idMateriale);
+			const nomeFile = path ? path.split('/').pop() : 'materiale.pdf';
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = nomeFile as string;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
+		} catch {
+			triggerBanner("Impossibile scaricare il file.", 'ERR');
+		}
+	}
+
+	function chiediConfermaEliminaMateriale(id: number) {
+		idMaterialeDaEliminare = id;
+		showModalEliminaMateriale = true;
+	}
+
+	async function confermaEliminaMateriale() {
+		if (idMaterialeDaEliminare === null) return;
+		isActionLoading = true;
+		try {
+			await httpClient.delete(`/api/formazione/materiali/${idMaterialeDaEliminare}`);
+			triggerBanner("Materiale eliminato!");
+			materialiCaricati = materialiCaricati.filter(m => m.idMateriale !== idMaterialeDaEliminare);
+			showModalEliminaMateriale = false;
+		} catch {
+			triggerBanner("Errore durante l'eliminazione.", 'ERR');
+		} finally {
+			isActionLoading = false;
+			idMaterialeDaEliminare = null;
+		}
 	}
 
 	async function caricaMaterialeDidattico() {
 		if (!selectedCorsoMateriale || !fileMateriale || !titoloMateriale.trim()) return;
 		isUploadingMateriale = true;
-
-		const res = await uploadDocumentoUniversale(selectedCorsoMateriale.idCorso, fileMateriale, {
-			modulo: ModuloServizio.FORMAZIONE,
-			tipologia: titoloMateriale
-		});
-
-		if (res.error) {
-			triggerBanner(res.msg, 'ERR');
-		} else {
-			triggerBanner("Materiale didattico caricato!");
+		try {
+			const formData = new FormData();
+			formData.append('file', fileMateriale);
+			formData.append('titoloDocumento', titoloMateriale);
+			await FormazioneService.uploadMateriale(selectedCorsoMateriale.idCorso, formData);
+			triggerBanner("Materiale caricato!");
 			const refresh = await httpClient.get(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`);
 			materialiCaricati = refresh.data;
 			fileMateriale = null; titoloMateriale = '';
+		} catch {
+			triggerBanner("Errore durante l'upload", 'ERR');
+		} finally {
+			isUploadingMateriale = false;
 		}
-		isUploadingMateriale = false;
 	}
 
 	async function apriValidazioneRegistro(corso: CorsoFormazioneEsteso) {
 		selectedCorso = corso; isActionLoading = true; showModalFirma = true;
-		try { const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso); iscrittiPresenti = iscritti.filter((i: IscrizioneCorso) => i.presenzaConfermata); }
-		catch { showModalFirma = false; }
-		finally { isActionLoading = false; }
+		try {
+			const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
+			iscrittiPresenti = iscritti.filter((i: IscrizioneCorso) => i.presenzaConfermata);
+		} catch {
+			showModalFirma = false;
+		} finally {
+			isActionLoading = false;
+		}
 	}
 
 	async function controfirmaRegistro() {
@@ -145,12 +199,15 @@
 		try {
 			await FormazioneService.controfirmaRegistro(selectedCorso.idCorso);
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.VALIDATO } : c);
-			showModalFirma = false; triggerBanner("Registro firmato elettronicamente!");
+			showModalFirma = false; triggerBanner("Registro firmato!");
 		} catch { triggerBanner("Errore durante la firma", 'ERR'); }
 		finally { isActionLoading = false; }
 	}
 
-	function formattaData(iso: string) { if (!iso) return 'N.D.'; return new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }); }
+	function formattaData(iso: string) {
+		if (!iso) return 'N.D.';
+		return new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+	}
 </script>
 
 <div in:fade class="pb-20 max-w-7xl mx-auto">
@@ -160,16 +217,19 @@
 			<p class="text-sm font-black uppercase tracking-tight">{actionSuccess.msg}</p>
 		</div>
 	{/if}
+
 	<div class="mb-10">
 		<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Pannello Docenza</h1>
 		<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Gestione lezioni e analisi qualità</p>
 	</div>
+
 	<div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 mb-10">
 		<div class="relative flex-1">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
 			<input bind:value={queryRicerca} type="text" placeholder="CERCA CORSO..." class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5" />
 		</div>
 	</div>
+
 	{#if isLoading}
 		<div class="py-32 text-center"><Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto" /></div>
 	{:else}
@@ -178,24 +238,32 @@
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><CheckSquare size={24}/> Registri da Firmare</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiDaFirmare as corso (corso.idCorso)}
-						<DashboardCorsoCard ruolo="docente" corso={{ id: corso.idCorso, titolo: corso.titolo, codice: 'C-' + corso.idCorso, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }} onFirmaRegistro={() => apriValidazioneRegistro(corso)} />
+						<DashboardCorsoCard
+								ruolo="docente"
+								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }}
+								onFirmaRegistro={() => apriValidazioneRegistro(corso)}
+						/>
 					{/each}
 				</div>
 			</div>
 		{/if}
+
 		{#if corsiConclusiAttesaAdmin.length > 0}
 			<div class="mb-14">
 				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><Clock size={24}/> Attesa Admin</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiConclusiAttesaAdmin as corso (corso.idCorso)}
-						<div class="flex flex-col gap-3">
-							<AlertCard titolo={corso.titolo} sottotitolo="Lezioni terminate. In attesa di validazione presenze." variante="warning" icona={Clock} stato="In elaborazione" />
-							<button onclick={() => apriStatisticheFeedback(corso)} class="w-full py-3 bg-[#1B4B6B]/5 text-[#1B4B6B] rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/10 transition-colors"><BarChart3 size={14} /> Vedi Feedback</button>
-						</div>
+						<AlertCard
+								titolo={corso.titolo}
+								sottotitolo="Lezioni terminate. In attesa di validazione presenze."
+								variante="warning"
+								icona={Clock}
+						/>
 					{/each}
 				</div>
 			</div>
 		{/if}
+
 		<div class="mb-14">
 			<h2 class="text-xl font-extrabold text-blue-700 uppercase mb-6 flex items-center gap-3"><Play size={24}/> Corsi In Svolgimento</h2>
 			{#if corsiInSvolgimento.length === 0}
@@ -204,12 +272,25 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiInSvolgimento as corso (corso.idCorso)}
 						<div in:scale={{ duration: 300 }}>
-							<DashboardCorsoCard ruolo="docente" corso={{ id: corso.idCorso, titolo: corso.titolo, codice: 'C-' + corso.idCorso, stato: 'IN_SVOLGIMENTO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }} onAzioneCorso={() => apriModaleMateriale(corso)} />
+							<DashboardCorsoCard
+									ruolo="docente"
+									corso={{
+                                id: corso.idCorso,
+                                titolo: corso.titolo,
+                                stato: 'IN_SVOLGIMENTO',
+                                dataSvolgimento: formattaData(corso.dataOrario),
+                                luogo: 'Sede NorLan / Aula Virtuale',
+                                numeroIscritti: corso.numeroIscritti
+                            }}
+									onAzioneCorso={() => apriModaleMateriale(corso)}
+									onConcludiCorso={() => preparaCambioStatoCorso(corso, StatoCorso.CONCLUSO)}
+							/>
 						</div>
 					{/each}
 				</div>
 			{/if}
 		</div>
+
 		<div class="mb-14">
 			<h2 class="text-xl font-extrabold text-gray-700 uppercase mb-6 flex items-center gap-3"><Calendar size={24}/> Corsi Programmati</h2>
 			{#if corsiProgrammati.length === 0}
@@ -217,11 +298,23 @@
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiProgrammati as corso (corso.idCorso)}
-						<DashboardCorsoCard ruolo="docente" corso={{ id: corso.idCorso, titolo: corso.titolo, codice: 'C-' + corso.idCorso, stato: 'DA_INIZIARE', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }} onAzioneCorso={() => preparaCambioStatoCorso(corso, StatoCorso.IN_SVOLGIMENTO)} />
+						<DashboardCorsoCard
+								ruolo="docente"
+								corso={{
+                             id: corso.idCorso,
+                             titolo: corso.titolo,
+                             stato: 'DA_INIZIARE',
+                             dataSvolgimento: formattaData(corso.dataOrario),
+                             luogo: 'Sede NorLan / Aula Virtuale',
+                             numeroIscritti: corso.numeroIscritti
+                         }}
+								onAzioneCorso={() => preparaCambioStatoCorso(corso, StatoCorso.IN_SVOLGIMENTO)}
+						/>
 					{/each}
 				</div>
 			{/if}
 		</div>
+
 		<div class="mb-14 opacity-70 hover:opacity-100 transition-opacity">
 			<h2 class="text-xl font-extrabold text-gray-500 uppercase mb-6 flex items-center gap-3 border-b pb-2"><BookOpen size={24}/> Archivio Storico</h2>
 			{#if corsiArchiviati.length === 0}
@@ -229,7 +322,11 @@
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 					{#each corsiArchiviati as corso (corso.idCorso)}
-						<DashboardCorsoCard ruolo="docente" corso={{ id: corso.idCorso, titolo: corso.titolo, codice: 'C-' + corso.idCorso, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }} onAzioneCorso={() => apriStatisticheFeedback(corso)} />
+						<DashboardCorsoCard
+								ruolo="docente"
+								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }}
+								onAzioneCorso={() => apriStatisticheFeedback(corso)}
+						/>
 					{/each}
 				</div>
 			{/if}
@@ -241,7 +338,6 @@
 	{#snippet title()}
 		<span class="font-black uppercase tracking-tighter">Aggiornamento Corso</span>
 	{/snippet}
-
 	<div class="text-center py-4">
 		{#if nuovoStatoPrevisto === StatoCorso.IN_SVOLGIMENTO}
 			<div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6"><Play size={40}/></div>
@@ -253,13 +349,12 @@
 			<p class="text-sm text-gray-500 mb-8">Il corso <span class="font-bold text-[#1B4B6B]">{corsoDaCambiareStato?.titolo}</span> passerà allo stato CONCLUSO.</p>
 		{/if}
 	</div>
-
 	{#snippet footer()}
 		<div class="flex flex-col gap-3 w-full">
-			<button onclick={confermaCambioStatoCorso} disabled={isActionLoading} class="w-full bg-[#1B4B6B] text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg disabled:opacity-50 transition-all hover:bg-[#153a54] flex items-center justify-center gap-2">
+			<button onclick={confermaCambioStatoCorso} disabled={isActionLoading} class="w-full bg-[#1B4B6B] text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all hover:bg-[#153a54] flex items-center justify-center gap-2">
 				{#if isActionLoading}<Loader2 size={16} class="animate-spin" />{/if} Sì, Procedi
 			</button>
-			<button onclick={() => (showCambioStatoModal = false)} disabled={isActionLoading} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+			<button onclick={() => (showCambioStatoModal = false)} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
 				Annulla
 			</button>
 		</div>
@@ -276,7 +371,6 @@
 			</div>
 		</div>
 	{/snippet}
-
 	<div>
 		{#if isLoadingFeedback}
 			<div class="py-20 text-center flex flex-col items-center gap-4">
@@ -334,7 +428,6 @@
 			{/if}
 		{/if}
 	</div>
-
 	{#snippet footer()}
 		<button onclick={() => showModalFeedback = false} class="w-full py-4 bg-gray-900 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-black transition-all">
 			Chiudi Analisi
@@ -346,7 +439,6 @@
 	{#snippet title()}
 		<UploadCloud size={20}/> <span class="font-black uppercase tracking-tighter">Materiale Didattico</span>
 	{/snippet}
-
 	<div class="space-y-8">
 		<div>
 			<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Documenti Caricati ({materialiCaricati.length})</h3>
@@ -363,9 +455,14 @@
 									<p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date(mat.dataCaricamento).toLocaleDateString()}</p>
 								</div>
 							</div>
-							<button onclick={() => scaricaMateriale(mat.idMateriale, mat.percorsoFile)} class="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
-								<Download size={16} />
-							</button>
+							<div class="flex items-center gap-2">
+								<button onclick={() => scaricaMateriale(mat.idMateriale, mat.percorsoFile)} class="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm" title="Scarica">
+									<Download size={16} />
+								</button>
+								<button onclick={() => chiediConfermaEliminaMateriale(mat.idMateriale)} class="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm" title="Elimina">
+									<Trash2 size={16} />
+								</button>
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -392,7 +489,6 @@
 			</div>
 		</div>
 	</div>
-
 	{#snippet footer()}
 		<button onclick={() => showModalMateriale = false} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-100 hover:bg-gray-50 uppercase text-[10px] transition-colors">
 			Chiudi
@@ -407,7 +503,6 @@
 	{#snippet title()}
 		<span class="font-black uppercase tracking-tighter">Firma Registro Didattico</span>
 	{/snippet}
-
 	<div class="space-y-4">
 		{#if isActionLoading}
 			<div class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} /></div>
@@ -434,7 +529,6 @@
 			</div>
 		{/if}
 	</div>
-
 	{#snippet footer()}
 		<button onclick={() => showModalFirma = false} disabled={isActionLoading} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">
 			Annulla
@@ -442,6 +536,30 @@
 		<button onclick={controfirmaRegistro} disabled={isActionLoading || iscrittiPresenti.length === 0} class="flex-1 py-4 bg-emerald-600 text-white font-extrabold rounded-xl hover:bg-emerald-700 uppercase text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all">
 			{#if isActionLoading} <Loader2 class="animate-spin" size={16} /> Attendi... {:else} Apponi Firma Elettronica {/if}
 		</button>
+	{/snippet}
+</ModalCard>
+
+<ModalCard bind:isOpen={showModalEliminaMateriale} maxWidth="max-w-md" headerClass="bg-red-600">
+	{#snippet title()}
+		<Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Eliminare il materiale?</span>
+	{/snippet}
+
+	<div class="text-center py-4">
+		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<Trash2 size={40}/>
+		</div>
+		<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva e rimuoverà il file dal corso.</p>
+	</div>
+
+	{#snippet footer()}
+		<div class="flex flex-col w-full gap-3">
+			<button onclick={confermaEliminaMateriale} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
+				{#if isActionLoading}<Loader2 size={16} class="animate-spin mr-2" />{:else}Sì, elimina definitivamente{/if}
+			</button>
+			<button onclick={() => { showModalEliminaMateriale = false; idMaterialeDaEliminare = null; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
+				No, annulla
+			</button>
+		</div>
 	{/snippet}
 </ModalCard>
 

@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
-		Send, Building2, MessageSquare, Loader2, Clock, Users, User, ChevronDown, ChevronRight, GraduationCap, Search
+		Send, Building2, MessageSquare, Loader2, User, GraduationCap, Search
 	} from 'lucide-svelte';
 
 	import { ChatService } from '$lib/services/ChatService';

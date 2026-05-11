@@ -104,6 +104,14 @@ public class DocumentoService {
                 .orElseThrow(() -> new IllegalArgumentException("Documento non trovato con ID: " + id));
         String tipologia = doc.getTipologia().name();
 
+        if (doc.getTipologia() == Documento.TipoDocumento.ATTESTATO_CORSO) {
+            List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByDocumentoAttestatoIdDocumento(id);
+            for (IscrizioneCorso isc : iscrizioni) {
+                isc.setDocumentoAttestato(null);
+            }
+            iscrizioneRepository.saveAll(iscrizioni);
+        }
+
         documentoRepository.deleteById(id);
 
         logService.registraEvento(

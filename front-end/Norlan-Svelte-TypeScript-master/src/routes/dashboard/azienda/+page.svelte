@@ -2,9 +2,9 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import {
-		ShieldCheck, ShieldOff, MessageSquare, Clock,
-		AlertTriangle, CheckCircle2, X, Send, Loader2, User, Users,
-		Building2, Briefcase, BellRing, FileText, PlayCircle, ArrowRight
+		ShieldCheck, Clock,
+		AlertTriangle, CheckCircle2, Loader2, User, Users,
+		Building2, Briefcase, BellRing, FileText, PlayCircle, ArrowRight, HardHat
 	} from 'lucide-svelte';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
@@ -26,8 +26,6 @@
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utenteAzienda = $state<AziendaData | null>(null);
-	let isChatOpen = $state(false);
-	let chatMessage = $state('');
 	let chatService = $state<ChatService | null>(null);
 	let messaggiChat = $state<Messaggio[]>([]);
 	let chatScrollContainer = $state<HTMLDivElement | null>(null);
@@ -36,26 +34,35 @@
 	let documentiScadenza = $state<Documento[]>([]);
 	let dipendenti = $state<DipendenteDTO[]>([]);
 	let prossimiCorsi = $state<CorsoFormazione[]>([]);
+	let dpisAzienda = $state<any[]>([]);
 
-	const dataOggi = new Intl.DateTimeFormat('it-IT', {
-		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-	}).format(new Date());
+	const dataOggi = new Date().toLocaleDateString('it-IT', {
+		weekday: 'long', day: '2-digit', month: 'short', year: 'numeric'
+	});
 
 	const alertScadenzeDocs = $derived(
 			documentiScadenza.filter(d => calcolaGiorniRimanenti(d.dataScadenza) <= 30)
 	);
 
+	const alertDpis = $derived(
+			dpisAzienda.filter(dpi => {
+				const info = getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza);
+				return info.stato === 'DANGER' || info.stato === 'WARNING';
+			})
+	);
+
 	const infoStato = $derived(() => {
 		const haDocsScaduti = documentiScadenza.some(d => getInfoScadenza(d.dataScadenza).stato === 'DANGER');
+		const haDpiScaduti = alertDpis.some(dpi => getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato === 'DANGER');
 
-		if (haDocsScaduti) return {
+		if (haDocsScaduti || haDpiScaduti) return {
 			label: 'CRITICO',
 			color: 'bg-red-500',
 			icon: AlertTriangle,
-			text: 'Documenti Scaduti Rilevati'
+			text: 'Scadenze Critiche Rilevate'
 		};
 
-		if (alertScadenzeDocs.length > 0) return {
+		if (alertScadenzeDocs.length > 0 || alertDpis.length > 0) return {
 			label: 'ATTENZIONE',
 			color: 'bg-amber-400 text-[#1B4B6B]',
 			icon: Clock,
@@ -98,6 +105,14 @@
 			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato).slice(0, 4);
 			messaggiChat = cronologiaChat;
 
+			const dpiPromises = lavoratori.map((dip: any) =>
+					LavoratoreService.getDpiByLavoratore(dip.idUtente)
+							.then(dpis => dpis.map((d: any) => ({ ...d, nomeDipendente: `${dip.nome} ${dip.cognome}` })))
+							.catch(() => [])
+			);
+			const dpiResults = await Promise.all(dpiPromises);
+			dpisAzienda = dpiResults.flat();
+
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (msg.idMittente === STAFF_ID || msg.idMittente === currentUser?.idUtente) {
@@ -113,24 +128,19 @@
 
 	onDestroy(() => { if (chatService) chatService.disconnect(); });
 
-	function inviaMessaggioChat() {
-		if (!chatMessage.trim() || !currentUser || !chatService) return;
-		chatService.sendMessage({ idMittente: currentUser.idUtente, idDestinatario: STAFF_ID, testo: chatMessage });
-		const msgMock = new Messaggio({ idMessaggio: Date.now(), idMittente: currentUser.idUtente, nomeMittente: currentUser.email, idDestinatario: STAFF_ID, testo: chatMessage, timestampInvio: new Date().toISOString(), letto: false });
-		messaggiChat = [...messaggiChat, msgMock]; chatMessage = ''; scrollChat();
-	}
 </script>
 
-<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-10">
-	<div class="flex items-end justify-between">
-		<div>
-			<div class="flex items-center gap-3 mb-2">
-				<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm"><Building2 size={20} /></div>
-				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
-			</div>
-			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">{utenteAzienda?.ragioneSociale || 'Area Azienda'}</h1>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Pannello di controllo aziendale</p>
+<div in:fade class="max-w-7xl mx-auto space-y-8 pb-20 p-6">
+
+	<div class="mb-10">
+		<div class="flex items-center gap-3 mb-3">
+			<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm"><Building2 size={20} /></div>
+			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
 		</div>
+		<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">
+			{utenteAzienda?.ragioneSociale || 'Area Azienda'}
+		</h1>
+		<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter mt-1">Pannello di controllo stato compliance.</p>
 	</div>
 
 	{#if isLoading}
@@ -139,37 +149,70 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione Dati NorLan...</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-			<div class="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-8 group cursor-default">
-				<div class="relative shrink-0">
-					<div class="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center {status.color} shadow-xl text-white">
-						<status.icon size={32} class={status.label === 'ATTENZIONE' ? 'text-[#1B4B6B]' : 'text-white'} />
-					</div>
+		<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-14">
+			<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-5 transition-all hover:shadow-md">
+				<div class="w-14 h-14 rounded-2xl flex items-center justify-center {status.color} shadow-lg text-white shrink-0">
+					<status.icon size={24} class={status.label === 'ATTENZIONE' ? 'text-[#1B4B6B]' : 'text-white'} />
 				</div>
 				<div>
-					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status Compliance</p>
-					<h2 class="text-3xl font-black text-[#1B4B6B] uppercase leading-none">{status.label}</h2>
-					<p class="text-xs font-bold text-gray-400 uppercase mt-2">{status.text}</p>
+					<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Compliance</p>
+					<h2 class="text-xl font-black text-[#1B4B6B] uppercase leading-none tracking-tight">{status.label}</h2>
 				</div>
 			</div>
-			<div class="grid grid-rows-2 gap-4">
-				<StatCard titolo="Personale" valore="{dipendenti.length} Censiti" icona={Users} href="/dashboard/azienda/dipendenti" />
-				<StatCard titolo="Archivio" valore="Documenti" icona={FileText} href="/dashboard/azienda/documenti" />
-			</div>
+
+			<StatCard
+					titolo="Alert Documenti"
+					valore={alertScadenzeDocs.length}
+					icona={BellRing}
+					bgIcona="bg-[#1B4B6B]/10"
+					testoIcona="text-[#1B4B6B]"
+					href="/dashboard/azienda/documenti"
+			/>
+			<StatCard
+					titolo="Forza Lavoro"
+					valore={dipendenti.length}
+					icona={Users}
+					bgIcona="bg-[#1B4B6B]/10"
+					testoIcona="text-[#1B4B6B]"
+					href="/dashboard/azienda/dipendenti"
+			/>
+			<StatCard
+					titolo="DPI Assegnati"
+					valore={dpisAzienda.length}
+					icona={HardHat}
+					bgIcona="bg-[#1B4B6B]/10"
+					testoIcona="text-[#1B4B6B]"
+					href="/dashboard/azienda/dpi"
+			/>
+			<StatCard
+					titolo="Corsi in Arrivo"
+					valore={prossimiCorsi.length}
+					icona={PlayCircle}
+					bgIcona="bg-[#1B4B6B]/10"
+					testoIcona="text-[#1B4B6B]"
+					href="/dashboard/azienda/formazione"
+			/>
 		</div>
 
-		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-			<div class="xl:col-span-2 space-y-8">
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
-						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<BellRing size={20} class="text-amber-500" /> Scadenze Documentali
-						</h3>
-						<span class="bg-gray-100 text-gray-500 text-[9px] font-black px-3 py-1 rounded-full uppercase">{alertScadenzeDocs.length} Alert</span>
-					</div>
-					<div class="space-y-3">
-						{#each alertScadenzeDocs as doc (doc.idDocumento)}
-							{@const info = getInfoScadenza(doc.dataScadenza)}
+		<div class="mb-14">
+			<div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-3">
+				<div class="flex items-center gap-3">
+					<div class="p-2 bg-amber-100 text-amber-600 rounded-lg"><AlertTriangle size={20}/></div>
+					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Scadenze Documentali</h2>
+				</div>
+				<a href="/dashboard/azienda/documenti" class="text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Vedi tutte <ArrowRight size={14}/></a>
+			</div>
+
+			{#if alertScadenzeDocs.length === 0}
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center">
+					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
+					<p class="text-gray-400 font-bold uppercase text-xs">Tutti i documenti aziendali sono in regola.</p>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+					{#each alertScadenzeDocs as doc (doc.idDocumento)}
+						{@const info = getInfoScadenza(doc.dataScadenza)}
+						<div in:scale>
 							<AlertCard
 									titolo={doc.tipologia.replace(/_/g, ' ')}
 									sottotitolo={doc.modulo}
@@ -179,56 +222,98 @@
 									data={formattaDataScadenza(doc.dataScadenza)}
 									href="/dashboard/azienda/documenti"
 							/>
-						{/each}
-						{#if alertScadenzeDocs.length === 0}
-							<div class="py-6 text-center">
-								<CheckCircle2 size={32} class="mx-auto text-emerald-400 mb-2 opacity-50" />
-								<p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Tutti i documenti aziendali sono validi.</p>
-							</div>
-						{/if}
-					</div>
+						</div>
+					{/each}
 				</div>
+			{/if}
+		</div>
 
-				<div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-					<div class="flex items-center justify-between mb-6 border-b border-gray-50 pb-4">
-						<h3 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-2">
-							<PlayCircle size={20} class="text-blue-500" /> Formazione in Evidenza
-						</h3>
-						<a href="/dashboard/azienda/formazione" class="text-[9px] font-black uppercase text-[#1B4B6B] hover:underline flex items-center gap-1">Gestisci Tutti <ArrowRight size={12}/></a>
-					</div>
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{#each prossimiCorsi as corso (corso.idCorso)}
+		<div class="mb-14">
+			<div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-3">
+				<div class="flex items-center gap-3">
+					<div class="p-2 bg-orange-100 text-orange-600 rounded-lg"><HardHat size={20}/></div>
+					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Stato Dispositivi DPI</h2>
+				</div>
+				<a href="/dashboard/azienda/dpi" class="text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Gestisci Assegnazioni <ArrowRight size={14}/></a>
+			</div>
+
+			{#if alertDpis.length === 0}
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center">
+					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
+					<p class="text-gray-400 font-bold uppercase text-xs">Tutti i DPI assegnati sono in regola.</p>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+					{#each alertDpis as dpi (dpi.id || dpi.idAssegnazione || Math.random())}
+						{@const info = getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza)}
+						{@const nomeDpi = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' ')}
+						<div in:scale>
+							<AlertCard
+									titolo={nomeDpi}
+									sottotitolo={dpi.nomeDipendente}
+									variante={info.stato === 'DANGER' ? 'danger' : 'warning'}
+									icona={HardHat}
+									stato={info.label.toUpperCase()}
+									data={formattaDataScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza)}
+									href="/dashboard/azienda/dpi"
+							/>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<div class="mb-14">
+			<div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-3">
+				<div class="flex items-center gap-3">
+					<div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><PlayCircle size={20}/></div>
+					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Formazione in Programma</h2>
+				</div>
+				<a href="/dashboard/azienda/formazione" class="text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Gestisci Formazione <ArrowRight size={14}/></a>
+			</div>
+
+			{#if prossimiCorsi.length === 0}
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center">
+					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
+					<p class="text-gray-400 font-bold uppercase text-xs">Nessun corso programmato al momento.</p>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+					{#each prossimiCorsi as corso (corso.idCorso)}
+						<div in:scale>
 							<DashboardCorsoCard
 									ruolo="azienda"
 									corso={{
-                            id: corso.idCorso,
-                            titolo: corso.titolo,
-                            stato: 'DA_INIZIARE',
-                            dataSvolgimento: formattaDataScadenza(corso.dataOrario),
-                            luogo: corso.luogoFisico
-                         }}
+                                id: corso.idCorso,
+                                titolo: corso.titolo,
+                                stato: 'DA_INIZIARE',
+                                dataSvolgimento: formattaDataScadenza(corso.dataOrario),
+                                luogo: corso.luogoFisico
+                             }}
 									onAzioneCorso={() => scaricaReport(corso.idCorso)}
 							/>
-						{/each}
-					</div>
-					{#if prossimiCorsi.length === 0}
-						<div class="py-10 text-center">
-							<p class="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Nessun corso in programma.</p>
 						</div>
-					{/if}
+					{/each}
 				</div>
-			</div>
+			{/if}
+		</div>
 
-			<div class="space-y-8">
-				<div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center">
-					<div class="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center mb-4 text-[#1B4B6B]"><Briefcase size={28} /></div>
-					<h4 class="text-sm font-black text-[#1B4B6B] uppercase">{utenteAzienda?.ragioneSociale}</h4>
-					<p class="text-[10px] font-bold text-gray-400 uppercase mt-1 mb-1">P.IVA: {utenteAzienda?.partitaIva}</p>
-					<div class="w-full border-t border-gray-50 my-4"></div>
-					<div class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase mb-6"><User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}</div>
-					<a href="/dashboard/azienda/account" class="w-full py-3 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10">Modifica Profilo</a>
+		<div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+			<div class="flex items-center gap-6">
+				<div class="w-16 h-16 rounded-[1.5rem] bg-gray-50 flex items-center justify-center text-[#1B4B6B] shrink-0 border border-gray-100">
+					<Briefcase size={28} />
+				</div>
+				<div>
+					<h4 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tight">{utenteAzienda?.ragioneSociale}</h4>
+					<div class="flex flex-wrap items-center gap-4 mt-2">
+						<p class="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1"><FileText size={12}/> P.IVA: {utenteAzienda?.partitaIva}</p>
+						<p class="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1"><User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}</p>
+					</div>
 				</div>
 			</div>
+			<a href="/dashboard/azienda/account" class="w-full md:w-auto py-3 px-8 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 whitespace-nowrap text-center">
+				Modifica Profilo
+			</a>
 		</div>
 	{/if}
 </div>

@@ -9,8 +9,7 @@
 
     import type { DocenteData } from '$lib/models/Docente';
     import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
-    import { AnagraficaService, type AuthRequestDTO } from '$lib/services/AnagraficaService';
-    import { FormazioneService } from '$lib/services/FormazioneService';
+    import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { resolveRoute } from "$app/paths";
     import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
     import DocenteCard from '$lib/Components/Features/Anagrafica/DocenteDashboardCard.svelte';
@@ -53,6 +52,21 @@
         formDocente.email.trim() !== '' &&
         (isEditing ? true : formDocente.password.trim() !== '')
     );
+
+    const dettagliItems = $derived.by(() => {
+        const doc = selectedDocente;
+        if (!doc) return [];
+
+        return [
+            { label: 'Specializzazione', value: doc.specializzazioneTecnica || 'Non specificata', icon: BookOpen },
+            {
+                label: 'Account di Accesso',
+                value: doc.email,
+                icon: Mail,
+                onClick: doc.email ? () => apreGmail(doc.email) : undefined
+            }
+        ] as any[];
+    });
 
     onMount(async () => {
         try {
@@ -208,17 +222,14 @@
             <button onclick={() => (selectedDocente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco docenti</button>
 
             <DettagliCard
-                    nome={selectedDocente.nome}
-                    cognome={selectedDocente.cognome}
+                    nome={selectedDocente?.nome || ''}
+                    cognome={selectedDocente?.cognome || ''}
                     sottotitolo="Docente Formatore"
                     onEdit={apriModaleModifica}
                     onMail={() => apreGmail(selectedDocente?.email || '')}
                     onContact={() => vaiInChat(selectedDocente?.idUtente)}
                     onDelete={() => preparaEliminazione(selectedDocente)}
-                    items={[
-                    { label: 'Specializzazione', value: selectedDocente.specializzazioneTecnica || 'Non specificata', icon: BookOpen },
-                    { label: 'Account di Accesso', value: selectedDocente.email, icon: Mail }
-                ]}
+                    items={dettagliItems}
             />
 
             <div in:slide class="space-y-6">

@@ -19,7 +19,7 @@
         sottotitolo,
         items = [],
         onEdit,
-        onUpdate,   // Nuova prop per l'aggiornamento/rinnovo
+        onUpdate,
         onMail,
         onContact,
         onDelete

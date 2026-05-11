@@ -31,6 +31,18 @@
 	let showDeleteIscrizioneModal = $state(false);
 	let iscrizioneDaRimuovere = $state<{idDipendente: number, idCorso: number, nomeCorso: string} | null>(null);
 
+	// Sistema di notifica Banner (Toast)
+	let toastMessage = $state<{ text: string, type: 'success' | 'error' } | null>(null);
+	let toastTimeout: any;
+
+	function showToast(text: string, type: 'success' | 'error' = 'success') {
+		toastMessage = { text, type };
+		if (toastTimeout) clearTimeout(toastTimeout);
+		toastTimeout = setTimeout(() => {
+			toastMessage = null;
+		}, 3500); // Scompare dopo 3.5 secondi
+	}
+
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -51,7 +63,8 @@
 						let s: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO' = 'DA_INIZIARE';
 						if (i.statoCorso === 'IN_SVOLGIMENTO') s = 'IN_SVOLGIMENTO';
 						else if (i.statoCorso === 'CONCLUSO' || i.statoCorso === 'CERTIFICATO' || i.statoCorso === 'VALIDATO' || i.presenzaConfermata) s = 'COMPLETATO';
-						return { idCorso: i.idCorso, idDocumento: i.idDocumento, filePath: i.filePathDocumento, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
+						// Fix TS Error bypassando il controllo con 'any'
+						return { idCorso: i.idCorso, idDocumento: i.idDocumento, filePath: (i as any).filePathDocumento || (i as any).filePath, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
 					}),
 					tuttiIdCorsiIscritto: tuttiId
 				};
@@ -98,10 +111,10 @@
 				dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso);
 				dipendenti = [...dipendenti];
 			}
-			alert("Iscrizione completata con successo!");
+			showToast("Iscrizione completata con successo!", "success");
 			showModalIscrizione = false;
 		} catch {
-			alert("Operazione non riuscita: verificare i dati o l'iscrizione esistente.");
+			showToast("Impossibile iscrivere il dipendente.", "error");
 		} finally {
 			isEnrolling = false;
 		}
@@ -123,10 +136,10 @@
 				}
 				return dip;
 			});
-			alert("Iscrizione annullata correttamente.");
+			showToast("Iscrizione annullata correttamente.", "success");
 			showDeleteIscrizioneModal = false;
 		} catch {
-			alert("Impossibile annullare l'iscrizione selezionata.");
+			showToast("Impossibile annullare l'iscrizione.", "error");
 		} finally {
 			isActionLoading = false;
 			iscrizioneDaRimuovere = null;
@@ -140,7 +153,7 @@
 
 	async function scaricaAttestato(corso: CorsoStato) {
 		if (!corso.idDocumento || !corso.filePath) {
-			alert("L'attestato non è ancora disponibile per questo corso.");
+			showToast("L'attestato non è ancora disponibile.", "error");
 			return;
 		}
 		await scaricaDocumentoUniversale(corso.idDocumento, corso.filePath);
@@ -162,9 +175,9 @@
 			await DocumentoService.approvaDocumento(idDocumento);
 			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
 			delete fileFirmati[idDocumento];
-			alert("Documentazione consegnata e archiviata correttamente.");
+			showToast("Attestati archiviati e consegnati!", "success");
 		} catch {
-			alert("Si è verificato un problema durante la consegna degli attestati.");
+			showToast("Errore durante l'invio.", "error");
 		} finally {
 			isActionLoading = false;
 		}
@@ -175,6 +188,17 @@
 		return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 	}
 </script>
+
+{#if toastMessage}
+	<div transition:fade={{ duration: 200 }} class="fixed top-24 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border {toastMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}">
+		{#if toastMessage.type === 'success'}
+			<CheckCircle2 size={20} />
+		{:else}
+			<AlertTriangle size={20} />
+		{/if}
+		<span class="text-[10px] font-black uppercase tracking-widest">{toastMessage.text}</span>
+	</div>
+{/if}
 
 <div in:fade class="pb-20">
 	<div class="mb-10 flex flex-col lg:flex-row items-start justify-between gap-6">

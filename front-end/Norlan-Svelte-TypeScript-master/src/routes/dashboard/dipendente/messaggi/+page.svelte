@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { Send, MessageSquare, Loader2, Building2, ShieldCheck, Search, Clock } from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, Building2, ShieldCheck, Search } from 'lucide-svelte';
 
 	import { ChatService } from '$lib/services/ChatService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -30,7 +30,6 @@
 	let isLoading: boolean = $state(true);
 	let searchQuery: string = $state('');
 
-	// L'ID fisso dell'Admin/Staff
 	const STAFF_ID = 1;
 
 	const filteredContatti = $derived(
@@ -46,10 +45,8 @@
 
 		if (currentUser) {
 			try {
-				// Recupero i dati del dipendente per sapere qual è la sua azienda
 				const dipendenteData: any = await LavoratoreService.getById(currentUser.idUtente);
 
-				// Inizializzo la rubrica con lo Staff NorLan
 				let listaContatti: Contatto[] = [
 					{
 						id: STAFF_ID,
@@ -60,11 +57,9 @@
 					}
 				];
 
-				// Trovo l'ID e il nome dell'azienda a cui è associato il dipendente
 				const idAzienda = dipendenteData.azienda?.idUtente || dipendenteData.idAzienda || dipendenteData.azienda_id;
 				const nomeAzienda = dipendenteData.azienda?.ragioneSociale || dipendenteData.ragioneSocialeAzienda || "La mia Azienda";
 
-				// Se ha un'azienda assegnata, la aggiungo in rubrica
 				if (idAzienda) {
 					listaContatti.push({
 						id: idAzienda,
@@ -77,7 +72,6 @@
 
 				contatti = listaContatti;
 
-				// Se arriva da una notifica, apro la chat corretta
 				const chatIdDaUrl = $page.url.searchParams.get('chatId');
 				if (chatIdDaUrl) {
 					const contattoTrovato = contatti.find(c => String(c.id) === chatIdDaUrl);
@@ -92,7 +86,6 @@
 				isLoading = false;
 			}
 
-			// Inizializzo il servizio WebSocket per i messaggi in tempo reale
 			chatService = new ChatService(
 					(msg: Messaggio) => {
 						if (activeContact && (msg.idMittente === activeContact.id || msg.idMittente === currentUser?.idUtente)) {

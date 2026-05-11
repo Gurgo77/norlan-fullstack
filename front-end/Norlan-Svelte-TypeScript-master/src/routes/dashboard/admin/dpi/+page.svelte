@@ -4,12 +4,13 @@
     import { fade, slide } from 'svelte/transition';
     import {
         Search, Building2, Loader2, Mail, MessageSquare,
-        HardHat, ShieldOff, Clock, ShieldCheck
+        HardHat, ShieldOff, Clock, ShieldCheck, Trash2
     } from 'lucide-svelte';
     import { LavoratoreService } from '$lib/services/LavoratoreService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { resolveRoute } from "$app/paths";
     import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
+    import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
     import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
@@ -18,8 +19,16 @@
     let filtroStato = $state('TUTTI');
     let aziende = $state<any[]>([]);
     let dipendenti = $state<any[]>([]);
+    let showDeleteModal = $state(false);
+    let dpiDaEliminare = $state<any>(null);
+    let idDipendenteCorrente = $state<number | null>(null);
 
     onMount(async () => {
+        await caricaDati();
+    });
+
+    async function caricaDati() {
+        isLoading = true;
         try {
             const [resAziende, resDipendenti] = await Promise.all([
                 AnagraficaService.getAllAziende(),
@@ -41,9 +50,9 @@
         } finally {
             isLoading = false;
         }
-    });
+    }
 
-    const gruppiFiltrati = $derived(() => {
+    const gruppiFiltrati = $derived.by(() => {
         const map: Record<string, any> = {};
         dipendenti.forEach(dip => {
             const query = searchQuery.toLowerCase();
@@ -80,6 +89,34 @@
             window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${gruppo.email}&su=Avviso Urgente: Rinnovo DPI Scaduti - NorLan&body=${encodeURIComponent(msg)}`, '_blank');
         } else {
             await goto(`${resolveRoute('/dashboard/admin/comunicazioni')}?chatId=${gruppo.idAzienda}&msg=${encodeURIComponent(msg)}`);
+        }
+    }
+
+    function preparaEliminazione(dpi: any, idLavoratore: number) {
+        dpiDaEliminare = dpi;
+        idDipendenteCorrente = idLavoratore;
+        showDeleteModal = true;
+    }
+
+    async function confermaEliminaDPI() {
+        if (!dpiDaEliminare) return;
+        try {
+            const idReale = dpiDaEliminare.idAssegnazione || dpiDaEliminare.id;
+            if (idReale) {
+                await LavoratoreService.deleteDpi(idReale);
+
+                dipendenti = dipendenti.map(dip => {
+                    if (dip.idUtente === idDipendenteCorrente) {
+                        return { ...dip, dpis: dip.dpis.filter((d: any) => d._uniqueKey !== dpiDaEliminare._uniqueKey) };
+                    }
+                    return dip;
+                });
+            }
+            showDeleteModal = false;
+            dpiDaEliminare = null;
+        } catch (error) {
+            console.error(error);
+            alert("Impossibile eliminare il DPI. Riprovare.");
         }
     }
 </script>
@@ -138,7 +175,7 @@
         <div class="py-40 text-center"><Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto opacity-20" /></div>
     {:else}
         <div class="space-y-12">
-            {#each gruppiFiltrati() as gruppo (gruppo.nome)}
+            {#each gruppiFiltrati as gruppo (gruppo.nome)}
                 <div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden" transition:slide>
 
                     <div class="p-6 md:px-8 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 gap-4">
@@ -172,13 +209,17 @@
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                                     {#each dip.dpis as dpi (dpi._uniqueKey)}
-                                        <DpiCard ruolo="admin" dpi={{
-                                            id: dpi._uniqueKey,
-                                            nome: (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' '),
-                                            stato: getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato,
-                                            dataRevisione: formattaDataScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza),
-                                            dataConsegna: formattaDataScadenza(dpi.dataConsegna)
-                                        }} />
+                                        <DpiCard
+                                                ruolo="admin"
+                                                dpi={{
+                                                id: dpi._uniqueKey,
+                                                nome: (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' '),
+                                                stato: getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato,
+                                                dataRevisione: formattaDataScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza),
+                                                dataConsegna: formattaDataScadenza(dpi.dataConsegna)
+                                            }}
+                                                onElimina={() => preparaEliminazione(dpi, dip.idUtente)}
+                                        />
                                     {/each}
                                 </div>
 
@@ -188,7 +229,7 @@
                 </div>
             {/each}
 
-            {#if gruppiFiltrati().length === 0}
+            {#if gruppiFiltrati.length === 0}
                 <div class="py-32 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm">
                     <ShieldCheck size={48} class="mx-auto text-gray-200 mb-4" />
                     <h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun Risultato</h3>
@@ -196,6 +237,33 @@
             {/if}
         </div>
     {/if}
+
+    <ModalCard bind:isOpen={showDeleteModal} maxWidth="max-w-md" headerClass="bg-red-600">
+        {#snippet title()}
+            <Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Rimuovere DPI?</span>
+        {/snippet}
+
+        <div class="text-center py-4">
+            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
+            <p class="text-sm text-gray-400">
+                Stai per annullare l'assegnazione del dispositivo:<br>
+                <span class="font-bold text-[#1B4B6B]">
+                    {(dpiDaEliminare?.tipo === 'ALTRO' && dpiDaEliminare?.nomeDpi) ? dpiDaEliminare.nomeDpi : (dpiDaEliminare?.tipo || 'DPI').replace(/_/g, ' ')}
+                </span>
+            </p>
+        </div>
+
+        {#snippet footer()}
+            <div class="flex flex-col w-full gap-3">
+                <button onclick={confermaEliminaDPI} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-red-200 transition-all hover:bg-red-700">
+                    Sì, rimuovi assegnazione
+                </button>
+                <button onclick={() => (showDeleteModal = false)} class="w-full py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">
+                    Annulla
+                </button>
+            </div>
+        {/snippet}
+    </ModalCard>
 </div>
 
 <style>

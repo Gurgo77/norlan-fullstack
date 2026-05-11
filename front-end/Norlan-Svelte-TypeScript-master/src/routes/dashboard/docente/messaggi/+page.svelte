@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { page } from '$app/stores';
-	import { Send, MessageSquare, Loader2, Clock, ShieldCheck, Users, GraduationCap, Search } from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, ShieldCheck, Users, GraduationCap, Search } from 'lucide-svelte';
 	import { ChatService, type ChatMessagePayload } from '$lib/services/ChatService';
 	import { AuthService, type UserSession } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
