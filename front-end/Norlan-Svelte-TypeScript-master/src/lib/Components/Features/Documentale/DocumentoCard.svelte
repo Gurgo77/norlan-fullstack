@@ -19,9 +19,10 @@
         onDownload?: (id: number | string) => void;
         onDelete?: (id: number | string) => void;
         onManage?: (id: number | string) => void;
+        mostraScadenza?: boolean;
     }
 
-    let { documento, ruolo = 'dipendente', onDownload, onDelete, onManage }: Props = $props();
+    let { documento, ruolo = 'dipendente', onDownload, onDelete, onManage,mostraScadenza = true }: Props = $props();
 
     const getStatoConfig = (stato: DocStato) => {
         switch (stato) {
@@ -60,7 +61,7 @@
         </div>
 
         <div class="space-y-2">
-            {#if documento.dataScadenza}
+            {#if documento.dataScadenza && mostraScadenza}
                 <div class="flex items-center gap-2 text-[10px] font-bold uppercase {documento.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B]'}">
                     <Calendar size={13} class="shrink-0 {documento.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B]'}" />
                     <span class="truncate">Scadenza: {documento.dataScadenza}</span>

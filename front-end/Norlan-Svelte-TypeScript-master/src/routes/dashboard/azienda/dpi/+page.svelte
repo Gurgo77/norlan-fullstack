@@ -206,32 +206,36 @@
 	});
 </script>
 
-<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-10">
-	<div class="mb-10 flex justify-between items-start">
-		<div>
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Registro DPI</h1>
-			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione assegnazione e ispezione attrezzature NorLan.</p>
+<div in:fade class="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-10 p-4 md:p-6">
+	<div class="mb-6 md:mb-10 flex flex-col lg:flex-row justify-between items-start gap-6">
+		<div class="w-full lg:w-auto">
+			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Registro DPI</h1>
+			<p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Gestione assegnazione e ispezione attrezzature NorLan.</p>
 		</div>
-		<div class="flex items-center gap-6">
-			<div class="flex gap-4">
-				<StatCard
-						titolo="In Scadenza"
-						valore={stats.inScadenza}
-						icona={AlertTriangle}
-						bgIcona="bg-amber-50"
-						testoIcona="text-amber-500"
-				/>
-				<StatCard
-						titolo="Scaduti"
-						valore={stats.scaduti}
-						icona={AlertTriangle}
-						bgIcona="bg-red-50"
-						testoIcona="text-red-500"
-				/>
+
+		<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+			<div class="w-full lg:w-auto overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 custom-scrollbar-data">
+				<div class="flex gap-3 min-w-max">
+					<StatCard
+							titolo="In Scadenza"
+							valore={stats.inScadenza}
+							icona={AlertTriangle}
+							bgIcona="bg-amber-50"
+							testoIcona="text-amber-500"
+					/>
+					<StatCard
+							titolo="Scaduti"
+							valore={stats.scaduti}
+							icona={AlertTriangle}
+							bgIcona="bg-red-50"
+							testoIcona="text-red-500"
+					/>
+				</div>
 			</div>
+
 			<button
 					onclick={openNewDpiModal}
-					class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
+					class="w-full sm:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-3.5 rounded-xl font-extrabold uppercase text-[10px] md:text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3 whitespace-nowrap shrink-0"
 			>
 				<Plus size={18} />
 				Assegna Nuovo DPI
@@ -239,12 +243,12 @@
 		</div>
 	</div>
 
-	<div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
-		<div class="flex gap-2">
+	<div class="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
+		<div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 custom-scrollbar-data">
 			{#each ['TUTTI', 'OK', 'WARNING', 'DANGER'] as f (f)}
 				<button
 						onclick={() => (filtroAttivo = f)}
-						class="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all {filtroAttivo === f ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
+						class="px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all whitespace-nowrap {filtroAttivo === f ? 'bg-[#1B4B6B] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 				>
 					{f === 'WARNING' ? 'IN SCADENZA' : f === 'DANGER' ? 'SCADUTO' : f}
 				</button>
@@ -256,31 +260,31 @@
 					bind:value={searchQuery}
 					type="text"
 					placeholder="Cerca dipendente o matricola..."
-					class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-2xl focus:ring-2 focus:ring-[#1B4B6B]/10 outline-none font-bold text-xs uppercase transition-all"
+					class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-xl md:rounded-2xl focus:ring-2 focus:ring-[#1B4B6B]/10 outline-none font-bold text-xs uppercase transition-all"
 			/>
 		</div>
 	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
+		<div class="py-24 md:py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione registro DPI...</span>
 		</div>
 	{:else}
-		<div class="space-y-12">
+		<div class="space-y-8 md:space-y-12">
 			{#each groupedRegistro as gruppo (gruppo.id)}
 				<div in:fade>
-					<div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-						<div class="bg-[#1B4B6B] p-2.5 rounded-xl text-white shadow-sm">
-							<User size={20} />
+					<div class="flex flex-wrap items-center gap-3 md:gap-4 mb-4 md:mb-6 border-b border-gray-100 pb-3 md:pb-4">
+						<div class="bg-[#1B4B6B] p-2 md:p-2.5 rounded-lg md:rounded-xl text-white shadow-sm shrink-0">
+							<User size={20} class="w-4 h-4 md:w-5 md:h-5" />
 						</div>
-						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">{gruppo.nome}</h2>
-						<span class="ml-auto bg-gray-50 text-[#1B4B6B] text-[10px] font-black px-4 py-2 rounded-full border border-gray-200 uppercase">
+						<h2 class="text-lg md:text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter truncate">{gruppo.nome}</h2>
+						<span class="ml-auto bg-gray-50 text-[#1B4B6B] text-[9px] md:text-[10px] font-black px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-gray-200 uppercase whitespace-nowrap">
                       {gruppo.dpis.length} Dispositivi
                    </span>
 					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 						{#each gruppo.dpis as item (item.idAssegnazione || item.id)}
 							{@const nomeDpiReale = (item.tipo === 'ALTRO' && item.nomeDpi) ? item.nomeDpi : (item.tipo || 'DPI').replace(/_/g, ' ')}
 							<div in:scale={{duration: 300}}>
@@ -305,10 +309,10 @@
 		</div>
 
 		{#if filteredRegistro.length === 0}
-			<div class="py-20 bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm">
+			<div class="py-20 bg-white border border-gray-100 rounded-3xl md:rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm p-6">
 				<HardHat size={48} class="text-gray-200 mb-4" />
-				<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun DPI trovato</h3>
-				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Nessuna corrispondenza nei registri per i criteri selezionati.</p>
+				<h3 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase italic">Nessun DPI trovato</h3>
+				<p class="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Nessuna corrispondenza nei registri per i criteri selezionati.</p>
 			</div>
 		{/if}
 	{/if}
@@ -316,7 +320,7 @@
 
 <ModalCard bind:isOpen={showDpiModal} maxWidth="max-w-lg">
 	{#snippet title()}
-		<ShieldCheck size={20}/> <span class="font-black uppercase tracking-tighter">{formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}</span>
+		<ShieldCheck size={20}/> <span class="font-black uppercase tracking-tighter leading-tight">{formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}</span>
 	{/snippet}
 
 	<div class="space-y-6">
@@ -346,7 +350,7 @@
 				<input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
 			</div>
 		{/if}
-		<div class="grid grid-cols-2 gap-4 mt-4">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
 			<div>
 				<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
 				<input type="date" max="9999-12-31" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
@@ -359,16 +363,23 @@
 	</div>
 
 	{#snippet footer()}
-		<button onclick={() => (showDpiModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
-			Annulla
-		</button>
-		<button
-				onclick={salvaDPI}
-				disabled={isSavingDpi || !formDpi.idDipendente || !formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataConsegna || !formDpi.dataScadenzaRevisione}
-				class="flex-1 bg-[#1B4B6B] text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors"
-		>
-			{#if isSavingDpi}<Loader2 size={14} class="animate-spin" />{:else}<Save size={14} />{/if} {isSavingDpi ? 'Salvataggio...' : 'Conferma'}
-		</button>
+		<div class="flex w-full gap-3">
+			<button onclick={() => (showDpiModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+				Annulla
+			</button>
+			<button
+					onclick={salvaDPI}
+					disabled={isSavingDpi || !formDpi.idDipendente || !formDpi.tipo || (formDpi.tipo === 'ALTRO' && !formDpi.nomeDpi.trim()) || !formDpi.dataConsegna || !formDpi.dataScadenzaRevisione}
+					class="flex-1 bg-[#1B4B6B] text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-[#1B4B6B]/90 transition-colors"
+			>
+				{#if isSavingDpi}
+					<Loader2 size={14} class="animate-spin" />
+				{:else}
+					<Save size={14} />
+				{/if}
+				{isSavingDpi ? 'Salvataggio...' : 'Conferma'}
+			</button>
+		</div>
 	{/snippet}
 </ModalCard>
 
@@ -381,19 +392,21 @@
 		<div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
 			<AlertTriangle size={32} />
 		</div>
-		<p class="text-sm font-bold text-gray-600 leading-relaxed">
+		<p class="text-sm font-bold text-gray-600 leading-relaxed px-4">
 			Sei sicuro di voler eliminare definitivamente questo dispositivo dal registro?<br>
 			L'operazione non può essere annullata.
 		</p>
 	</div>
 
 	{#snippet footer()}
-		<button onclick={() => (showConfirmModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
-			Annulla
-		</button>
-		<button onclick={confermaEliminazione} class="flex-1 bg-red-500 text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-red-600 transition-colors">
-			Sì, Elimina
-		</button>
+		<div class="flex w-full gap-3">
+			<button onclick={() => (showConfirmModal = false)} class="flex-1 py-3 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition-colors">
+				Annulla
+			</button>
+			<button onclick={confermaEliminazione} class="flex-1 bg-red-500 text-white py-3 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-red-600 transition-colors">
+				Sì, Elimina
+			</button>
+		</div>
 	{/snippet}
 </ModalCard>
 
@@ -403,7 +416,7 @@
 	{/snippet}
 
 	<div class="py-2 text-center">
-		<p class="text-sm font-bold text-gray-600">{errorMessage}</p>
+		<p class="text-sm font-bold text-gray-600 px-4">{errorMessage}</p>
 	</div>
 
 	{#snippet footer()}
@@ -415,4 +428,7 @@
 
 <style>
 	:global(body) { background-color: #F9FAFB; }
+	.custom-scrollbar-data::-webkit-scrollbar { height: 4px; }
+	.custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 </style>

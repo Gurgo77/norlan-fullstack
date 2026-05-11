@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { Send, MessageSquare, Loader2, User, ShieldCheck, Search } from 'lucide-svelte';
+	import { Send, MessageSquare, Loader2, User, ShieldCheck, Search, ChevronLeft } from 'lucide-svelte';
 
 	import { ChatService } from '$lib/services/ChatService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -130,13 +130,13 @@
 	}
 </script>
 
-<div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
+<div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-10rem)] flex bg-white rounded-2xl md:rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
-	<div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50/50">
-		<div class="p-8 border-b border-gray-100 bg-white flex flex-col gap-5">
+	<div class="w-full md:w-1/3 border-r border-gray-100 flex-col bg-gray-50/50 {activeContact ? 'hidden md:flex' : 'flex'}">
+		<div class="p-4 md:p-8 border-b border-gray-100 bg-white flex flex-col gap-4 md:gap-5">
 			<div>
-				<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
-					<User size={22} class="text-[#1B4B6B]" />
+				<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
+					<User size={22} class="text-[#1B4B6B] shrink-0" />
 					RUBRICA CONTATTI
 				</h2>
 				<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Staff NorLan e Dipendenti</p>
@@ -177,18 +177,21 @@
 		</div>
 	</div>
 
-	<div class="flex-1 flex flex-col bg-white">
+	<div class="w-full md:flex-1 flex-col bg-white {activeContact ? 'flex' : 'hidden md:flex'}">
 		{#if activeContact}
-			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-				<div class="flex items-center gap-5">
-					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20">
-						<svelte:component this={activeContact.icona} size={24} />
+			<div class="p-4 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+				<div class="flex items-center gap-3 md:gap-5 min-w-0">
+					<button onclick={() => activeContact = null} class="md:hidden p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors shrink-0">
+						<ChevronLeft size={24} />
+					</button>
+					<div class="bg-[#1B4B6B] p-3 md:p-4 rounded-xl md:rounded-[22px] text-white shadow-lg shadow-blue-900/20 shrink-0">
+						<svelte:component this={activeContact.icona} size={20} class="md:w-6 md:h-6 w-5 h-5" />
 					</div>
-					<div>
-						<h2 class="font-black text-[#1B4B6B] text-2xl uppercase tracking-tighter">{activeContact.nome}</h2>
-						<div class="flex items-center gap-4 mt-1">
-							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-							<span class="text-[9px] font-black text-green-600 uppercase tracking-widest">
+					<div class="min-w-0">
+						<h2 class="font-black text-[#1B4B6B] text-lg md:text-2xl uppercase tracking-tighter truncate">{activeContact.nome}</h2>
+						<div class="flex items-center gap-2 md:gap-4 mt-1">
+							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shrink-0"></span>
+							<span class="text-[9px] font-black text-green-600 uppercase tracking-widest truncate">
                           {activeContact.isStaff ? 'Consulente NorLan Disponibile' : 'Canale Aziendale Interno'}
                       </span>
 						</div>
@@ -196,7 +199,7 @@
 				</div>
 			</div>
 
-			<div id="chat-scroll-container" class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
+			<div id="chat-scroll-container" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
 					<div in:scale={{duration: 200, start: 0.95}}>
 						<ChatBubble
@@ -209,30 +212,30 @@
 				{/each}
 			</div>
 
-			<div class="p-8 border-t border-gray-100 bg-white">
-				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
+			<div class="p-4 md:p-8 border-t border-gray-100 bg-white">
+				<form class="flex gap-2 md:gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input
 							bind:value={newMessage}
 							type="text"
 							placeholder="Scrivi a {activeContact.nome}..."
-							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
+							class="flex-1 bg-gray-50 border border-gray-100 px-4 md:px-8 py-3 md:py-5 rounded-xl md:rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-xs md:text-sm font-bold uppercase tracking-tight placeholder:text-gray-300"
 					/>
 					<button
 							type="submit"
 							disabled={!newMessage.trim()}
-							class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group"
+							class="bg-[#1B4B6B] text-white px-5 md:px-8 py-3 md:py-0 rounded-xl md:rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-30 disabled:grayscale flex items-center justify-center shrink-0 group"
 					>
-						<Send size={20} class="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+						<Send size={18} class="md:w-5 md:h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
 					</button>
 				</form>
 			</div>
 		{:else}
-			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-20 text-center">
-				<div class="p-10 bg-gray-50 rounded-[50px] mb-8" in:scale>
-					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
+			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-10 md:p-20 text-center">
+				<div class="p-6 md:p-10 bg-gray-50 rounded-[30px] md:rounded-[50px] mb-6 md:mb-8" in:scale>
+					<MessageSquare size={60} class="md:w-[80px] md:h-[80px] opacity-20 text-[#1B4B6B]" />
 				</div>
-				<h3 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tighter">Centro Comunicazioni</h3>
-				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">
+				<h3 class="font-black text-[#1B4B6B] uppercase text-lg md:text-xl tracking-tighter">Centro Comunicazioni</h3>
+				<p class="font-black text-[9px] md:text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">
 					Seleziona lo Staff NorLan per assistenza o un tuo dipendente per comunicazioni interne.
 				</p>
 			</div>

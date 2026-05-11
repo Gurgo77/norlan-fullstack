@@ -302,20 +302,20 @@
     }
 </script>
 
-<div in:fade class="max-w-7xl mx-auto p-6">
+<div in:fade class="max-w-7xl mx-auto p-4 md:p-6">
     {#if !selectedDipendente}
-        <div class="mb-10 flex justify-between items-start">
+        <div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafica Dipendenti</h1>
-                <p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione dei lavoratori della società</p>
+                <h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafica Dipendenti</h1>
+                <p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Gestione dei lavoratori della società</p>
             </div>
-            <button onclick={apriModaleRegistrazione} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
+            <button onclick={apriModaleRegistrazione} class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
                 <UserPlus size={18} /> Aggiungi Dipendente
             </button>
         </div>
 
         <div class="mb-8 flex gap-4">
-            <div class="relative w-72 group">
+            <div class="relative w-full md:w-72 group">
                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={16} />
                 <input bind:value={searchQuery} type="text" placeholder="Cerca lavoratore..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase shadow-sm" />
             </div>
@@ -351,7 +351,7 @@
 
     {:else}
         <div in:fade>
-            <button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
+            <button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-6 md:mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
 
             <DettagliCard
                     nome={selectedDipendente.nome}
@@ -373,7 +373,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><FileText size={20} /></div>
-                                <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2>
+                                <h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Attestati ({documentiCorrenti.length})</h2>
                             </div>
                         </div>
 
@@ -398,9 +398,9 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="p-2.5 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shadow-inner"><ShieldCheck size={20} /></div>
-                                <h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
+                                <h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">DPI Consegnati ({dpiCorrenti.length})</h2>
                             </div>
-                            <button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md">
+                            <button onclick={openNewDpiModal} class="bg-[#1B4B6B] text-white px-4 md:px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#1B4B6B]/90 transition-all shadow-md shrink-0">
                                 <Plus size={16} />
                                 <span class="text-[10px] font-black uppercase tracking-widest">Assegna</span>
                             </button>
@@ -499,10 +499,10 @@
     {/snippet}
 
     <div class="text-center py-4">
-        <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle size={40}/>
+        <div class="w-16 h-16 md:w-20 md:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle size={32} class="md:hidden"/><AlertTriangle size={40} class="hidden md:block"/>
         </div>
-        <p class="text-sm text-gray-400">
+        <p class="text-sm text-gray-400 px-2">
             Il lavoratore <span class="font-bold text-[#1B4B6B]">{dipendenteDaEliminare?.nome} {dipendenteDaEliminare?.cognome}</span> verrà rimosso definitivamente dal sistema.
         </p>
     </div>
@@ -521,7 +521,7 @@
 
 <ModalCard bind:isOpen={showDpiModal} maxWidth="max-w-lg">
     {#snippet title()}
-        <ShieldCheck size={20}/> <span class="font-black uppercase tracking-tighter">{formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}</span>
+        <ShieldCheck size={20}/> <span class="font-black uppercase tracking-tighter leading-tight">{formDpi.idAssegnazione ? 'Aggiorna DPI Lavoratore' : 'Registra Consegna DPI'}</span>
     {/snippet}
 
     <div class="space-y-6">
@@ -542,7 +542,7 @@
                 <input bind:value={formDpi.nomeDpi} disabled={!!formDpi.idAssegnazione} type="text" placeholder="Specifica il nome del DPI..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none disabled:opacity-50" />
             </div>
         {/if}
-        <div class="grid grid-cols-2 gap-4 mt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
                 <label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Nuova Data Consegna *</label>
                 <input type="date" max="9999-12-31" bind:value={formDpi.dataConsegna} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
@@ -568,11 +568,11 @@
     {/snippet}
 
     <div class="text-center py-4">
-        <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Trash2 size={40}/>
+        <div class="w-16 h-16 md:w-20 md:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Trash2 size={32} class="md:hidden"/><Trash2 size={40} class="hidden md:block"/>
         </div>
-        <p class="text-sm text-gray-400">
-            Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo.replace(/_/g, ' ')}</span>
+        <p class="text-sm text-gray-400 px-2">
+            Stai annullando l'assegnazione di: <br><span class="font-bold text-[#1B4B6B]">{dpiDaEliminare?.tipo?.replace(/_/g, ' ')}</span>
         </p>
     </div>
 

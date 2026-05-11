@@ -128,7 +128,7 @@
 					try {
 						const mats = await FormazioneService.getMaterialiByCorso(corsi[i].idCorso);
 						corsi[i].materiali = mats;
-					} catch (e) {
+					} catch {
 						console.warn("Errore caricamento materiali per corso", corsi[i].idCorso);
 					} finally {
 						corsi[i].isLoadingMateriali = false;
@@ -165,7 +165,7 @@
 			corsi = [...corsi, nuovoEsteso];
 			showModalNuovo = false;
 			formCorso = { titolo: '', dataOrario: '', luogoFisico: '', idDocente: undefined };
-		} catch (error) {
+		} catch {
 			alert("Si è verificato un errore durante la programmazione del corso.");
 		} finally {
 			isSaving = false;
@@ -325,18 +325,18 @@
 	}
 </script>
 
-<div in:fade class="pb-20">
-	<div class="mb-10 flex justify-between items-start">
+<div in:fade class="pb-10 md:pb-20">
+	<div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 		<div>
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">GESTIONE FORMAZIONE</h1>
-			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Pianificazione corsi, aule e docenze.</p>
+			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">GESTIONE FORMAZIONE</h1>
+			<p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Pianificazione corsi, aule e docenze.</p>
 		</div>
-		<button onclick={() => showModalNuovo = true} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
+		<button onclick={() => showModalNuovo = true} class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
 			<Plus size={18} /> Programma Corso
 		</button>
 	</div>
 
-	<div class="mb-8 relative w-72 group">
+	<div class="mb-8 relative w-full md:w-72 group">
 		<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={16} />
 		<input bind:value={searchQuery} type="text" placeholder="Cerca per titolo..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase shadow-sm" />
 	</div>
@@ -347,13 +347,13 @@
 		</div>
 	{:else}
 
-		<div class="mb-14">
+		<div class="mb-10 md:mb-14">
 			<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-gray-200 pb-4">
 				<div class="flex items-center gap-3">
 					<div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
 						<CheckCircle2 size={20}/>
 					</div>
-					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Conclusi & Validazioni</h2>
+					<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Conclusi & Validazioni</h2>
 				</div>
 				<div class="w-full md:w-auto">
 					<StatCard titolo="Da Processare" valore={corsiConclusi.length} icona={CheckSquare} bgIcona="bg-emerald-50" testoIcona="text-emerald-600" />
@@ -400,12 +400,12 @@
 			{/if}
 		</div>
 
-		<div class="mb-14">
+		<div class="mb-10 md:mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3">
 				<div class="p-2 bg-blue-100 text-blue-700 rounded-lg">
 					<Loader2 size={20} class="animate-spin-slow"/>
 				</div>
-				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi In Svolgimento</h2>
+				<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi In Svolgimento</h2>
 			</div>
 
 			{#if corsiInSvolgimento.length === 0}
@@ -442,12 +442,12 @@
 			{/if}
 		</div>
 
-		<div class="mb-14">
+		<div class="mb-10 md:mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3">
 				<div class="p-2 bg-gray-100 text-gray-700 rounded-lg">
 					<Calendar size={20}/>
 				</div>
-				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Programmati</h2>
+				<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Corsi Programmati</h2>
 			</div>
 
 			{#if corsiProgrammati.length === 0}
@@ -475,12 +475,12 @@
 			{/if}
 		</div>
 
-		<div class="mb-14">
+		<div class="mb-10 md:mb-14">
 			<div class="flex items-center gap-3 mb-6 border-b border-gray-200 pb-3 opacity-60 hover:opacity-100 transition-opacity">
 				<div class="p-2 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-lg">
 					<BookOpen size={20}/>
 				</div>
-				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
+				<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Archivio Corsi Certificati</h2>
 			</div>
 
 			{#if corsiArchiviati.length === 0}
@@ -513,7 +513,7 @@
 		<FileText size={20}/> <span class="font-black uppercase tracking-tighter">Materiale Didattico</span>
 	{/snippet}
 
-	<div class="p-4 space-y-6">
+	<div class="p-2 md:p-4 space-y-6">
 		<div>
 			<p class="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Corso in svolgimento</p>
 			<h3 class="text-sm font-extrabold uppercase leading-tight text-[#1B4B6B]">{corsoSelezionatoTitolo}</h3>
@@ -582,18 +582,20 @@
 	</div>
 
 	{#snippet footer()}
-		<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">
-			Annulla
-		</button>
-		<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50 transition-colors">
-			{isSaving ? 'Creazione...' : 'Salva Corso'}
-		</button>
+		<div class="flex w-full gap-3">
+			<button onclick={() => showModalNuovo = false} class="flex-1 py-3 text-gray-400 font-extrabold rounded-xl border border-gray-200 hover:bg-gray-50 uppercase text-[10px] transition-colors">
+				Annulla
+			</button>
+			<button onclick={salvaNuovoCorso} disabled={!isFormValid || isSaving} class="flex-1 py-3 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-blue-800 uppercase text-[10px] disabled:opacity-50 transition-colors">
+				{isSaving ? 'Creazione...' : 'Salva Corso'}
+			</button>
+		</div>
 	{/snippet}
 </ModalCard>
 
 <ModalCard bind:isOpen={showModalPresenze} maxWidth="max-w-2xl">
 	{#snippet title()}
-		<CheckSquare size={20}/> <span class="font-black uppercase tracking-tighter">Validazione Presenze: {selectedCorso?.titolo}</span>
+		<CheckSquare size={20}/> <span class="font-black uppercase tracking-tighter leading-tight">Validazione Presenze: {selectedCorso?.titolo}</span>
 	{/snippet}
 
 	{#if isActionLoading}
@@ -601,17 +603,17 @@
 			<Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} />
 		</div>
 	{:else}
-		<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i partecipanti.</p>
-		<div class="space-y-2">
+		<p class="text-[10px] md:text-xs font-bold text-gray-500 mb-6 uppercase">Seleziona i partecipanti.</p>
+		<div class="space-y-2 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar-data">
 			{#each iscrizioniAttuali as isc (isc.idUtente)}
 				<label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-[#1B4B6B] transition-colors">
 					<div class="flex items-center gap-4">
 						<input type="checkbox" checked={presenzeSelezionate.includes(isc.idUtente)} onchange={() => togglePresenza(isc.idUtente)} class="w-5 h-5 accent-[#1B4B6B] rounded border-gray-300">
-						<div>
-							<p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{isc.emailUtente}</p>
+						<div class="min-w-0">
+							<p class="text-xs md:text-sm font-extrabold text-[#1B4B6B] uppercase truncate">{isc.emailUtente}</p>
 						</div>
 					</div>
-					<span class="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 bg-gray-100 rounded">ID #{isc.idUtente}</span>
+					<span class="text-[9px] font-bold text-gray-400 uppercase px-2 py-1 bg-gray-100 rounded shrink-0">ID #{isc.idUtente}</span>
 				</label>
 			{/each}
 		</div>
@@ -634,7 +636,7 @@
 			<Loader2 class="animate-spin mx-auto text-emerald-600" size={32} />
 		</div>
 	{:else}
-		<p class="text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda.</p>
+		<p class="text-[10px] md:text-xs font-bold text-gray-500 mb-6 uppercase">Carica un certificato cumulativo in PDF per ciascuna azienda.</p>
 
 		{#if aziendeCoinvolte.length === 0}
 			<div class="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
@@ -642,21 +644,21 @@
 			</div>
 		{/if}
 
-		<div class="space-y-4 mt-4">
+		<div class="space-y-4 mt-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar-data">
 			{#each aziendeCoinvolte as azienda (azienda.idAzienda)}
 				<div class="p-5 bg-white border border-gray-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
 					<div class="flex items-start gap-4">
-						<div class="p-3 bg-gray-100 rounded-xl text-gray-500">
+						<div class="p-3 bg-gray-100 rounded-xl text-gray-500 shrink-0">
 							<Building2 size={20} />
 						</div>
-						<div>
-							<h3 class="text-sm font-extrabold text-[#1B4B6B] uppercase">{azienda.ragioneSociale}</h3>
+						<div class="min-w-0">
+							<h3 class="text-sm font-extrabold text-[#1B4B6B] uppercase truncate">{azienda.ragioneSociale}</h3>
 							<p class="text-[10px] font-bold text-emerald-600 flex items-center gap-1.5 mt-1 uppercase">
 								<Users size={12} /> {azienda.count} dipendente/i
 							</p>
 						</div>
 					</div>
-					<div class="shrink-0">
+					<div class="w-full md:w-auto shrink-0">
 						<input
 								type="file"
 								accept="application/pdf"
@@ -683,10 +685,10 @@
 <ModalCard bind:isOpen={showModalFeedback} maxWidth="max-w-2xl">
 	{#snippet title()}
 		<div class="flex items-center gap-3">
-			<BarChart size={24}/>
-			<div class="flex flex-col">
+			<BarChart size={24} class="shrink-0"/>
+			<div class="flex flex-col min-w-0">
 				<span class="font-black uppercase tracking-tighter text-lg leading-none">Analisi Qualità Corso</span>
-				<span class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso?.titolo}</span>
+				<span class="text-[10px] font-bold uppercase opacity-70 mt-1 truncate">{selectedCorso?.titolo}</span>
 			</div>
 		</div>
 	{/snippet}
@@ -704,17 +706,17 @@
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-				<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
+				<div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
 					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Docenza</p>
 					<div class="flex items-baseline justify-center gap-1">
-						<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
+						<span class="text-5xl md:text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
 						<span class="text-xl font-bold text-gray-300">/5</span>
 					</div>
 				</div>
-				<div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
+				<div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm text-center">
 					<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Contenuti</p>
 					<div class="flex items-baseline justify-center gap-1">
-						<span class="text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaContenuti.toFixed(1)}</span>
+						<span class="text-5xl md:text-6xl font-black text-[#1B4B6B]">{statsFeedback.mediaContenuti.toFixed(1)}</span>
 						<span class="text-xl font-bold text-gray-300">/5</span>
 					</div>
 				</div>
@@ -722,15 +724,15 @@
 
 			<div class="flex items-center justify-between mb-6">
 				<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti</h3>
-				<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">
+				<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase shrink-0">
                     {statsFeedback.totaleFeedback} Risposte
                 </span>
 			</div>
 
-			<div class="space-y-4">
+			<div class="space-y-4 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar-data">
 				{#each statsFeedback.commenti as commento (commento)}
-					<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
-						<div class="p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0">
+					<div class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex gap-4 items-start">
+						<div class="p-2 md:p-3 bg-gray-50 rounded-xl text-gray-400 shrink-0">
 							<User size={16}/>
 						</div>
 						<p class="text-xs font-medium text-gray-600 leading-relaxed italic mt-1">"{commento}"</p>
@@ -756,7 +758,7 @@
 		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
 			<Trash2 size={40}/>
 		</div>
-		<p class="text-sm text-gray-400 mb-8">Questa azione è definitiva.</p>
+		<p class="text-sm text-gray-400 mb-8 px-4">Questa azione è definitiva e rimuoverà ogni dato associato al corso selezionato.</p>
 	</div>
 
 	{#snippet footer()}

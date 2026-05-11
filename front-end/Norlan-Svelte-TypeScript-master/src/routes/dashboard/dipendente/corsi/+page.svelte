@@ -207,34 +207,34 @@
 	}
 </script>
 
-<div in:fade class="pb-20 max-w-7xl mx-auto">
+<div in:fade class="pb-20 max-w-7xl mx-auto p-4 md:p-6">
 	{#if actionSuccess}
-		<div class="fixed top-24 right-8 z-[250] {actionSuccess.type === 'OK' ? 'bg-emerald-600' : 'bg-red-600'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 transition-all" in:scale out:fade>
+		<div class="fixed top-24 right-4 md:right-8 z-[250] {actionSuccess.type === 'OK' ? 'bg-emerald-600' : 'bg-red-600'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 transition-all" in:scale out:fade>
 			{#if actionSuccess.type === 'OK'}<CheckCircle2 size={24} />{:else}<AlertTriangle size={24} />{/if}
 			<p class="text-sm font-black uppercase tracking-tight">{actionSuccess.msg}</p>
 		</div>
 	{/if}
 
-	<div class="mb-10">
-		<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Pannello Docenza</h1>
-		<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Gestione lezioni e analisi qualità</p>
+	<div class="mb-8 md:mb-10">
+		<h1 class="text-3xl md:text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Pannello Docenza</h1>
+		<p class="text-gray-400 font-bold uppercase text-[9px] md:text-[10px] tracking-widest mt-1">Gestione lezioni e analisi qualità</p>
 	</div>
 
-	<div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 mb-10">
+	<div class="bg-white p-4 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 mb-10">
 		<div class="relative flex-1">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-			<input bind:value={queryRicerca} type="text" placeholder="CERCA CORSO..." class="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5" />
+			<input bind:value={queryRicerca} type="text" placeholder="CERCA CORSO..." class="w-full bg-gray-50 border-none rounded-xl md:rounded-2xl py-3 md:py-4 pl-12 pr-6 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5" />
 		</div>
 	</div>
 
 	{#if isLoading}
 		<div class="py-32 text-center">
-			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
+			<Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto" />
 		</div>
 	{:else}
 		{#if corsiDaFirmare.length > 0}
 			<div class="mb-14">
-				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><CheckSquare size={24}/> Registri da Firmare</h2>
+				<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><CheckSquare size={24} class="shrink-0"/> Registri da Firmare</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiDaFirmare as corso (corso.idCorso)}
 						<DashboardCorsoCard
@@ -250,7 +250,7 @@
 
 		{#if corsiConclusiAttesaAdmin.length > 0}
 			<div class="mb-14">
-				<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><Clock size={24}/> Attesa Admin</h2>
+				<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase mb-6 flex items-center gap-3"><Clock size={24} class="shrink-0"/> Attesa Admin</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each corsiConclusiAttesaAdmin as corso (corso.idCorso)}
 						<div class="flex flex-col gap-3">
@@ -263,7 +263,7 @@
 		{/if}
 
 		<div class="mb-14">
-			<h2 class="text-xl font-extrabold text-blue-700 uppercase mb-6 flex items-center gap-3"><Play size={24}/> Corsi In Svolgimento</h2>
+			<h2 class="text-lg md:text-xl font-extrabold text-blue-700 uppercase mb-6 flex items-center gap-3"><Play size={24} class="shrink-0"/> Corsi In Svolgimento</h2>
 			{#if corsiInSvolgimento.length === 0}
 				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs italic">Nessun corso attivo al momento.</div>
 			{:else}
@@ -290,7 +290,7 @@
 		</div>
 
 		<div class="mb-14">
-			<h2 class="text-xl font-extrabold text-gray-700 uppercase mb-6 flex items-center gap-3"><Calendar size={24}/> Corsi Programmati</h2>
+			<h2 class="text-lg md:text-xl font-extrabold text-gray-700 uppercase mb-6 flex items-center gap-3"><Calendar size={24} class="shrink-0"/> Corsi Programmati</h2>
 			{#if corsiProgrammati.length === 0}
 				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-400 font-bold uppercase text-xs italic">Nessun corso programmato.</div>
 			{:else}
@@ -314,7 +314,7 @@
 		</div>
 
 		<div class="mb-14 opacity-70 hover:opacity-100 transition-opacity">
-			<h2 class="text-xl font-extrabold text-gray-500 uppercase mb-6 flex items-center gap-3 border-b pb-2"><BookOpen size={24}/> Archivio Storico</h2>
+			<h2 class="text-lg md:text-xl font-extrabold text-gray-500 uppercase mb-6 flex items-center gap-3 border-b pb-2"><BookOpen size={24} class="shrink-0"/> Archivio Storico</h2>
 			{#if corsiArchiviati.length === 0}
 				<p class="text-xs font-bold text-gray-300 uppercase italic">Nessun corso archiviato.</p>
 			{:else}
@@ -338,13 +338,13 @@
 	{/snippet}
 	<div class="text-center py-4">
 		{#if nuovoStatoPrevisto === StatoCorso.IN_SVOLGIMENTO}
-			<div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6"><Play size={40}/></div>
-			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Iniziare la lezione?</h2>
-			<p class="text-sm text-gray-500 mb-8">Il corso <span class="font-bold text-[#1B4B6B]">{corsoDaCambiareStato?.titolo}</span> passerà allo stato IN SVOLGIMENTO.</p>
+			<div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shrink-0"><Play size={40}/></div>
+			<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Iniziare la lezione?</h2>
+			<p class="text-sm text-gray-500 mb-8 px-4">Il corso <span class="font-bold text-[#1B4B6B]">{corsoDaCambiareStato?.titolo}</span> passerà allo stato IN SVOLGIMENTO.</p>
 		{:else if nuovoStatoPrevisto === StatoCorso.CONCLUSO}
-			<div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 size={40}/></div>
-			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Concludere il corso?</h2>
-			<p class="text-sm text-gray-500 mb-8">Il corso <span class="font-bold text-[#1B4B6B]">{corsoDaCambiareStato?.titolo}</span> passerà allo stato CONCLUSO.</p>
+			<div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shrink-0"><CheckCircle2 size={40}/></div>
+			<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter mb-2">Concludere il corso?</h2>
+			<p class="text-sm text-gray-500 mb-8 px-4">Il corso <span class="font-bold text-[#1B4B6B]">{corsoDaCambiareStato?.titolo}</span> passerà allo stato CONCLUSO.</p>
 		{/if}
 	</div>
 	{#snippet footer()}
@@ -362,14 +362,14 @@
 <ModalCard bind:isOpen={showModalFeedback} maxWidth="max-w-2xl">
 	{#snippet title()}
 		<div class="flex items-center gap-3">
-			<BarChart3 size={24}/>
-			<div class="flex flex-col">
-				<span class="font-black uppercase tracking-tighter text-lg leading-none">Qualità Didattica</span>
-				<span class="text-[10px] font-bold uppercase opacity-70 mt-1">{selectedCorso?.titolo}</span>
+			<BarChart3 size={24} class="shrink-0"/>
+			<div class="flex flex-col min-w-0">
+				<span class="font-black uppercase tracking-tighter text-base md:text-lg leading-none truncate">Qualità Didattica</span>
+				<span class="text-[9px] md:text-[10px] font-bold uppercase opacity-70 mt-1 truncate">{selectedCorso?.titolo}</span>
 			</div>
 		</div>
 	{/snippet}
-	<div>
+	<div class="max-h-[65vh] overflow-y-auto px-1">
 		{#if isLoadingFeedback}
 			<div class="py-20 text-center flex flex-col items-center gap-4">
 				<Loader2 class="animate-spin text-[#1B4B6B]" size={48} />
@@ -382,45 +382,45 @@
 					<p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Nessun feedback.</p>
 				</div>
 			{:else}
-				<div class="space-y-8 mb-10">
-					<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
+					<div class="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm">
 						<div class="flex justify-between items-end mb-4">
 							<div>
-								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Qualità Docenza</p>
+								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Docenza</p>
 								<div class="flex items-center gap-2">
-									<span class="text-4xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
-									<div class="flex text-yellow-400"><Star size={16} fill="currentColor"/></div>
+									<span class="text-3xl md:text-4xl font-black text-[#1B4B6B]">{statsFeedback.mediaDocenza.toFixed(1)}</span>
+									<div class="flex text-yellow-400"><Star size={14} fill="currentColor"/></div>
 								</div>
 							</div>
-							<span class="text-[10px] font-bold text-gray-400 uppercase">{Math.round((statsFeedback.mediaDocenza / 5) * 100)}% gradimento</span>
+							<span class="text-[9px] font-bold text-gray-400 uppercase">{Math.round((statsFeedback.mediaDocenza / 5) * 100)}% gradimento</span>
 						</div>
-						<div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+						<div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
 							<div class="h-full bg-[#1B4B6B] transition-all duration-1000" style="width: {(statsFeedback.mediaDocenza / 5) * 100}%"></div>
 						</div>
 					</div>
-					<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+					<div class="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm">
 						<div class="flex justify-between items-end mb-4">
 							<div>
-								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Efficacia Contenuti</p>
+								<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Contenuti</p>
 								<div class="flex items-center gap-2">
-									<span class="text-4xl font-black text-blue-800">{statsFeedback.mediaContenuti.toFixed(1)}</span>
-									<div class="flex text-yellow-400"><Star size={16} fill="currentColor"/></div>
+									<span class="text-3xl md:text-4xl font-black text-blue-800">{statsFeedback.mediaContenuti.toFixed(1)}</span>
+									<div class="flex text-yellow-400"><Star size={14} fill="currentColor"/></div>
 								</div>
 							</div>
-							<span class="text-[10px] font-bold text-gray-400 uppercase">{Math.round((statsFeedback.mediaContenuti / 5) * 100)}% gradimento</span>
+							<span class="text-[9px] font-bold text-gray-400 uppercase">{Math.round((statsFeedback.mediaContenuti / 5) * 100)}% gradimento</span>
 						</div>
-						<div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+						<div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
 							<div class="h-full bg-blue-900 transition-all duration-1000" style="width: {(statsFeedback.mediaContenuti / 5) * 100}%"></div>
 						</div>
 					</div>
 				</div>
-				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti Anonimi</h3>
-					<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[10px] font-black px-4 py-1.5 rounded-full uppercase">{statsFeedback.totaleFeedback} / {selectedCorso?.numeroIscritti || 0} Risposte</span>
+				<div class="flex items-center justify-between mb-4 px-1">
+					<h3 class="text-[11px] md:text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Commenti Anonimi</h3>
+					<span class="bg-[#1B4B6B]/10 text-[#1B4B6B] text-[9px] font-black px-3 py-1 rounded-full uppercase shrink-0 ml-2">{statsFeedback.totaleFeedback} Risposte</span>
 				</div>
-				<div class="space-y-3">
+				<div class="space-y-3 pb-4">
 					{#each statsFeedback.commenti as commento}
-						<div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-xs text-gray-600 italic leading-relaxed">"{commento}"</div>
+						<div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-[11px] md:text-xs text-gray-600 italic leading-relaxed">"{commento}"</div>
 					{/each}
 				</div>
 			{/if}
@@ -435,9 +435,9 @@
 
 <ModalCard bind:isOpen={showModalMateriale} maxWidth="max-w-xl">
 	{#snippet title()}
-		<UploadCloud size={20}/> <span class="font-black uppercase tracking-tighter">Materiale Didattico</span>
+		<UploadCloud size={20} class="shrink-0"/> <span class="font-black uppercase tracking-tighter">Materiale Didattico</span>
 	{/snippet}
-	<div class="space-y-8">
+	<div class="space-y-8 max-h-[70vh] overflow-y-auto px-1">
 		<div>
 			<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Documenti Caricati ({materialiCaricati.length})</h3>
 			{#if isLoadingMateriali}
@@ -445,19 +445,19 @@
 			{:else if materialiCaricati.length > 0}
 				<div class="space-y-3">
 					{#each materialiCaricati as mat (mat.idMateriale)}
-						<div class="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl group hover:border-[#1B4B6B] transition-all shadow-sm">
-							<div class="flex items-center gap-4">
-								<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl transition-colors"><FileText size={20} /></div>
-								<div>
-									<p class="text-xs font-extrabold text-[#1B4B6B] uppercase line-clamp-1">{mat.titoloDocumento}</p>
+						<div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl group hover:border-[#1B4B6B] transition-all shadow-sm gap-4">
+							<div class="flex items-center gap-4 min-w-0">
+								<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-xl shrink-0"><FileText size={20} /></div>
+								<div class="min-w-0">
+									<p class="text-xs font-extrabold text-[#1B4B6B] uppercase truncate block" title={mat.titoloDocumento}>{mat.titoloDocumento}</p>
 									<p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{new Date(mat.dataCaricamento).toLocaleDateString()}</p>
 								</div>
 							</div>
-							<div class="flex items-center gap-2">
-								<button onclick={() => scaricaMateriale(mat.idMateriale, mat.percorsoFile)} class="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm">
+							<div class="flex items-center gap-2 justify-end">
+								<button onclick={() => scaricaMateriale(mat.idMateriale, mat.percorsoFile)} class="p-2.5 md:p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#1B4B6B] hover:text-white transition-all shadow-sm shrink-0">
 									<Download size={16} />
 								</button>
-								<button onclick={() => chiediConfermaEliminaMateriale(mat.idMateriale)} class="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm">
+								<button onclick={() => chiediConfermaEliminaMateriale(mat.idMateriale)} class="p-2.5 md:p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm shrink-0">
 									<Trash2 size={16} />
 								</button>
 							</div>
@@ -471,13 +471,13 @@
 		<div class="pt-8 border-t border-gray-200">
 			<h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Nuovo Caricamento</h3>
 			<div class="space-y-4">
-				<input bind:value={titoloMateriale} type="text" placeholder="TITOLO DOCUMENTO..." class="w-full p-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
-				<div class="border-2 border-dashed border-gray-200 rounded-2xl p-10 text-center bg-white group hover:bg-gray-50 hover:border-[#1B4B6B]/30 transition-all relative cursor-pointer">
+				<input bind:value={titoloMateriale} type="text" placeholder="TITOLO DOCUMENTO..." class="w-full p-4 bg-white border border-gray-200 rounded-xl md:rounded-2xl text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-[#1B4B6B]/20 transition-all" />
+				<div class="border-2 border-dashed border-gray-200 rounded-2xl p-6 md:p-10 text-center bg-white group hover:bg-gray-50 hover:border-[#1B4B6B]/30 transition-all relative cursor-pointer">
 					<input type="file" accept=".pdf,.doc,.docx,.zip,.xls,.xlsx" onchange={(e) => fileMateriale = e.currentTarget.files?.[0] || null} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
 					<div class="flex flex-col items-center gap-3 pointer-events-none">
 						<div class="p-4 bg-gray-50 rounded-full text-[#1B4B6B] shadow-sm"><UploadCloud size={24} /></div>
 						{#if fileMateriale}
-							<span class="text-xs font-black text-[#1B4B6B] truncate w-[80%] mx-auto">{fileMateriale.name}</span>
+							<span class="text-xs font-black text-[#1B4B6B] truncate w-[90%] mx-auto">{fileMateriale.name}</span>
 							<span class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Pronto</span>
 						{:else}
 							<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Allega file</span>
@@ -488,10 +488,12 @@
 		</div>
 	</div>
 	{#snippet footer()}
-		<button onclick={() => showModalMateriale = false} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-100 hover:bg-gray-50 uppercase text-[10px] transition-colors">Chiudi</button>
-		<button onclick={caricaMaterialeDidattico} disabled={isUploadingMateriale || !fileMateriale || !titoloMateriale.trim()} class="flex-1 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-[#153a54] uppercase text-[10px] shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
-			{#if isUploadingMateriale} <Loader2 class="animate-spin" size={16} /> {:else} <Send size={16} /> Invia {/if}
-		</button>
+		<div class="flex w-full gap-3">
+			<button onclick={() => showModalMateriale = false} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-100 hover:bg-gray-50 uppercase text-[10px] transition-colors">Chiudi</button>
+			<button onclick={caricaMaterialeDidattico} disabled={isUploadingMateriale || !fileMateriale || !titoloMateriale.trim()} class="flex-1 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-xl hover:bg-[#153a54] uppercase text-[10px] shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
+				{#if isUploadingMateriale} <Loader2 class="animate-spin" size={16} /> {:else} <Send size={16} /> Invia {/if}
+			</button>
+		</div>
 	{/snippet}
 </ModalCard>
 
@@ -499,41 +501,43 @@
 	{#snippet title()}
 		<span class="font-black uppercase tracking-tighter">Firma Registro</span>
 	{/snippet}
-	<div class="space-y-4">
+	<div class="space-y-4 max-h-[60vh] overflow-y-auto px-1">
 		{#if isActionLoading}
 			<div class="py-10 text-center"><Loader2 class="animate-spin mx-auto text-[#1B4B6B]" size={32} /></div>
 		{:else}
 			<div class="bg-[#1B4B6B]/5 border border-[#1B4B6B]/20 p-4 rounded-xl mb-6 flex gap-3">
 				<BookOpen class="text-[#1B4B6B] shrink-0" size={20} />
-				<p class="text-xs font-bold text-[#1B4B6B] uppercase">Verifica i presenti e firma per gli attestati.</p>
+				<p class="text-[11px] md:text-xs font-bold text-[#1B4B6B] uppercase leading-relaxed">Verifica i presenti e firma per gli attestati.</p>
 			</div>
 			<div class="space-y-2">
 				{#each iscrittiPresenti as isc}
 					<div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl">
-						<p class="text-sm font-extrabold text-[#1B4B6B] uppercase">{isc.emailUtente}</p>
+						<p class="text-[11px] md:text-sm font-extrabold text-[#1B4B6B] uppercase truncate">{isc.emailUtente}</p>
 					</div>
 				{:else}
-					<div class="p-6 text-center border-2 border-dashed border-gray-200 rounded-xl">Nessun presente.</div>
+					<div class="p-6 text-center border-2 border-dashed border-gray-200 rounded-xl text-gray-400 font-bold uppercase text-[10px]">Nessun presente.</div>
 				{/each}
 			</div>
 		{/if}
 	</div>
 	{#snippet footer()}
-		<button onclick={() => showModalFirma = false} disabled={isActionLoading} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-100 uppercase text-[10px]">Annulla</button>
-		<button onclick={controfirmaRegistro} disabled={isActionLoading || iscrittiPresenti.length === 0} class="flex-1 py-4 bg-emerald-600 text-white font-extrabold rounded-xl uppercase text-[10px]">Apponi Firma</button>
+		<div class="flex w-full gap-3">
+			<button onclick={() => showModalFirma = false} disabled={isActionLoading} class="flex-1 py-4 text-gray-400 font-extrabold rounded-xl border border-gray-100 uppercase text-[10px]">Annulla</button>
+			<button onclick={controfirmaRegistro} disabled={isActionLoading || iscrittiPresenti.length === 0} class="flex-1 py-4 bg-emerald-600 text-white font-extrabold rounded-xl uppercase text-[10px] shadow-lg disabled:opacity-50">Apponi Firma</button>
+		</div>
 	{/snippet}
 </ModalCard>
 
 <ModalCard bind:isOpen={showModalEliminaMateriale} maxWidth="max-w-md" headerClass="bg-red-600">
 	{#snippet title()}
-		<Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Eliminare il materiale?</span>
+		<Trash2 size={20} class="shrink-0"/> <span class="font-black uppercase tracking-tighter">Eliminare il materiale?</span>
 	{/snippet}
 	<div class="text-center py-4">
-		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-		<p class="text-sm text-gray-400 mb-8 uppercase font-bold">Questa azione è definitiva.</p>
+		<div class="w-16 md:w-20 h-16 md:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shrink-0"><Trash2 size={40}/></div>
+		<p class="text-sm text-gray-400 mb-8 uppercase font-bold px-4">Questa azione è definitiva.</p>
 	</div>
 	{#snippet footer()}
-		<div class="flex flex-col w-full gap-3">
+		<div class="flex flex-col gap-3 w-full">
 			<button onclick={confermaEliminaMateriale} class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all hover:bg-red-700">Sì, elimina</button>
 			<button onclick={() => { showModalEliminaMateriale = false; }} class="w-full py-4 text-[10px] font-black uppercase text-gray-400 hover:text-gray-600">No, annulla</button>
 		</div>

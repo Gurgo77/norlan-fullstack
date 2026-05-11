@@ -10,7 +10,6 @@
     content: { level: string; description: string; risk: string; }[];
   }
 
-  // NUOVA INTERFACCIA: Definisce la struttura esatta del docente
   interface DocenteCardData {
     nome: string;
     qualifica: string;
@@ -172,7 +171,6 @@
     }
   ];
 
-  // AGGIUNTO IL TIPO ALL'ARRAY: docenti: DocenteCardData[]
   let docenti: DocenteCardData[] = [
     {
       nome: "Dott.ssa Rosa BARBANO DI MAGGIO",

@@ -55,17 +55,17 @@
 			const elencoDalServer = dpiDataRaw as unknown as DpiBackendData[];
 			const tempDotazioni: Dpi[] = elencoDalServer.map((d) => {
 				const idReale = d.idAssegnazione || d.id || Date.now();
-				const dataScadenza = d.dataScadenzaRevisione || d.dataScadenza;
-				const info = getInfoScadenza(dataScadenza);
+				const dataScad = d.dataScadenzaRevisione || d.dataScadenza;
+				const info = getInfoScadenza(dataScad);
 
 				return {
 					id: idReale,
 					nome: d.tipo ? d.tipo.replace(/_/g, ' ') : (d.nomeDpi || 'SCONOSCIUTO'),
 					matricola: `DPI-${idReale}`,
 					stato: info.stato,
-					revisione: formattaDataScadenza(dataScadenza),
+					revisione: formattaDataScadenza(dataScad),
 					consegna: formattaDataScadenza(d.dataConsegna),
-					dataPerSort: dataScadenza || ''
+					dataPerSort: dataScad || ''
 				};
 			});
 
@@ -96,28 +96,35 @@
 		const dpi = dotazioni.find(d => d.id === idDpi);
 		if (!dpi) return;
 		const testo = `Salve, vorrei segnalare la necessità di sostituire o revisionare il seguente dispositivo: ${dpi.nome} (Matricola: ${dpi.matricola}).`;
-		goto(`/dashboard/dipendente/messaggi?testo=${encodeURIComponent(testo)}`);
+		goto(`/dashboard/dipendente/comunicazioni?testo=${encodeURIComponent(testo)}`);
 	}
+
+	function impostaFiltro(opzione: OpzioneFiltro) {
+		filtroStato = opzione;
+	}
+
 </script>
 
-<div in:fade class="max-w-[1600px] mx-auto space-y-8 pb-10">
+<div in:fade class="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-10 p-4 md:p-6">
 
-	<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+	<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8">
 		<div>
-			<h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">I Miei DPI</h1>
-			<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-				Utente: <span class="text-[#1B4B6B]">{utente?.nome ?? '...'} {utente?.cognome ?? ''}</span> | Gestione dotazioni e scadenze
+			<h1 class="text-2xl md:text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter leading-none">I Miei DPI</h1>
+			<p class="text-gray-400 font-bold uppercase text-[9px] md:text-[10px] tracking-widest mt-2 md:mt-1">
+				Utente: <span class="text-[#1B4B6B]">{utente?.nome ?? '...'} {utente?.cognome ?? ''}</span> | Gestione dotazioni
 			</p>
 		</div>
 
-		<div class="flex gap-4">
-			<div class="bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-				<div class="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center font-black">{conteggi.critici}</div>
-				<span class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">Scaduti</span>
-			</div>
-			<div class="bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-				<div class="w-10 h-10 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center font-black">{conteggi.attenzione}</div>
-				<span class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">In Scadenza</span>
+		<div class="w-full lg:w-auto overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 custom-scrollbar-data">
+			<div class="flex gap-4 min-w-max">
+				<div class="bg-white px-5 py-3 md:px-6 md:py-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+					<div class="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center font-black">{conteggi.critici}</div>
+					<span class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">Scaduti</span>
+				</div>
+				<div class="bg-white px-5 py-3 md:px-6 md:py-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+					<div class="w-10 h-10 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center font-black">{conteggi.attenzione}</div>
+					<span class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">In Scadenza</span>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -129,15 +136,15 @@
 					bind:value={searchQuery}
 					type="text"
 					placeholder="Cerca per nome o matricola..."
-					class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+					class="w-full pl-12 pr-6 py-3 md:py-4 bg-white border border-gray-100 rounded-xl md:rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
 			/>
 		</div>
 
-		<div class="flex bg-white shadow-sm border border-gray-100 p-1.5 rounded-[1.5rem] gap-1 overflow-x-auto">
+		<div class="flex bg-white shadow-sm border border-gray-100 p-1.5 rounded-xl md:rounded-[1.5rem] gap-1 overflow-x-auto custom-scrollbar-data">
 			{#each opzioniFiltro as opzione (opzione)}
 				<button
 						onclick={() => impostaFiltro(opzione)}
-						class="px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap
+						class="px-4 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap
                 {filtroStato === opzione ? 'bg-[#1B4B6B] text-white shadow-md' : 'text-gray-400 hover:text-[#1B4B6B]'}"
 				>
 					{opzione}
@@ -147,12 +154,12 @@
 	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
+		<div class="py-24 md:py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione inventario DPI...</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 			{#each dpiFiltrati as dpi (dpi.id)}
 				<div in:scale={{duration: 300}}>
 					<DpiCard
@@ -172,9 +179,9 @@
 		</div>
 
 		{#if dpiFiltrati.length === 0}
-			<div class="py-20 bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm">
+			<div class="py-20 md:py-32 bg-white border border-gray-100 rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-sm p-6">
 				<HardHat size={48} class="text-gray-200 mb-4" />
-				<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun dispositivo trovato</h3>
+				<h3 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase italic">Nessun dispositivo trovato</h3>
 				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">L'inventario non contiene corrispondenze per i criteri inseriti.</p>
 			</div>
 		{/if}
@@ -183,4 +190,14 @@
 
 <style>
 	:global(body) { background-color: #F9FAFB; }
+	.custom-scrollbar-data::-webkit-scrollbar {
+		height: 4px;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar-thumb {
+		background: #E2E8F0;
+		border-radius: 10px;
+	}
 </style>

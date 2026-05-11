@@ -22,8 +22,8 @@ export class IscrizioneCorso {
 	dataOrarioCorso: string;
 	presenzaConfermata: boolean;
 	statoCorso?: string;
-	idDocumento?: number; // <-- Aggiunta qui
-	documentoAttestato?: Documento; // <-- Aggiunta qui
+	idDocumento?: number;
+	documentoAttestato?: Documento;
 	feedbackInviato?: boolean;
 
 	constructor(data: IscrizioneData) {

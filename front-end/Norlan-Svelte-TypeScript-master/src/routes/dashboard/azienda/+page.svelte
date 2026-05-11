@@ -130,33 +130,33 @@
 
 </script>
 
-<div in:fade class="max-w-7xl mx-auto space-y-8 pb-20 p-6">
+<div in:fade class="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 p-4 md:p-6">
 
-	<div class="mb-10">
-		<div class="flex items-center gap-3 mb-3">
+	<div class="mb-6 md:mb-10">
+		<div class="flex items-center gap-3 mb-2 md:mb-3">
 			<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm"><Building2 size={20} /></div>
-			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
+			<p class="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
 		</div>
-		<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">
+		<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter truncate">
 			{utenteAzienda?.ragioneSociale || 'Area Azienda'}
 		</h1>
-		<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter mt-1">Pannello di controllo stato compliance.</p>
+		<p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Pannello di controllo stato compliance.</p>
 	</div>
 
 	{#if isLoading}
-		<div class="py-32 flex flex-col items-center justify-center gap-4">
+		<div class="py-24 md:py-32 flex flex-col items-center justify-center gap-4">
 			<Loader2 size={48} class="animate-spin text-[#1B4B6B]" />
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione Dati NorLan...</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-14">
-			<div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-5 transition-all hover:shadow-md">
-				<div class="w-14 h-14 rounded-2xl flex items-center justify-center {status.color} shadow-lg text-white shrink-0">
+		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-10 md:mb-14">
+			<div class="bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4 md:gap-5 transition-all hover:shadow-md sm:col-span-2 md:col-span-1 xl:col-span-1">
+				<div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center {status.color} shadow-lg text-white shrink-0">
 					<status.icon size={24} class={status.label === 'ATTENZIONE' ? 'text-[#1B4B6B]' : 'text-white'} />
 				</div>
-				<div>
+				<div class="min-w-0">
 					<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Compliance</p>
-					<h2 class="text-xl font-black text-[#1B4B6B] uppercase leading-none tracking-tight">{status.label}</h2>
+					<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase leading-none tracking-tight truncate">{status.label}</h2>
 				</div>
 			</div>
 
@@ -194,22 +194,22 @@
 			/>
 		</div>
 
-		<div class="mb-14">
-			<div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-3">
+		<div class="mb-10 md:mb-14">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-gray-200 pb-3 gap-3">
 				<div class="flex items-center gap-3">
 					<div class="p-2 bg-amber-100 text-amber-600 rounded-lg"><AlertTriangle size={20}/></div>
-					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Scadenze Documentali</h2>
+					<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Scadenze Documentali</h2>
 				</div>
-				<a href="/dashboard/azienda/documenti" class="text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Vedi tutte <ArrowRight size={14}/></a>
+				<a href="/dashboard/azienda/documenti" class="text-[9px] md:text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Vedi tutte <ArrowRight size={14}/></a>
 			</div>
 
 			{#if alertScadenzeDocs.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center">
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center bg-gray-50/30">
 					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
-					<p class="text-gray-400 font-bold uppercase text-xs">Tutti i documenti aziendali sono in regola.</p>
+					<p class="text-gray-400 font-bold uppercase text-[10px] md:text-xs">Tutti i documenti aziendali sono in regola.</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
 					{#each alertScadenzeDocs as doc (doc.idDocumento)}
 						{@const info = getInfoScadenza(doc.dataScadenza)}
 						<div in:scale>
@@ -228,22 +228,22 @@
 			{/if}
 		</div>
 
-		<div class="mb-14">
-			<div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-3">
+		<div class="mb-10 md:mb-14">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-gray-200 pb-3 gap-3">
 				<div class="flex items-center gap-3">
 					<div class="p-2 bg-orange-100 text-orange-600 rounded-lg"><HardHat size={20}/></div>
-					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Stato Dispositivi DPI</h2>
+					<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Stato Dispositivi DPI</h2>
 				</div>
-				<a href="/dashboard/azienda/dpi" class="text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Gestisci Assegnazioni <ArrowRight size={14}/></a>
+				<a href="/dashboard/azienda/dpi" class="text-[9px] md:text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Gestisci Assegnazioni <ArrowRight size={14}/></a>
 			</div>
 
 			{#if alertDpis.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center">
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center bg-gray-50/30">
 					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
-					<p class="text-gray-400 font-bold uppercase text-xs">Tutti i DPI assegnati sono in regola.</p>
+					<p class="text-gray-400 font-bold uppercase text-[10px] md:text-xs">Tutti i DPI assegnati sono in regola.</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
 					{#each alertDpis as dpi (dpi.id || dpi.idAssegnazione || Math.random())}
 						{@const info = getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza)}
 						{@const nomeDpi = (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' ')}
@@ -263,22 +263,22 @@
 			{/if}
 		</div>
 
-		<div class="mb-14">
-			<div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-3">
+		<div class="mb-10 md:mb-14">
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-gray-200 pb-3 gap-3">
 				<div class="flex items-center gap-3">
 					<div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><PlayCircle size={20}/></div>
-					<h2 class="text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Formazione in Programma</h2>
+					<h2 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase tracking-tight">Formazione in Programma</h2>
 				</div>
-				<a href="/dashboard/azienda/formazione" class="text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Gestisci Formazione <ArrowRight size={14}/></a>
+				<a href="/dashboard/azienda/formazione" class="text-[9px] md:text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Gestisci Formazione <ArrowRight size={14}/></a>
 			</div>
 
 			{#if prossimiCorsi.length === 0}
-				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center">
+				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center bg-gray-50/30">
 					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
-					<p class="text-gray-400 font-bold uppercase text-xs">Nessun corso programmato al momento.</p>
+					<p class="text-gray-400 font-bold uppercase text-[10px] md:text-xs">Nessun corso programmato al momento.</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
 					{#each prossimiCorsi as corso (corso.idCorso)}
 						<div in:scale>
 							<DashboardCorsoCard
@@ -298,22 +298,26 @@
 			{/if}
 		</div>
 
-		<div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-			<div class="flex items-center gap-6">
-				<div class="w-16 h-16 rounded-[1.5rem] bg-gray-50 flex items-center justify-center text-[#1B4B6B] shrink-0 border border-gray-100">
-					<Briefcase size={28} />
+		<div class="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+			<div class="flex items-center gap-4 md:gap-6 min-w-0 w-full md:w-auto">
+				<div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.5rem] bg-gray-50 flex items-center justify-center text-[#1B4B6B] shrink-0 border border-gray-100 shadow-inner">
+					<Briefcase size={28} class="md:w-7 md:h-7 w-6 h-6" />
 				</div>
-				<div>
-					<h4 class="text-lg font-black text-[#1B4B6B] uppercase tracking-tight">{utenteAzienda?.ragioneSociale}</h4>
-					<div class="flex flex-wrap items-center gap-4 mt-2">
-						<p class="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1"><FileText size={12}/> P.IVA: {utenteAzienda?.partitaIva}</p>
-						<p class="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1"><User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}</p>
+				<div class="min-w-0">
+					<h4 class="text-base md:text-lg font-black text-[#1B4B6B] uppercase tracking-tight truncate">{utenteAzienda?.ragioneSociale}</h4>
+					<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 md:mt-2">
+						<p class="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1"><FileText size={12}/> P.IVA: {utenteAzienda?.partitaIva}</p>
+						<p class="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1"><User size={12} class="text-[#1B4B6B]" /> {utenteAzienda?.referenteAziendale || 'Referente N.D.'}</p>
 					</div>
 				</div>
 			</div>
-			<a href="/dashboard/azienda/account" class="w-full md:w-auto py-3 px-8 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 whitespace-nowrap text-center">
+			<a href="/dashboard/azienda/account" class="w-full md:w-auto py-3.5 px-8 bg-[#1B4B6B] text-white rounded-xl text-[10px] font-black uppercase hover:bg-[#153a54] transition-all shadow-lg shadow-blue-900/10 whitespace-nowrap text-center">
 				Modifica Profilo
 			</a>
 		</div>
 	{/if}
 </div>
+
+<style>
+	:global(body) { background-color: #F9FAFB; }
+</style>

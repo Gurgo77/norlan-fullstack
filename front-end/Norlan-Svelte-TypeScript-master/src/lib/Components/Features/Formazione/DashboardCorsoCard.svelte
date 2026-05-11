@@ -38,6 +38,7 @@
         onEliminaCorso?: () => void;
         onDownloadAttestato?: () => void;
         onConcludiCorso?: () => void;
+        onDownloadMateriale?: (id: number) => void;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -50,7 +51,8 @@
         onAnnullaIscrizione,
         onEliminaCorso,
         onDownloadAttestato,
-        onConcludiCorso
+        onConcludiCorso,
+        onDownloadMateriale
     }: Props = $props();
 
     const getStatoConfig = (stato: StatoCorso) => {
@@ -180,12 +182,19 @@
             <div class="flex w-full gap-2">
                 {#if corso.stato === 'IN_SVOLGIMENTO'}
                     {#if corso.materiali && corso.materiali.length > 0}
-                        <button onclick={onAzioneCorso} class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1B4B6B] px-4 py-2.5 text-[10px] font-black uppercase text-white shadow-md transition-all hover:bg-[#1B4B6B]/90 hover:shadow-lg">
-                            <FileText size={14} /> Vedi Materiale
-                        </button>
-                    {:else}
-                        <div class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-2.5 text-[10px] font-black uppercase text-gray-400">
-                            <FileText size={14} class="opacity-50" /> Nessun Materiale
+                        <div class="mt-3 space-y-2">
+                            {#each corso.materiali as m}
+                                <button
+                                        onclick={() => onDownloadMateriale?.(m.id)}
+                                        class="flex w-full items-center justify-between rounded-lg bg-gray-50 p-2 text-[9px] font-bold uppercase text-[#1B4B6B] hover:bg-gray-100 transition-colors"
+                                >
+                                    <div class="flex items-center gap-2 truncate">
+                                        <FileText size={12} />
+                                        <span class="truncate">{m.titolo}</span>
+                                    </div>
+                                    <Download size={12} class="shrink-0" />
+                                </button>
+                            {/each}
                         </div>
                     {/if}
                 {:else if corso.stato === 'COMPLETATO'}

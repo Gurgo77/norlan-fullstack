@@ -92,15 +92,15 @@
 	}
 </script>
 
-<div in:fade class="max-w-7xl mx-auto p-6 space-y-8">
-	<div class="flex flex-col md:flex-row justify-between items-start gap-6">
+<div in:fade class="max-w-7xl mx-auto p-4 md:p-6 space-y-6 md:space-y-8">
+	<div class="flex flex-col md:flex-row justify-between items-start gap-4">
 		<div>
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">SCADENZIARIO</h1>
-			<p class="text-gray-500 font-bold uppercase text-[10px] tracking-widest mt-1">Monitoraggio pratiche in scadenza.</p>
+			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">SCADENZIARIO</h1>
+			<p class="text-gray-500 font-bold uppercase text-[9px] md:text-[10px] tracking-widest mt-1">Monitoraggio pratiche in scadenza.</p>
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 		<StatCard
 				titolo="Pratiche in Scadenza"
 				valore={statistiche.inScadenza}
@@ -120,34 +120,34 @@
 	</div>
 
 	<div class="relative w-full max-w-md">
-		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
+		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
 		<input
 				bind:value={searchQuery}
 				type="text"
 				placeholder="Cerca azienda o documento..."
-				class="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
+				class="w-full pl-12 pr-6 py-3 md:py-4 bg-white border border-gray-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm transition-all"
 		/>
 	</div>
 
 	{#if isLoading}
 		<div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
 	{:else if filteredDocumenti.length === 0}
-		<div class="py-24 text-center bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200">
-			<h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessuna criticità</h3>
+		<div class="py-20 md:py-24 text-center bg-gray-50/50 rounded-[2rem] md:rounded-[2.5rem] border border-dashed border-gray-200">
+			<h3 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase italic">Nessuna criticità</h3>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
 			{#each filteredDocumenti as doc (doc.idDocumento)}
 				{@const info = getInfoScadenza(doc.dataScadenza)}
 				<div in:scale>
 					<DocCard
 							documento={{
-								id: doc.idDocumento,
-								titolo: doc.tipologia.replace(/_/g, ' '),
-								sottotitolo: doc.ragioneSocialeAzienda,
-								stato: info.stato,
-								dataScadenza: formattaDataScadenza(doc.dataScadenza)
-							}}
+                         id: doc.idDocumento,
+                         titolo: doc.tipologia.replace(/_/g, ' '),
+                         sottotitolo: doc.ragioneSocialeAzienda,
+                         stato: info.stato,
+                         dataScadenza: formattaDataScadenza(doc.dataScadenza)
+                      }}
 							ruolo="admin"
 							onDownload={() => scarica(doc.idDocumento, doc.filePath)}
 							onDelete={() => preparaEliminazione(doc)}
@@ -165,10 +165,10 @@
 	{/snippet}
 
 	<div class="text-center py-4">
-		<div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-			<Trash2 size={40}/>
+		<div class="w-16 h-16 md:w-20 md:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<Trash2 size={32} class="md:hidden"/><Trash2 size={40} class="hidden md:block"/>
 		</div>
-		<p class="text-sm text-gray-400 mb-6">Stai per rimuovere definitivamente: <br>
+		<p class="text-sm text-gray-400 mb-6 px-2">Stai per rimuovere definitivamente: <br>
 			<span class="font-bold text-[#1B4B6B]">{docDaEliminare?.tipologia.replace(/_/g, ' ')}</span>
 		</p>
 

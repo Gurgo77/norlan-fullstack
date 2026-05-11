@@ -16,7 +16,7 @@
         onDownload,
         onDelete,
         onEdit,
-        onUpdate // Prop specifica per l'aggiornamento con le frecce
+        onUpdate
     } = $props<{
         tipo: 'DOCUMENTO' | 'DPI' | 'ATTESTATO';
         titolo: string;
@@ -91,12 +91,15 @@
             </div>
         {/if}
         <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5 {stato.peso === 1 ? 'text-red-600 font-black' : 'text-gray-400'}">
-                <AlertTriangle size={10} />
-                <span class="text-[9px] font-bold uppercase">
-                    {dataScadenza && dataScadenza !== '9999-12-31' ? `Scad: ${new Date(dataScadenza).toLocaleDateString()}` : 'Senza Scadenza'}
-                </span>
-            </div>
+            {#if tipo !== 'ATTESTATO'}
+                <div class="flex items-center gap-1.5 {stato.peso === 1 ? 'text-red-600 font-black' : 'text-gray-400'}">
+                    <AlertTriangle size={10} />
+                    <span class="text-[9px] font-bold uppercase">
+                {dataScadenza && dataScadenza !== '9999-12-31' ? `Scad: ${new Date(dataScadenza).toLocaleDateString()}` : 'Senza Scadenza'}
+            </span>
+                </div>
+            {/if}
+
             <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border {stato.border} {stato.bg} {stato.colore}">
                 <IconaStato size={10} />
                 <span class="text-[8px] font-black uppercase tracking-wider">{stato.label}</span>

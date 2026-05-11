@@ -121,16 +121,16 @@
     }
 </script>
 
-<div in:fade class="max-w-[1600px] mx-auto p-6 pb-20">
-    <div class="mb-10 flex flex-col xl:flex-row justify-between items-end gap-6">
+<div in:fade class="max-w-[1600px] mx-auto p-4 md:p-6 pb-20">
+    <div class="mb-6 md:mb-10 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
         <div class="w-full xl:w-auto">
-            <h1 class="text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Controllo Compliance DPI</h1>
+            <h1 class="text-2xl md:text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Controllo Compliance DPI</h1>
 
-            <div class="flex flex-wrap items-center gap-3 mt-5">
+            <div class="flex flex-wrap items-center gap-2 md:gap-3 mt-4 md:mt-5">
                 {#each ['TUTTI', 'DANGER', 'WARNING', 'OK'] as s}
                     <button
                             onclick={() => filtroStato = s}
-                            class="px-5 py-2 rounded-full text-[10px] font-black uppercase transition-all shadow-sm
+                            class="px-4 md:px-5 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase transition-all shadow-sm
                         {filtroStato === s ? 'bg-[#1B4B6B] text-white' : 'bg-white text-gray-400 hover:bg-gray-50'}">
                         {s === 'DANGER' ? 'Scaduti' : s === 'WARNING' ? 'In Scadenza' : s}
                         ({s === 'TUTTI' ? globalStats.totali : s === 'DANGER' ? globalStats.scaduti : s === 'WARNING' ? globalStats.warning : (globalStats.totali - globalStats.scaduti - globalStats.warning)})
@@ -139,87 +139,89 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3 w-full xl:w-auto overflow-x-auto pb-2 xl:pb-0">
-            <div class="bg-white rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm min-w-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/10 cursor-default border border-transparent hover:border-blue-100">
+        <div class="flex items-center gap-3 w-full xl:w-auto overflow-x-auto pb-2 xl:pb-0 custom-scrollbar-data">
+            <div class="bg-white rounded-2xl px-4 md:px-5 py-3 flex items-center gap-3 shadow-sm min-w-[140px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/10 cursor-default border border-transparent hover:border-blue-100 shrink-0">
                 <div class="p-2 bg-gray-50 text-gray-500 rounded-xl"><HardHat size={16}/></div>
                 <div>
                     <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Asset Totali</p>
-                    <p class="text-xl font-black text-[#1B4B6B] leading-none mt-1">{globalStats.totali}</p>
+                    <p class="text-lg md:text-xl font-black text-[#1B4B6B] leading-none mt-1">{globalStats.totali}</p>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm min-w-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-red-900/10 cursor-default border border-transparent hover:border-red-100">
+            <div class="bg-white rounded-2xl px-4 md:px-5 py-3 flex items-center gap-3 shadow-sm min-w-[140px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-red-900/10 cursor-default border border-transparent hover:border-red-100 shrink-0">
                 <div class="p-2 bg-red-50 text-red-600 rounded-xl"><ShieldOff size={16}/></div>
                 <div>
                     <p class="text-[9px] font-black text-red-400 uppercase tracking-widest">Scaduti</p>
-                    <p class="text-xl font-black text-red-600 leading-none mt-1">{globalStats.scaduti}</p>
+                    <p class="text-lg md:text-xl font-black text-red-600 leading-none mt-1">{globalStats.scaduti}</p>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm min-w-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-900/10 cursor-default border border-transparent hover:border-amber-100">
+            <div class="bg-white rounded-2xl px-4 md:px-5 py-3 flex items-center gap-3 shadow-sm min-w-[140px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-900/10 cursor-default border border-transparent hover:border-amber-100 shrink-0">
                 <div class="p-2 bg-amber-50 text-amber-600 rounded-xl"><Clock size={16}/></div>
                 <div>
                     <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest">In Scadenza</p>
-                    <p class="text-xl font-black text-amber-600 leading-none mt-1">{globalStats.warning}</p>
+                    <p class="text-lg md:text-xl font-black text-amber-600 leading-none mt-1">{globalStats.warning}</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="mb-12 relative max-w-xl">
+    <div class="mb-8 md:mb-12 relative w-full max-w-xl">
         <Search class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input bind:value={searchQuery} type="text" placeholder="Cerca azienda o dipendente..." class="w-full pl-14 pr-4 py-4 bg-white border border-gray-100 rounded-2xl text-xs font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-[#1B4B6B]/5 transition-all" />
+        <input bind:value={searchQuery} type="text" placeholder="Cerca azienda o dipendente..." class="w-full pl-14 pr-4 py-3 md:py-4 bg-white border border-gray-100 rounded-2xl text-xs font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-[#1B4B6B]/5 transition-all" />
     </div>
 
     {#if isLoading}
         <div class="py-40 text-center"><Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto opacity-20" /></div>
     {:else}
-        <div class="space-y-12">
+        <div class="space-y-8 md:space-y-12">
             {#each gruppiFiltrati as gruppo (gruppo.nome)}
-                <div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden" transition:slide>
+                <div class="bg-white rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden" transition:slide>
 
-                    <div class="p-6 md:px-8 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 gap-4">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-[#1B4B6B] text-white rounded-2xl flex items-center justify-center shadow-lg shrink-0"><Building2 size={20}/></div>
-                            <h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter leading-none">{gruppo.nome}</h2>
+                    <div class="p-5 md:p-8 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 gap-4">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-[#1B4B6B] text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shrink-0"><Building2 size={20}/></div>
+                            <h2 class="text-lg md:text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter leading-none truncate">{gruppo.nome}</h2>
                         </div>
 
-                        <div class="flex items-center gap-2 p-1.5 bg-red-50/50 rounded-2xl">
-                            <div class="px-3">
-                                <span class="text-[10px] font-black text-red-600 uppercase">Sollecita:</span>
+                        <div class="flex items-center gap-2 p-1.5 bg-red-50/50 rounded-2xl w-fit">
+                            <div class="px-2 md:px-3">
+                                <span class="text-[9px] md:text-[10px] font-black text-red-600 uppercase">Sollecita:</span>
                             </div>
-                            <button onclick={() => sollecitaAzienda(gruppo, 'email')} class="p-2.5 bg-white text-red-600 rounded-xl shadow-sm hover:bg-red-600 hover:text-white transition-all group">
+                            <button onclick={() => sollecitaAzienda(gruppo, 'email')} class="p-2 md:p-2.5 bg-white text-red-600 rounded-lg md:rounded-xl shadow-sm hover:bg-red-600 hover:text-white transition-all group">
                                 <Mail size={16} class="group-hover:scale-110 transition-transform" />
                             </button>
-                            <button onclick={() => sollecitaAzienda(gruppo, 'chat')} class="p-2.5 bg-[#1B4B6B] text-white rounded-xl shadow-sm hover:bg-[#153a54] transition-all group">
+                            <button onclick={() => sollecitaAzienda(gruppo, 'chat')} class="p-2 md:p-2.5 bg-[#1B4B6B] text-white rounded-lg md:rounded-xl shadow-sm hover:bg-[#153a54] transition-all group">
                                 <MessageSquare size={16} class="group-hover:scale-110 transition-transform" />
                             </button>
                         </div>
                     </div>
 
-                    <div class="p-6 md:px-8">
+                    <div class="p-5 md:p-8">
                         {#each gruppo.lavoratori as dip (dip.idUtente)}
-                            <div class="mb-10 last:mb-0">
+                            <div class="mb-8 md:mb-10 last:mb-0">
 
-                                <div class="flex items-center gap-3 mb-6">
-                                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-[10px] font-black text-[#1B4B6B] shrink-0">{dip.nome[0]}{dip.cognome[0]}</div>
-                                    <h3 class="text-sm font-black text-[#1B4B6B] uppercase">{dip.nome} {dip.cognome}</h3>
-                                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest ml-2 hidden sm:inline-block">C.F: {dip.codiceFiscale}</span>
+                                <div class="flex items-center gap-3 mb-4 md:mb-6">
+                                    <div class="w-7 h-7 md:w-8 md:h-8 bg-gray-100 rounded-lg flex items-center justify-center text-[9px] md:text-[10px] font-black text-[#1B4B6B] shrink-0 uppercase">{dip.nome[0]}{dip.cognome[0]}</div>
+                                    <h3 class="text-xs md:text-sm font-black text-[#1B4B6B] uppercase truncate">{dip.nome} {dip.cognome}</h3>
+                                    <span class="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest ml-2 hidden sm:inline-block">C.F: {dip.codiceFiscale}</span>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {#each dip.dpis as dpi (dpi._uniqueKey)}
-                                        <DpiCard
-                                                ruolo="admin"
-                                                dpi={{
-                                                id: dpi._uniqueKey,
-                                                nome: (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' '),
-                                                stato: getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato,
-                                                dataRevisione: formattaDataScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza),
-                                                dataConsegna: formattaDataScadenza(dpi.dataConsegna)
-                                            }}
-                                                onElimina={() => preparaEliminazione(dpi, dip.idUtente)}
-                                        />
+                                        <div in:scale>
+                                            <DpiCard
+                                                    ruolo="admin"
+                                                    dpi={{
+                                                    id: dpi._uniqueKey,
+                                                    nome: (dpi.tipo === 'ALTRO' && dpi.nomeDpi) ? dpi.nomeDpi : (dpi.tipo || 'DPI').replace(/_/g, ' '),
+                                                    stato: getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato,
+                                                    dataRevisione: formattaDataScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza),
+                                                    dataConsegna: formattaDataScadenza(dpi.dataConsegna)
+                                                }}
+                                                    onElimina={() => preparaEliminazione(dpi, dip.idUtente)}
+                                            />
+                                        </div>
                                     {/each}
                                 </div>
 
@@ -227,14 +229,12 @@
                         {/each}
                     </div>
                 </div>
-            {/each}
-
-            {#if gruppiFiltrati.length === 0}
-                <div class="py-32 text-center bg-white rounded-[3rem] border border-gray-100 shadow-sm">
+            {:else}
+                <div class="py-32 text-center bg-white rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm">
                     <ShieldCheck size={48} class="mx-auto text-gray-200 mb-4" />
-                    <h3 class="text-xl font-black text-[#1B4B6B] uppercase italic">Nessun Risultato</h3>
+                    <h3 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase italic">Nessun Risultato</h3>
                 </div>
-            {/if}
+            {/each}
         </div>
     {/if}
 
@@ -244,10 +244,10 @@
         {/snippet}
 
         <div class="text-center py-4">
-            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40}/></div>
-            <p class="text-sm text-gray-400">
+            <div class="w-16 h-16 md:w-20 md:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} class="md:hidden" /><Trash2 size={40} class="hidden md:block" /></div>
+            <p class="text-sm text-gray-400 px-4">
                 Stai per annullare l'assegnazione del dispositivo:<br>
-                <span class="font-bold text-[#1B4B6B]">
+                <span class="font-bold text-[#1B4B6B] block mt-1">
                     {(dpiDaEliminare?.tipo === 'ALTRO' && dpiDaEliminare?.nomeDpi) ? dpiDaEliminare.nomeDpi : (dpiDaEliminare?.tipo || 'DPI').replace(/_/g, ' ')}
                 </span>
             </p>
@@ -268,4 +268,7 @@
 
 <style>
     :global(body) { background-color: #F9FAFB; }
+    .custom-scrollbar-data::-webkit-scrollbar { height: 4px; }
+    .custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 </style>

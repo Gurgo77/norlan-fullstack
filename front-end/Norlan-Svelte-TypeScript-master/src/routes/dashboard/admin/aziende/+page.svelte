@@ -361,19 +361,19 @@
 	] as any[] : []);
 </script>
 
-<div in:fade class="max-w-7xl mx-auto p-6">
+<div in:fade class="max-w-7xl mx-auto p-4 md:p-6">
 	{#if !selectedAzienda}
-		<div class="mb-10 flex justify-between items-start">
+		<div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 			<div>
-				<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafiche Aziende</h1>
+				<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafiche Aziende</h1>
 				<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Gestione centralizzata NorLan.</p>
 			</div>
-			<button onclick={apriModaleRegistrazione} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
+			<button onclick={apriModaleRegistrazione} class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-lg hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3">
 				<Plus size={18} /> Nuova Azienda
 			</button>
 		</div>
 
-		<div class="mb-8 relative w-72 group">
+		<div class="mb-8 relative w-full md:w-72 group">
 			<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={16} />
 			<input bind:value={searchQuery} type="text" placeholder="Filtra azienda..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase" />
 		</div>
@@ -412,12 +412,12 @@
 			/>
 
 			<div in:slide class="space-y-8 mb-16 mt-12">
-				<div class="flex items-center justify-between">
+				<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 					<div class="flex items-center gap-4">
 						<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl shadow-inner"><FileText size={24} /></div>
-						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiAziendaliFiltrati.length})</h2>
+						<h2 class="text-xl md:text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Documentazione ({documentiAziendaliFiltrati.length})</h2>
 					</div>
-					<button onclick={apriModalUploadNuovo} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-2.5 rounded-xl font-extrabold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-all shadow-md">
+					<button onclick={apriModalUploadNuovo} class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-2.5 rounded-xl font-extrabold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-all shadow-md">
 						<Plus size={16} /> Carica Documento
 					</button>
 				</div>
@@ -444,12 +444,12 @@
 			</div>
 
 			<div in:slide class="space-y-8 mb-20">
-				<div class="flex items-center justify-between">
+				<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 					<div class="flex items-center gap-4">
 						<div class="p-3 bg-[#1B4B6B]/10 text-[#1B4B6B] rounded-2xl shadow-inner"><Users size={24} /></div>
-						<h2 class="text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale ({dipendentiCorrenti.length})</h2>
+						<h2 class="text-xl md:text-2xl font-black text-[#1B4B6B] uppercase tracking-tighter">Personale ({dipendentiCorrenti.length})</h2>
 					</div>
-					<button onclick={() => (showDipendenteModal = true)} class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-2.5 rounded-xl font-extrabold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-all shadow-md">
+					<button onclick={() => (showDipendenteModal = true)} class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-6 py-2.5 rounded-xl font-extrabold uppercase text-[10px] flex items-center gap-2 hover:bg-[#1B4B6B] hover:text-white transition-all shadow-md">
 						<UserPlus size={16} /> Aggiungi Dipendente
 					</button>
 				</div>
@@ -486,7 +486,7 @@
 		{/snippet}
 
 		<div class="space-y-4">
-			<div class="grid grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div class="space-y-1">
 					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Nome *</label>
 					<input bind:value={formDipendente.nome} placeholder="Es: Mario" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
@@ -497,7 +497,7 @@
 				</div>
 			</div>
 
-			<div class="grid grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div class="space-y-1">
 					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase">Codice Fiscale *</label>
 					<input bind:value={formDipendente.codiceFiscale} maxlength="16" placeholder="RSSMRA..." class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#1B4B6B] outline-none uppercase" />
@@ -534,11 +534,11 @@
 		{/snippet}
 
 		<div class="space-y-6">
-			<div class="grid grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Modulo</label><select bind:value={formDocumento.modulo} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-[#1B4B6B]">{#each Object.values(ModuloServizio) as mod (mod)}<option value={mod}>{mod}</option>{/each}</select></div>
 				<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Tipologia</label><select bind:value={formDocumento.tipologia} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold uppercase focus:ring-[#1B4B6B]">{#each Object.values(TipoDocumento) as tipo (tipo)}<option value={tipo}>{tipo.replace(/_/g, ' ')}</option>{/each}</select></div>
 			</div>
-			<div class="grid grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div>
 					<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Data di Rilascio *</label>
 					<input type="date" max="9999-12-31" bind:value={formDocumento.dataRilascio} class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#1B4B6B] outline-none" />
@@ -577,7 +577,7 @@
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
 			<div class="col-span-full mb-2">
 				<label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-3">Tipo di Organizzazione *</label>
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<button type="button" onclick={() => formAzienda.hasDipendenti = false} class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all {!formAzienda.hasDipendenti ? 'border-[#1B4B6B] bg-[#1B4B6B]/5' : 'border-gray-100 hover:border-gray-200'}">
 						<User size={20} class={!formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'} />
 						<span class="text-[10px] font-black uppercase {!formAzienda.hasDipendenti ? 'text-[#1B4B6B]' : 'text-gray-400'}">Ditta Individuale</span>
@@ -610,7 +610,7 @@
 				{/if}
 
 				<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Referente Aziendale</label><input bind:value={formAzienda.referenteAziendale} placeholder="Nome e Cognome" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
-				<div class="grid grid-cols-2 gap-3">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Telefono</label><input bind:value={formAzienda.telefono} placeholder="Fisso" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 					<div><label class="block text-[10px] font-bold text-[#1B4B6B] uppercase mb-1">Cellulare</label><input bind:value={formAzienda.cellulare} placeholder="Mobile" class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-[#1B4B6B]" /></div>
 				</div>

@@ -10,12 +10,14 @@
 	import type { LogSincronizzazione } from '$lib/models/LogSincronizzazione';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 
+	let { children } = $props();
+
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
 	type FiltroGravita = 'TUTTI' | 'INFO' | 'ERROR';
-	const filtriDisponibili: FiltroGravita[] = ['TUTTI', 'INFO', 'ERROR'];
+	const filtriDisponibili: FiltroGravita[] = ['TUTTI' , 'INFO' , 'ERROR'];
 	let filtroGravita = $state<FiltroGravita>('TUTTI');
 
 	let currentPage = $state(1);
@@ -95,23 +97,23 @@
 	}
 </script>
 
-<div in:fade>
-	<div class="mb-10 flex justify-between items-start">
+<div in:fade class="p-4 md:p-6 lg:p-0">
+	<div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 		<div>
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">REPORT & LOG</h1>
-			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter">Tracciamento delle attività e statistiche di sistema.</p>
+			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">REPORT & LOG</h1>
+			<p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Tracciamento delle attività e statistiche di sistema.</p>
 		</div>
 
 		<button
 				onclick={esportaReport}
-				class="bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
+				class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
 		>
 			<Download size={18} />
 			Esporta Registri
 		</button>
 	</div>
 
-	<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
 		<StatCard titolo="Operazioni Totali" valore={operazioniTotali} icona={Activity} bgIcona="bg-blue-50" testoIcona="text-[#1B4B6B]" hoverBgIcona="group-hover:bg-[#1B4B6B]"/>
 		<StatCard titolo="Accessi Rilevati" valore={accessiRilevati} icona={User} bgIcona="bg-green-50" testoIcona="text-green-600" hoverBgIcona="group-hover:bg-green-600"/>
 		<StatCard titolo="Doc. Processati" valore={documentiProcessati} icona={FileText} bgIcona="bg-indigo-50" testoIcona="text-indigo-600" hoverBgIcona="group-hover:bg-indigo-600"/>
@@ -119,8 +121,8 @@
 	</div>
 
 	<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-		<div class="p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center bg-gray-50/30 gap-4">
-			<div class="flex items-center gap-4 w-full md:w-auto">
+		<div class="p-4 md:p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-50/30 gap-4">
+			<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
 				<div class="relative w-full md:w-72">
 					<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
 					<input
@@ -130,11 +132,11 @@
 							class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase"
 					/>
 				</div>
-				<div class="flex bg-gray-100 p-1 rounded-xl">
+				<div class="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto justify-center">
 					{#each filtriDisponibili as filtro (filtro)}
 						<button
 								onclick={() => filtroGravita = filtro}
-								class="px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all {filtroGravita === filtro ? 'bg-white shadow text-[#1B4B6B]' : 'text-gray-400 hover:text-gray-600'}"
+								class="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all {filtroGravita === filtro ? 'bg-white shadow text-[#1B4B6B]' : 'text-gray-400 hover:text-gray-600'}"
 						>
 							{filtro}
 						</button>
@@ -149,7 +151,7 @@
 		</div>
 
 		<div class="overflow-x-auto min-h-[400px]">
-			<table class="w-full text-left">
+			<table class="w-full text-left min-w-[800px]">
 				<thead class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
 				<tr>
 					<th class="px-6 py-4">Data e Ora</th>
@@ -207,7 +209,7 @@
 			</table>
 		</div>
 		{#if totalPages > 1}
-			<div class="p-4 border-t border-gray-50 flex items-center justify-between bg-gray-50/30">
+			<div class="p-4 border-t border-gray-50 flex flex-col sm:flex-row items-center justify-between bg-gray-50/30 gap-4">
 				<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
 					Pagina {currentPage} di {totalPages}
 				</p>

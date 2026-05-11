@@ -54,28 +54,29 @@
 	});
 </script>
 
-<div in:fade class="pb-20">
-	<div class="mb-10 flex flex-col items-end justify-between gap-6 lg:flex-row">
+<div in:fade class="p-4 md:p-6 pb-20">
+	<div class="mb-8 md:mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 		<div class="w-full lg:w-auto">
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B]">I MIEI DOCUMENTI</h1>
-			<p class="text-xs font-bold uppercase tracking-tighter text-gray-500">
+			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">I MIEI DOCUMENTI</h1>
+			<p class="text-[10px] md:text-xs font-bold uppercase tracking-tighter text-gray-500 mt-1">
 				Archivio digitale e scadenziario documentale NorLan.
 			</p>
 		</div>
 
-		<div class="flex flex-wrap gap-4 w-full lg:w-auto">
-			<StatCard titolo="A Norma" valore={stats.validi} icona={ShieldCheck} bgIcona="bg-transparent" testoIcona="text-green-500"/>
-			<StatCard titolo="In Scadenza" valore={stats.inScadenza} icona={Clock} bgIcona="bg-transparent" testoIcona="text-orange-500"/>
-			<StatCard titolo="Scaduti" valore={stats.scaduti} icona={AlertCircle} bgIcona="bg-transparent" testoIcona="text-red-500"/>
+		<div class="w-full lg:w-auto overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 custom-scrollbar-data">
+			<div class="flex gap-4 min-w-max">
+				<StatCard titolo="A Norma" valore={stats.validi} icona={ShieldCheck} bgIcona="bg-transparent" testoIcona="text-green-500"/>
+				<StatCard titolo="In Scadenza" valore={stats.inScadenza} icona={Clock} bgIcona="bg-transparent" testoIcona="text-orange-500"/>
+				<StatCard titolo="Scaduti" valore={stats.scaduti} icona={AlertCircle} bgIcona="bg-transparent" testoIcona="text-red-500"/>
+			</div>
 		</div>
 	</div>
 
-	<div class="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-		<div class="flex flex-wrap gap-3">
+	<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-2xl md:rounded-3xl border border-gray-100 bg-white p-4 md:p-6 shadow-sm">
+		<div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar-data">
 			<button
 					onclick={() => (filtroCategoria = 'TUTTI')}
-					class="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all {filtroCategoria ===
-             'TUTTI'
+					class="whitespace-nowrap rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all {filtroCategoria === 'TUTTI'
                 ? 'bg-[#1B4B6B] text-white shadow-lg'
                 : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 			>
@@ -84,8 +85,7 @@
 			{#each Object.values(ModuloServizio) as cat (cat)}
 				<button
 						onclick={() => (filtroCategoria = cat)}
-						class="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all {filtroCategoria ===
-                cat
+						class="whitespace-nowrap rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all {filtroCategoria === cat
                    ? 'bg-[#1B4B6B] text-white shadow-lg'
                    : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}"
 				>
@@ -93,6 +93,7 @@
 				</button>
 			{/each}
 		</div>
+
 		<div class="relative w-full md:w-72">
 			<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
 			<input
@@ -112,7 +113,7 @@
 			</p>
 		</div>
 	{:else if filteredDocs.length === 0}
-		<div class="rounded-3xl border-2 border-dashed border-gray-100 bg-white p-20 text-center" in:scale>
+		<div class="rounded-3xl border-2 border-dashed border-gray-100 bg-white p-12 md:p-20 text-center" in:scale>
 			<FileText size={48} class="mx-auto mb-4 text-gray-200" />
 			<h3 class="font-black uppercase text-[#1B4B6B]">Nessun Documento Trovato</h3>
 			<p class="mt-1 text-xs font-bold uppercase text-gray-400">
@@ -120,12 +121,12 @@
 			</p>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
+		<div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
 			{#each filteredDocs as doc (doc.idDocumento)}
 				{@const info = getInfoScadenza(doc.dataScadenza)}
 				<div class="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl" in:scale>
 					<div class="h-1.5 w-full {info.bgTop}"></div>
-					<div class="flex-1 p-8">
+					<div class="flex-1 p-6 md:p-8">
 						<div class="mb-6 flex items-start justify-between">
 							<div class="rounded-2xl bg-gray-50 p-3 text-[#1B4B6B] transition-all group-hover:bg-[#1B4B6B] group-hover:text-white">
 								<FileText size={24} />
@@ -134,15 +135,15 @@
                          {info.label}
                       </span>
 						</div>
-						<h3 class="mb-4 min-h-[3.5rem] text-lg font-black uppercase leading-tight text-[#1B4B6B] line-clamp-2">
+						<h3 class="mb-4 min-h-[3rem] text-base md:text-lg font-black uppercase leading-tight text-[#1B4B6B] line-clamp-2">
 							{doc.tipologia.replace(/_/g, ' ')}
 						</h3>
 						<div class="space-y-3">
-							<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter text-gray-400">
+							<div class="flex items-center gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-tighter text-gray-400">
 								<Calendar size={14} class="text-[#1B4B6B]" />
 								<span>Caricato: {formattaDataScadenza(doc.dataCaricamento)}</span>
 							</div>
-							<div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter {info.stato === 'DANGER' ? 'text-red-500' : 'text-gray-400'}">
+							<div class="flex items-center gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-tighter {info.stato === 'DANGER' ? 'text-red-500' : 'text-gray-400'}">
 								<info.icona size={14} class={info.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B]'} />
 								<span>Scadenza: {formattaDataScadenza(doc.dataScadenza)}</span>
 							</div>
@@ -160,6 +161,7 @@
 			{/each}
 		</div>
 	{/if}
+
 	<div class="mt-12">
 		<AlertCard
 				titolo="Richiesta Documenti Speciali"
@@ -174,5 +176,15 @@
 <style>
 	:global(body) {
 		background-color: #f9fafb;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar {
+		height: 4px;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.custom-scrollbar-data::-webkit-scrollbar-thumb {
+		background: #E2E8F0;
+		border-radius: 10px;
 	}
 </style>

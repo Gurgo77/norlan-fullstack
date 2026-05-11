@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, scale, slide } from 'svelte/transition';
 	import {
-		Send, Building2, MessageSquare, Loader2, User, GraduationCap, Search
+		Send, Building2, MessageSquare, Loader2, User, GraduationCap, Search, ChevronLeft
 	} from 'lucide-svelte';
 
 	import { ChatService } from '$lib/services/ChatService';
@@ -221,11 +221,11 @@
 	}
 </script>
 
-<div class="h-[calc(100vh-10rem)] flex bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
-	<div class="w-80 border-r border-gray-100 flex flex-col bg-gray-50/50 shrink-0">
-		<div class="p-8 pb-4 border-b border-gray-100 bg-white">
-			<h2 class="text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
-				<MessageSquare size={22} class="text-[#1B4B6B]" />
+<div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-10rem)] flex bg-white rounded-2xl md:rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
+	<div class="w-full md:w-80 border-r border-gray-100 bg-gray-50/50 shrink-0 flex-col {activeContact ? 'hidden md:flex' : 'flex'}">
+		<div class="p-4 md:p-8 pb-4 border-b border-gray-100 bg-white">
+			<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
+				<MessageSquare size={22} class="text-[#1B4B6B] shrink-0" />
 				RUBRICA
 			</h2>
 			<p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1 mb-4">Seleziona un utente per chattare</p>
@@ -304,24 +304,27 @@
 		</div>
 	</div>
 
-	<div class="flex-1 flex flex-col bg-white">
+	<div class="w-full md:flex-1 bg-white flex-col {activeContact ? 'flex' : 'hidden md:flex'}">
 		{#if activeContact}
-			<div class="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-				<div class="flex items-center gap-5">
-					<div class="bg-[#1B4B6B] p-4 rounded-[22px] text-white shadow-lg shadow-blue-900/20">
-						<svelte:component this={activeContact.icona} size={24} />
+			<div class="p-4 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+				<div class="flex items-center gap-3 md:gap-5 min-w-0">
+					<button onclick={() => activeContact = null} class="md:hidden p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors shrink-0">
+						<ChevronLeft size={24} />
+					</button>
+					<div class="bg-[#1B4B6B] p-3 md:p-4 rounded-xl md:rounded-[22px] text-white shadow-lg shadow-blue-900/20 shrink-0">
+						<svelte:component this={activeContact.icona} size={20} class="md:w-6 md:h-6 w-5 h-5" />
 					</div>
-					<div>
-						<h2 class="font-black text-[#1B4B6B] text-2xl uppercase tracking-tighter">{activeContact.nomeVisualizzato}</h2>
-						<div class="flex items-center gap-4 mt-1">
-							<span class="px-2 py-0.5 rounded text-[8px] font-black text-white bg-[#1B4B6B] uppercase tracking-widest">{activeContact.ruolo}</span>
-							<p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">{activeContact.sottotitolo}</p>
+					<div class="min-w-0">
+						<h2 class="font-black text-[#1B4B6B] text-lg md:text-2xl uppercase tracking-tighter truncate">{activeContact.nomeVisualizzato}</h2>
+						<div class="flex items-center gap-2 md:gap-4 mt-1">
+							<span class="px-2 py-0.5 rounded text-[8px] font-black text-white bg-[#1B4B6B] uppercase tracking-widest shrink-0">{activeContact.ruolo}</span>
+							<p class="text-[9px] md:text-[10px] text-gray-400 font-black uppercase tracking-widest truncate">{activeContact.sottotitolo}</p>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<div id="comunicazionicomunicazioni-container" class="flex-1 overflow-y-auto p-10 space-y-6 custom-scrollbar bg-gray-50/30">
+			<div id="comunicazionicomunicazioni-container" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
 					<div in:scale={{duration: 200, start: 0.95}}>
 						<ChatBubble
@@ -334,30 +337,30 @@
 				{/each}
 			</div>
 
-			<div class="p-8 border-t border-gray-100 bg-white">
-				<form class="flex gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
+			<div class="p-4 md:p-8 border-t border-gray-100 bg-white">
+				<form class="flex gap-2 md:gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input
 							bind:value={newMessage}
 							type="text"
 							placeholder="Scrivi a {activeContact.nomeVisualizzato}..."
-							class="flex-1 bg-gray-50 border border-gray-100 px-8 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-sm font-bold uppercase"
+							class="flex-1 bg-gray-50 border border-gray-100 px-4 md:px-8 py-3 md:py-5 rounded-xl md:rounded-2xl outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 focus:border-[#1B4B6B] focus:bg-white transition-all text-xs md:text-sm font-bold uppercase"
 					/>
 					<button
 							type="submit"
 							disabled={!newMessage.trim()}
-							class="bg-[#1B4B6B] text-white px-8 rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl disabled:opacity-30 flex items-center justify-center shrink-0"
+							class="bg-[#1B4B6B] text-white px-5 md:px-8 py-3 md:py-0 rounded-xl md:rounded-2xl hover:bg-[#1B4B6B]/90 transition-all shadow-xl disabled:opacity-30 flex items-center justify-center shrink-0"
 					>
-						<Send size={20} />
+						<Send size={18} class="md:w-5 md:h-5" />
 					</button>
 				</form>
 			</div>
 		{:else}
-			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-20 text-center">
-				<div class="p-10 bg-gray-50 rounded-[50px] mb-8" in:scale>
-					<MessageSquare size={80} class="opacity-20 text-[#1B4B6B]" />
+			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-10 md:p-20 text-center">
+				<div class="p-6 md:p-10 bg-gray-50 rounded-[30px] md:rounded-[50px] mb-6 md:mb-8" in:scale>
+					<MessageSquare size={60} class="md:w-[80px] md:h-[80px] opacity-20 text-[#1B4B6B]" />
 				</div>
-				<h3 class="font-black text-[#1B4B6B] uppercase text-xl tracking-tighter">Centro Comunicazioni NorLan</h3>
-				<p class="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">Seleziona un contatto per iniziare.</p>
+				<h3 class="font-black text-[#1B4B6B] uppercase text-lg md:text-xl tracking-tighter">Centro Comunicazioni NorLan</h3>
+				<p class="font-black text-[9px] md:text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2 max-w-xs">Seleziona un contatto per iniziare.</p>
 			</div>
 		{/if}
 	</div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { HardHat, AlertTriangle, CheckCircle2, ShieldAlert, PenBox, Trash2 } from 'lucide-svelte';
+    import { HardHat, AlertTriangle, CheckCircle2, ShieldAlert, PenBox, Trash2, RefreshCw } from 'lucide-svelte';
 
     interface Props {
         ruolo: 'azienda' | 'dipendente' | 'admin';
@@ -13,9 +13,10 @@
         };
         onModifica?: (id: number | string) => void;
         onElimina?: (id: number | string) => void;
+        onRichiediSostituzione?: (id: number | string) => void;
     }
 
-    let { ruolo, dpi, onModifica, onElimina }: Props = $props();
+    let { ruolo, dpi, onModifica, onElimina, onRichiediSostituzione }: Props = $props();
 
     let configStato = $derived({
         'OK': { colore: 'text-green-500', bg: 'bg-green-50', icona: CheckCircle2, label: 'REGOLARE' },
@@ -82,6 +83,15 @@
                 class="mt-5 w-full bg-gray-50 hover:bg-[#1B4B6B] text-gray-400 hover:text-white py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all"
         >
             <PenBox size={14} /> Aggiorna Revisione
+        </button>
+    {/if}
+
+    {#if ruolo === 'dipendente'}
+        <button
+                onclick={() => onRichiediSostituzione && onRichiediSostituzione(dpi.id)}
+                class="mt-5 w-full bg-[#1B4B6B]/5 hover:bg-[#1B4B6B] text-[#1B4B6B] hover:text-white py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+        >
+            <RefreshCw size={14} /> Richiedi Sostituzione
         </button>
     {/if}
 </div>

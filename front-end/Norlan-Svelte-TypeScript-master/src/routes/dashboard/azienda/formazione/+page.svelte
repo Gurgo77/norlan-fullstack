@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, slide } from 'svelte/transition';
 	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, Send, Trash2, User } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -31,7 +31,6 @@
 	let showDeleteIscrizioneModal = $state(false);
 	let iscrizioneDaRimuovere = $state<{idDipendente: number, idCorso: number, nomeCorso: string} | null>(null);
 
-	// Sistema di notifica Banner (Toast)
 	let toastMessage = $state<{ text: string, type: 'success' | 'error' } | null>(null);
 	let toastTimeout: any;
 
@@ -40,7 +39,7 @@
 		if (toastTimeout) clearTimeout(toastTimeout);
 		toastTimeout = setTimeout(() => {
 			toastMessage = null;
-		}, 3500); // Scompare dopo 3.5 secondi
+		}, 3000);
 	}
 
 	onMount(async () => {
@@ -63,7 +62,6 @@
 						let s: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO' = 'DA_INIZIARE';
 						if (i.statoCorso === 'IN_SVOLGIMENTO') s = 'IN_SVOLGIMENTO';
 						else if (i.statoCorso === 'CONCLUSO' || i.statoCorso === 'CERTIFICATO' || i.statoCorso === 'VALIDATO' || i.presenzaConfermata) s = 'COMPLETATO';
-						// Fix TS Error bypassando il controllo con 'any'
 						return { idCorso: i.idCorso, idDocumento: i.idDocumento, filePath: (i as any).filePathDocumento || (i as any).filePath, titolo: i.titoloCorso.toUpperCase(), dataSvolgimento: formattaData(i.dataOrarioCorso), stato: s };
 					}),
 					tuttiIdCorsiIscritto: tuttiId
@@ -190,7 +188,7 @@
 </script>
 
 {#if toastMessage}
-	<div transition:fade={{ duration: 200 }} class="fixed top-24 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border {toastMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}">
+	<div transition:fade={{ duration: 200 }} class="fixed top-24 right-4 md:right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border {toastMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}">
 		{#if toastMessage.type === 'success'}
 			<CheckCircle2 size={20} />
 		{:else}
@@ -200,10 +198,10 @@
 	</div>
 {/if}
 
-<div in:fade class="pb-20">
-	<div class="mb-10 flex flex-col lg:flex-row items-start justify-between gap-6">
-		<h1 class="text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">Formazione Dipendenti</h1>
-		<button onclick={apriModaleIscrizione} class="flex items-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white"><BookPlus size={18} /> Iscrivi a Nuovo Corso</button>
+<div in:fade class="max-w-7xl mx-auto p-4 md:p-6 pb-20">
+	<div class="mb-6 md:mb-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+		<h1 class="text-2xl md:text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">Formazione Dipendenti</h1>
+		<button onclick={apriModaleIscrizione} class="w-full lg:w-auto flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white"><BookPlus size={18} /> Iscrivi a Nuovo Corso</button>
 	</div>
 
 	{#if isLoading}
@@ -211,16 +209,51 @@
 	{:else}
 		{#if attestatiDaFirmare.length > 0}
 			<div class="mb-14" in:fade>
-				<div class="flex items-center gap-3 mb-6 border-b border-amber-200 pb-3"><div class="p-2 bg-amber-100 text-amber-700 rounded-lg"><FileCheck2 size={20}/></div><h2 class="text-xl font-extrabold text-amber-700 uppercase tracking-tight">Attestati da Controfirmare</h2></div>
+				<div class="flex items-center gap-3 mb-6 border-b border-amber-200 pb-3"><div class="p-2 bg-amber-100 text-amber-700 rounded-lg"><FileCheck2 size={20}/></div><h2 class="text-lg md:text-xl font-extrabold text-amber-700 uppercase tracking-tight">Attestati da Controfirmare</h2></div>
 				<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 					{#each attestatiDaFirmare as attestato (attestato.idDocumento)}
 						{@const idDoc = attestato.idDocumento ?? 0}
 						<div class="flex flex-col gap-3">
 							<AlertCard titolo="Pacchetto Attestati Corso" sottotitolo="Scarica il PDF, apponi la firma aziendale e ricaricalo." variante="warning" icona={FileCheck2} stato="Da Firmare" data="Ricevuto il: {formattaData(attestato.dataCaricamento)}" />
-							<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-								<button onclick={() => scaricaOriginale(attestato)} class="w-full py-3 bg-white border border-gray-200 text-[#1B4B6B] rounded-xl font-extrabold uppercase text-[10px] tracking-widest hover:bg-blue-50 transition-colors"><Download size={16} /> Scarica</button>
-								<div class="relative"><input type="file" accept="application/pdf" id="upload-{idDoc}" onchange={(e) => handleFileChange(e, idDoc)} class="hidden" /><label for="upload-{idDoc}" class="w-full py-3 border-2 border-dashed {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 cursor-pointer transition-all"><UploadCloud size={16} /> {fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}</label></div>
-								<button onclick={() => consegnaAiDipendenti(idDoc)} disabled={!fileFirmati[idDoc] || isActionLoading} class="w-full py-3 bg-emerald-600 text-white rounded-xl font-extrabold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:bg-emerald-700 shadow-lg">{#if isActionLoading}<Loader2 class="animate-spin" size={16} />{:else}<CheckCircle2 size={16} /> Consegna{/if}</button>
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+								<button
+										onclick={() => scaricaOriginale(attestato)}
+										class="flex h-12 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-[10px] font-black uppercase tracking-widest text-[#1B4B6B] transition-all hover:bg-blue-50"
+								>
+									<Download size={16} />
+									<span>Scarica</span>
+								</button>
+
+								<div class="relative">
+									<input
+											type="file"
+											accept="application/pdf"
+											id="upload-{idDoc}"
+											onchange={(e) => handleFileChange(e, idDoc)}
+											class="hidden"
+									/>
+									<label
+											for="upload-{idDoc}"
+											class="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-all {fileFirmati[idDoc] ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-gray-300 bg-white text-gray-500'} px-4 text-[10px] font-black uppercase tracking-widest"
+									>
+										<UploadCloud size={16} />
+										<span>{fileFirmati[idDoc] ? 'File Pronto' : 'Allega Firmato'}</span>
+									</label>
+								</div>
+
+								<button
+										onclick={() => consegnaAiDipendenti(idDoc)}
+										disabled={!fileFirmati[idDoc] || isActionLoading}
+										class="flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-[10px] font-black uppercase tracking-widest text-white shadow-md transition-all hover:bg-emerald-700 disabled:opacity-50 disabled:grayscale"
+								>
+									{#if isActionLoading}
+										<Loader2 class="animate-spin" size={16} />
+										<span>Attendi...</span>
+									{:else}
+										<CheckCircle2 size={16} />
+										<span>Consegna</span>
+									{/if}
+								</button>
 							</div>
 						</div>
 					{/each}
@@ -229,18 +262,27 @@
 		{/if}
 
 		<div class="mb-10 flex flex-col md:flex-row gap-4 mt-8">
-			<div class="group relative flex-1"><Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={18} /><input bind:value={searchQuery} type="text" placeholder="Cerca dipendente o corso..." class="w-full rounded-2xl border border-gray-100 bg-white py-4 pl-12 pr-4 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm" /></div>
-			<div class="flex gap-2 overflow-x-auto">
-				<button onclick={() => filtroStatoCorsi = 'TUTTI'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'TUTTI' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Tutti</button>
-				<button onclick={() => filtroStatoCorsi = 'DA_INIZIARE'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'DA_INIZIARE' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Da Iniziare</button>
-				<button onclick={() => filtroStatoCorsi = 'IN_SVOLGIMENTO'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'IN_SVOLGIMENTO' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">In Svolgimento</button>
-				<button onclick={() => filtroStatoCorsi = 'COMPLETATO'} class="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all {filtroStatoCorsi === 'COMPLETATO' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Completati</button>
+			<div class="group relative flex-1">
+				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={18} />
+				<input bind:value={searchQuery} type="text" placeholder="Cerca dipendente o corso..." class="w-full rounded-2xl border border-gray-100 bg-white py-4 pl-12 pr-4 text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-[#1B4B6B]/5 shadow-sm" />
+			</div>
+			<div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar-data">
+				<button onclick={() => filtroStatoCorsi = 'TUTTI'} class="px-5 py-3 md:px-6 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap {filtroStatoCorsi === 'TUTTI' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Tutti</button>
+				<button onclick={() => filtroStatoCorsi = 'DA_INIZIARE'} class="px-5 py-3 md:px-6 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap {filtroStatoCorsi === 'DA_INIZIARE' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Da Iniziare</button>
+				<button onclick={() => filtroStatoCorsi = 'IN_SVOLGIMENTO'} class="px-5 py-3 md:px-6 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap {filtroStatoCorsi === 'IN_SVOLGIMENTO' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">In Svolgimento</button>
+				<button onclick={() => filtroStatoCorsi = 'COMPLETATO'} class="px-5 py-3 md:px-6 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap {filtroStatoCorsi === 'COMPLETATO' ? 'bg-[#1B4B6B] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}">Completati</button>
 			</div>
 		</div>
 
 		{#each filteredDipendenti as dip (dip.id)}
 			<div class="mb-14" in:scale>
-				<h3 class="text-xl font-extrabold text-[#1B4B6B] uppercase border-b border-gray-200 pb-3 mb-6 flex items-center gap-3"><User size={24} class="text-[#1B4B6B]" /> {dip.nomeCompleto} <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg ml-2">{dip.ruolo}</span></h3>
+				<h3 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase border-b border-gray-200 pb-3 mb-6 flex flex-wrap items-center gap-3">
+					<div class="flex items-center gap-3">
+						<User size={24} class="text-[#1B4B6B] shrink-0" />
+						<span class="truncate">{dip.nomeCompleto}</span>
+					</div>
+					<span class="text-[9px] md:text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-1 rounded-lg uppercase tracking-tight">{dip.ruolo}</span>
+				</h3>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 					{#each dip.corsiFiltrati as corso (corso.idCorso)}
 						<DashboardCorsoCard
@@ -282,10 +324,12 @@
 	</div>
 
 	{#snippet footer()}
-		<button onclick={() => showModalIscrizione = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 uppercase text-[10px] transition-all">Annulla</button>
-		<button onclick={confermaIscrizione} disabled={!idDipendenteSelezionato || !idCorsoSelezionato || isEnrolling} class="flex-1 px-6 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl hover:bg-blue-800 transition-all uppercase text-[10px] disabled:opacity-50 flex justify-center items-center gap-2">
-			{#if isEnrolling}<Loader2 size={16} class="animate-spin" />{:else}<Send size={16} />{/if} Conferma
-		</button>
+		<div class="flex w-full gap-3">
+			<button onclick={() => showModalIscrizione = false} class="flex-1 px-6 py-4 border-2 border-gray-100 text-gray-400 font-extrabold rounded-2xl hover:bg-gray-50 uppercase text-[10px] transition-all">Annulla</button>
+			<button onclick={confermaIscrizione} disabled={!idDipendenteSelezionato || !idCorsoSelezionato || isEnrolling} class="flex-1 px-6 py-4 bg-[#1B4B6B] text-white font-extrabold rounded-2xl hover:bg-blue-800 transition-all uppercase text-[10px] disabled:opacity-50 flex justify-center items-center gap-2">
+				{#if isEnrolling}<Loader2 size={16} class="animate-spin" />{:else}<Send size={16} />{/if} Conferma
+			</button>
+		</div>
 	{/snippet}
 </ModalCard>
 
@@ -295,10 +339,10 @@
 	{/snippet}
 
 	<div class="text-center py-4">
-		<div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
-			<AlertTriangle size={40} />
+		<div class="w-16 h-16 md:w-20 md:h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+			<AlertTriangle size={32} class="md:hidden" /><AlertTriangle size={40} class="hidden md:block" />
 		</div>
-		<p class="text-sm text-gray-500 mb-8">Stai per rimuovere il dipendente dal corso: <br><span class="font-bold text-[#1B4B6B]">{iscrizioneDaRimuovere?.nomeCorso}</span>.</p>
+		<p class="text-sm text-gray-500 mb-8 px-4">Stai per rimuovere il dipendente dal corso: <br><span class="font-bold text-[#1B4B6B] block mt-1">{iscrizioneDaRimuovere?.nomeCorso}</span>.</p>
 	</div>
 
 	{#snippet footer()}
@@ -315,4 +359,7 @@
 
 <style>
 	:global(body) { background-color: #f9fafb; }
+	.custom-scrollbar-data::-webkit-scrollbar { height: 4px; }
+	.custom-scrollbar-data::-webkit-scrollbar-track { background: transparent; }
+	.custom-scrollbar-data::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
 </style>

@@ -3,8 +3,8 @@
 	import { fade, scale } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
 	import {
-		Building2, FileClock, AlertCircle, LayoutDashboard,
-		Users, GraduationCap, ArrowRight, UserSquare2, HardHat, FileText, CheckCircle2, Calendar
+		Building2, AlertCircle, LayoutDashboard,
+		Users, GraduationCap, UserSquare2, HardHat, FileText, CheckCircle2, Calendar
 	} from 'lucide-svelte';
 	import { searchState } from '$lib/searchState.svelte';
 
@@ -180,8 +180,8 @@
 	);
 </script>
 
-<div in:fade class="pb-20 max-w-[1600px] mx-auto">
-	<div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div in:fade class="pb-10 md:pb-20 max-w-[1600px] mx-auto">
+	<div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
 				<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm">
@@ -189,8 +189,8 @@
 				</div>
 				<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dataOggi}</p>
 			</div>
-			<h1 class="text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Benvenuto Admin</h1>
-			<p class="text-gray-500 font-bold uppercase text-xs tracking-tighter mt-1">Centro di Controllo Globale NorLan.</p>
+			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Benvenuto Admin</h1>
+			<p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Centro di Controllo Globale NorLan.</p>
 		</div>
 	</div>
 
@@ -200,7 +200,7 @@
 			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Analisi del sistema in corso...</span>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
+		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8 md:mb-10">
 			<div in:scale={{duration: 200, delay: 0}} class="h-full">
 				<StatCard titolo="Aziende Clienti" valore={stats.aziende} icona={Building2} href={resolveRoute('/dashboard/admin/aziende')} />
 			</div>
@@ -213,21 +213,21 @@
 			<div in:scale={{duration: 200, delay: 150}} class="h-full">
 				<StatCard titolo="Corsi in Programma" valore={stats.corsiAttivi} icona={GraduationCap} href={resolveRoute('/dashboard/admin/formazione')} />
 			</div>
-			<div in:scale={{duration: 200, delay: 200}} class="h-full">
+			<div in:scale={{duration: 200, delay: 200}} class="h-full sm:col-span-2 md:col-span-1 xl:col-span-1">
 				<StatCard titolo="Compliance DPI" valore="{stats.dpiCompliance}%" icona={HardHat} href={resolveRoute('/dashboard/admin/dpi')} />
 			</div>
 		</div>
 
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-			<div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[420px]">
-				<div class="p-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
-					<div class="flex items-center gap-3">
-						<FileText class="text-[#1B4B6B]" size={18} />
-						<h2 class="font-black text-[#1B4B6B] uppercase text-xs tracking-tight">Scadenze Documenti</h2>
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+			<div class="bg-white rounded-[2rem] md:rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[350px] md:h-[420px]">
+				<div class="p-4 md:p-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
+					<div class="flex items-center gap-2 md:gap-3">
+						<FileText class="text-[#1B4B6B]" size={16} />
+						<h2 class="font-black text-[#1B4B6B] uppercase text-[10px] md:text-xs tracking-tight">Scadenze Documenti</h2>
 					</div>
 					<a href={resolveRoute('/dashboard/admin/scadenziario')} class="text-[9px] font-black text-[#1B4B6B] uppercase hover:underline">Vedi tutto</a>
 				</div>
-				<div class="p-4 space-y-3 overflow-y-auto custom-scrollbar-data">
+				<div class="p-3 md:p-4 space-y-3 overflow-y-auto custom-scrollbar-data">
 					{#each docsDaMostrare as scadenza (scadenza.id)}
 						<AlertCard
 								titolo={scadenza.azienda}
@@ -247,15 +247,15 @@
 				</div>
 			</div>
 
-			<div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[420px]">
-				<div class="p-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
-					<div class="flex items-center gap-3">
-						<HardHat class="text-[#1B4B6B]" size={18} />
-						<h2 class="font-black text-[#1B4B6B] uppercase text-xs tracking-tight">Scadenze DPI</h2>
+			<div class="bg-white rounded-[2rem] md:rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[350px] md:h-[420px]">
+				<div class="p-4 md:p-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
+					<div class="flex items-center gap-2 md:gap-3">
+						<HardHat class="text-[#1B4B6B]" size={16} />
+						<h2 class="font-black text-[#1B4B6B] uppercase text-[10px] md:text-xs tracking-tight">Scadenze DPI</h2>
 					</div>
 					<a href={resolveRoute('/dashboard/admin/dpi')} class="text-[9px] font-black text-[#1B4B6B] uppercase hover:underline">Vedi tutto</a>
 				</div>
-				<div class="p-4 space-y-3 overflow-y-auto custom-scrollbar-data">
+				<div class="p-3 md:p-4 space-y-3 overflow-y-auto custom-scrollbar-data">
 					{#each dpiDaMostrare as scadenza (scadenza.id)}
 						<AlertCard
 								titolo={scadenza.azienda}
@@ -275,8 +275,8 @@
 				</div>
 			</div>
 
-			<div class="flex flex-col gap-6 h-[420px]">
-				<div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden flex-1">
+			<div class="flex flex-col gap-4 md:gap-6 h-auto md:h-[420px]">
+				<div class="bg-white rounded-[2rem] md:rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden flex-1 min-h-[200px]">
 					<div class="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
 						<div class="flex items-center gap-2">
 							<Calendar class="text-[#1B4B6B]" size={16} />
@@ -303,7 +303,7 @@
 					</div>
 				</div>
 
-				<div class="bg-[#1B4B6B] rounded-3xl p-6 text-white shadow-xl relative overflow-hidden shrink-0">
+				<div class="bg-[#1B4B6B] rounded-[2rem] md:rounded-3xl p-6 text-white shadow-xl relative overflow-hidden shrink-0 min-h-[140px]">
 					<div class="absolute -right-4 -top-4 opacity-10">
 						<AlertCircle size={100} />
 					</div>

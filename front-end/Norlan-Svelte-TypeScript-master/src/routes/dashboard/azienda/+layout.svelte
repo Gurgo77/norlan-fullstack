@@ -2,10 +2,10 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { slide } from 'svelte/transition';
+	import { slide, fade } from 'svelte/transition';
 	import {
 		LayoutDashboard, MessageSquare, GraduationCap,
-		FileText, LogOut, Home, Bell, HardHat, Users, User, Loader2
+		FileText, LogOut, Home, Bell, HardHat, Users, User, Loader2, Menu, X
 	} from 'lucide-svelte';
 
 	import { AuthService } from '$lib/services/AuthService';
@@ -18,13 +18,14 @@
 	let { children } = $props();
 	let aziendaNome = $state('Caricamento...');
 	let aziendaEmail = $state('...');
+	let isMobileMenuOpen = $state(false);
 
 	const notificheManager = createNotificheManager();
 
 	const menuItems = [
 		{ href: '/dashboard/azienda', label: 'Dashboard', icon: LayoutDashboard },
-		{ href: '/dashboard/azienda/dipendenti', label: 'Elenco Dipendenti', icon: Users },
 		{ href: '/dashboard/azienda/comunicazioni', label: 'Messaggi', icon: MessageSquare },
+		{ href: '/dashboard/azienda/dipendenti', label: 'Elenco Dipendenti', icon: Users },
 		{ href: '/dashboard/azienda/formazione', label: 'Corsi Formazione', icon: GraduationCap },
 		{ href: '/dashboard/azienda/dpi', label: 'Registro DPI', icon: HardHat },
 		{ href: '/dashboard/azienda/documenti', label: 'Archivio Documenti', icon: FileText },
@@ -56,20 +57,38 @@
 	async function handleLogout() {
 		await AuthService.logout();
 	}
+
+	function closeMobileMenu() {
+		isMobileMenuOpen = false;
+	}
 </script>
 
 <svelte:window onclick={notificheManager.close} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
-	<div class="w-72 bg-[#1B4B6B] shrink-0 relative">
-		<aside class="sticky top-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50">
-			<div class="p-8 shrink-0">
-				<img src="{base}/NorLan.jpg" alt="NorLan Logo" class="h-10 w-auto rounded-md shadow-sm">
-				<p class="text-[10px] font-black text-white/40 uppercase mt-2 tracking-widest italic">Client Panel</p>
+
+	{#if isMobileMenuOpen}
+		<div
+				class="fixed inset-0 bg-[#1B4B6B]/20 backdrop-blur-sm z-40 lg:hidden"
+				onclick={closeMobileMenu}
+				transition:fade={{duration: 200}}
+		></div>
+	{/if}
+
+	<div class="lg:w-72 shrink-0 relative">
+		<aside class="fixed lg:sticky top-0 left-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-out {isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}">
+			<div class="p-8 shrink-0 flex items-start justify-between">
+				<div>
+					<img src="{base}/NorLan.jpg" alt="NorLan Logo" class="h-10 w-auto rounded-md shadow-sm">
+					<p class="text-[10px] font-black text-white/40 uppercase mt-2 tracking-widest italic">Client Panel</p>
+				</div>
+				<button onclick={closeMobileMenu} class="lg:hidden text-white/50 hover:text-white p-1">
+					<X size={24} />
+				</button>
 			</div>
 
 			<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-				<a href="{base}/" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
+				<a href="{base}/" onclick={closeMobileMenu} class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:bg-white/5 mb-4 border border-white/5 text-[10px] font-black uppercase tracking-widest transition-all">
 					<Home size={18} />
 					Home Sito
 				</a>
@@ -77,6 +96,7 @@
 				{#each menuItems as item (item.href)}
 					<a
 							href="{base}{item.href}"
+							onclick={closeMobileMenu}
 							class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group {isActive(item.href) ? 'bg-white/10 text-white shadow-lg border-l-4 border-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}"
 					>
 						<item.icon size={20} class="shrink-0" />
@@ -99,12 +119,16 @@
 		</aside>
 	</div>
 
-	<main class="flex-1 flex flex-col min-w-0">
-		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 shrink-0 sticky top-0 z-40">
-			<div class="relative w-1/3 group">
+	<main class="flex-1 flex flex-col min-w-0 w-full">
+		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shrink-0 sticky top-0 z-30">
+			<div class="flex items-center gap-4">
+				<button onclick={() => isMobileMenuOpen = true} class="p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors lg:hidden focus:outline-none">
+					<Menu size={24} />
+				</button>
+				<div class="hidden lg:block relative group"></div>
 			</div>
 
-			<div class="flex items-center gap-6">
+			<div class="flex items-center gap-4 lg:gap-6">
 				<div class="relative" onclick={(e) => e.stopPropagation()}>
 					<button
 							onclick={notificheManager.toggle}
@@ -116,7 +140,7 @@
 					</button>
 
 					{#if notificheManager.isOpen}
-						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
+						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
 							<div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">
 								<h3 class="font-black text-[#1B4B6B] uppercase text-xs">Notifiche</h3>
 								<span class="text-[10px] font-bold text-gray-400 uppercase">{notificheManager.count} Da leggere</span>
@@ -141,7 +165,8 @@
 						</div>
 					{/if}
 				</div>
-				<div class="h-8 w-px bg-gray-200"></div>
+
+				<div class="hidden sm:block h-8 w-px bg-gray-200"></div>
 
 				<div class="flex items-center gap-4">
 					<div class="text-right hidden sm:block">
@@ -152,12 +177,12 @@
 			</div>
 		</header>
 
-		<div class="p-10 flex-grow overflow-y-auto custom-scrollbar-data h-[calc(100vh-5rem)] flex flex-col">
+		<div class="p-4 lg:p-10 flex-grow overflow-y-auto custom-scrollbar-data h-[calc(100vh-5rem)] flex flex-col">
 			<div class="flex-1">
 				{@render children()}
 			</div>
 
-			<footer class="mt-12 pt-8 pb-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 shrink-0 relative z-10">
+			<footer class="mt-12 pt-8 pb-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 shrink-0 relative z-10 text-center">
 
 				<div class="text-[10px] font-black text-[#1B4B6B] uppercase tracking-[0.2em] opacity-80">
 					© {new Date().getFullYear()} NorLan
@@ -168,7 +193,7 @@
 				<div class="flex flex-wrap items-center justify-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
 					<span>Piattaforma Gestionale sviluppata da</span>
 					<a href="https://www.linkedin.com/in/antonio-gurgoglione/" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Antonio Gurgoglione</a>
-					<span class="text-gray-300">&</span>
+					<span class="text-gray-300 hidden sm:inline">&</span>
 					<a href="https://it.linkedin.com/in/nicol%C3%B2-baldari-415411270" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#1B4B6B] transition-colors">Nicolò Baldari</a>
 				</div>
 
