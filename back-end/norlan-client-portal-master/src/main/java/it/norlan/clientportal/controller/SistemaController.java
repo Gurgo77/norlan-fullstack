@@ -3,11 +3,8 @@ package it.norlan.clientportal.controller;
 import it.norlan.clientportal.dto.LogSincronizzazioneDTO;
 import it.norlan.clientportal.dto.NotificaDTO;
 import it.norlan.clientportal.model.LogSincronizzazione;
-import it.norlan.clientportal.model.Notifica;
-import it.norlan.clientportal.model.Utente;
 import it.norlan.clientportal.service.LogSincronizzazioneService;
 import it.norlan.clientportal.service.NotificaService;
-// Nota: Assicurati di avere un UtenteService o un generico repository per recuperare il destinatario
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
