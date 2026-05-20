@@ -3,6 +3,12 @@ package it.norlan.clientportal.dto;
 import lombok.Data;
 import jakarta.validation.constraints.*;
 
+/**
+ * Data Transfer Object (DTO) per la ricezione dei moduli di valutazione (Feedback).
+ * Implementa le annotazioni di Jakarta Validation (@NotNull, @Min, @Max) per garantire
+ * l'integrità formale dei voti e dei commenti prima del salvataggio a database.
+ */
+
 @Data
 public class FeedbackDTO {
 

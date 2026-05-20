@@ -16,6 +16,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Livello di servizio (Business Logic) per il modulo di messaggistica (Chat) interna.
+ * Implementa logiche di sicurezza avanzate applicando un rigido controllo degli accessi (RBAC)
+ * per garantire che le comunicazioni avvengano esclusivamente nel rispetto dei vincoli di dominio aziendali o didattici.
+ */
+
 @Service
 public class MessaggioService {
 
@@ -30,6 +36,7 @@ public class MessaggioService {
     @Autowired
     private NotificaService notificaService;
 
+    // Applica il controllo autorizzativo (Guard Clause): se superato, persiste il messaggio e innesca il routing delle notifiche push/email
     @Transactional
     public Messaggio salvaMessaggio(Integer idMittente, Integer idDestinatario, String testo) {
         Utente mittente = utenteRepository.findById(idMittente)
@@ -69,7 +76,7 @@ public class MessaggioService {
         return messaggioRepository.save(m);
     }
 
-
+    // Motore di regole (Policy Enforcement Point): valuta dinamicamente i permessi di comunicazione interrogando il database sulle relazioni gerarchiche o didattiche
     private boolean puoComunicare(Utente m, Utente d) {
         if (m.getRuolo() == Utente.Ruolo.ADMIN || d.getRuolo() == Utente.Ruolo.ADMIN) {
             return true;
@@ -102,6 +109,7 @@ public class MessaggioService {
         return dto;
     }
 
+    // Estrae lo storico bidirezionale della conversazione (Chat History), proiettando le entità in DTO al volo tramite le Stream API
     @Transactional(readOnly = true)
     public List<MessaggioDTO> getCronologia(Integer id1, Integer id2) {
         return messaggioRepository.findConversazione(id1, id2).stream()

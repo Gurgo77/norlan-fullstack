@@ -17,6 +17,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Componente di utilità (Utility Class) per la gestione dei JSON Web Token (JWT).
+ * Centralizza la logica crittografica per la generazione, firma (tramite HMAC-SHA256),
+ * estrazione dei claims (ruolo, ID) e validazione temporale dei token di sessione.
+ */
+
 @Component
 public class JwtUtil {
 
@@ -29,6 +35,7 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
+    // Crea un nuovo token JWT iniettando i metadati dell'utente (claims) e impostandone la scadenza
     public String generateToken(Utente utente) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("ruolo", utente.getRuolo().name());
@@ -71,6 +78,7 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
+    // Verifica l'integrità crittografica, l'appartenenza e la validità temporale del token rispetto all'utente corrente
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));

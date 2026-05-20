@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA per il sistema di messaggistica asincrona e di alert di sistema.
+ * Gestisce le notifiche (priorità e canali di invio) implementando il meccanismo di
+ * Optimistic Locking (@Version) per prevenire conflitti in caso di aggiornamenti concorrenti.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

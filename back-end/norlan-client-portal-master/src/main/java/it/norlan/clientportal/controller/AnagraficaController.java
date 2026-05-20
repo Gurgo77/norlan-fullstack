@@ -20,6 +20,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Controller REST centralizzato per la gestione dell'anagrafica di sistema.
+ * Fornisce gli endpoint API per le operazioni CRUD (Create, Read, Update, Delete)
+ * relative ad Aziende, Docenti, Dipendenti e Amministratori.
+ */
+
 @RestController
 @RequestMapping("/api/anagrafica")
 @CrossOrigin(origins = "*")
@@ -40,6 +46,7 @@ public class AnagraficaController {
     @Autowired
     private it.norlan.clientportal.service.DipendenteService dipendenteService;
 
+    // Gestisce il processo di onboarding e registrazione iniziale di un nuovo utente nel sistema
     @PostMapping("/registrazione")
     public ResponseEntity<?> registraNuovoUtente(@RequestBody AuthRequestDTO payload) {
         try {
@@ -54,6 +61,7 @@ public class AnagraficaController {
         }
     }
 
+    // Endpoint dedicati alla lettura, modifica ed eliminazione delle anagrafiche aziendali
     @GetMapping("/aziende")
     public ResponseEntity<List<AziendaDTO>> getAllAziende() {
         List<AziendaDTO> aziende = aziendaService.findAll()
@@ -97,6 +105,7 @@ public class AnagraficaController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // Endpoint dedicati alla lettura, modifica ed eliminazione dei dati dei docenti formatori
     @GetMapping("/docenti")
     public ResponseEntity<List<DocenteDTO>> getAllDocenti() {
         List<DocenteDTO> docenti = docenteService.findAll()
@@ -141,7 +150,7 @@ public class AnagraficaController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/admin/{id}")
+    // Endpoint per la lettura e l'aggiornamento del profilo dell'amministratore di sistema    @GetMapping("/admin/{id}")
     public ResponseEntity<AdminDTO> getAdmin(@PathVariable Long id) {
         return adminService.getUnicoAdmin()
                 .map(admin -> ResponseEntity.ok(adminService.convertToDTO(admin)))
@@ -158,6 +167,7 @@ public class AnagraficaController {
         }
     }
 
+    // Endpoint per il recupero dell'elenco completo di tutti i dipendenti aziendali
     @GetMapping("/dipendenti")
     public ResponseEntity<List<DipendenteDTO>> getAllDipendenti() {
         List<DipendenteDTO> dipendenti = dipendenteService.findAll()

@@ -12,6 +12,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Livello di servizio (Business Logic) per la gestione dei Dispositivi di Protezione Individuale (DPI).
+ * Orchestra il ciclo di vita delle assegnazioni, integrando l'auditing di sicurezza (LogSincronizzazioneService)
+ * e le comunicazioni multi-canale (NotificaService) verso i dipendenti.
+ */
+
 @Service
 public class AssegnazioneDPIService {
 
@@ -34,6 +40,7 @@ public class AssegnazioneDPIService {
         return dpiRepository.findById(id);
     }
 
+    // Rimuove l'assegnazione del DPI dal database e registra l'operazione di cancellazione nello storico eventi di sistema
     @Transactional
     public void eliminaAssegnazione(Integer id) {
         AssegnazioneDPI dpi = dpiRepository.findById(id)
@@ -50,6 +57,7 @@ public class AssegnazioneDPIService {
         );
     }
 
+    // Valida la coerenza temporale delle date, persiste la fornitura e innesca i trigger di notifica (Email/In-App) e logging
     @Transactional
     public AssegnazioneDPI salvaAssegnazione(AssegnazioneDPI assegnazione) {
         if (assegnazione.getDataScadenzaRevisione() != null &&
@@ -111,6 +119,7 @@ public class AssegnazioneDPIService {
         return dpiRepository.findByDataScadenzaRevisioneBefore(limite);
     }
 
+    // Mappa l'entità nel DTO per il frontend, calcolando dinamicamente il flag "daRevisionare" confrontando la scadenza con la data odierna
     public AssegnazioneDPIDTO convertToDTO(AssegnazioneDPI assegnazione) {
         AssegnazioneDPIDTO dto = new AssegnazioneDPIDTO();
 

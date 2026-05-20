@@ -13,6 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Livello di servizio (Business Logic) per la gestione delle iscrizioni didattiche (Join Table).
+ * Sfrutta chiavi primarie composite (IscrizioneId) e implementa un sofisticato sistema
+ * di notifica multi-attore (fan-out) per sincronizzare dipendenti, docenti e aziende.
+ */
+
 @Service
 public class IscrizioneCorsoService {
 
@@ -51,6 +57,7 @@ public class IscrizioneCorsoService {
         iscrizioneRepository.deleteById(new IscrizioneId(idUtente, idCorso));
     }
 
+    // Previene iscrizioni duplicate e innesca un routing di notifiche multi-canale mirato ai tre attori coinvolti (Studente, Docente, Azienda)
     @Transactional
     public IscrizioneCorso iscriviUtente(Integer idUtente, Integer idCorso) {
         IscrizioneId id = new IscrizioneId(idUtente, idCorso);
@@ -132,7 +139,7 @@ public class IscrizioneCorsoService {
         return iscrizioneRepository.save(iscrizione);
     }
 
-    @Transactional
+    // Valida la presenza in aula recuperando il record di iscrizione esatto tramite la chiave composita (Lavoratore-Corso)    @Transactional
     public void validaPresenzaLavoratore(Integer idCorso, Integer idLavoratore) {
         IscrizioneId id = new IscrizioneId(idLavoratore, idCorso);
 
@@ -156,6 +163,7 @@ public class IscrizioneCorsoService {
         return iscrizioneRepository.findByUtenteIdUtente(idUtente);
     }
 
+    // Mappa l'entità nel DTO arricchendolo dinamicamente a runtime: interroga il modulo Feedback per iniettare lo stato della recensione
     public IscrizioneCorsoDTO convertToDTO(IscrizioneCorso iscrizione) {
         IscrizioneCorsoDTO dto = new IscrizioneCorsoDTO();
 

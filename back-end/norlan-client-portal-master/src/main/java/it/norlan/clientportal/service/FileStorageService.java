@@ -12,6 +12,12 @@ import java.net.MalformedURLException;
 import java.nio.file.*;
 import java.util.UUID;
 
+/**
+ * Livello di servizio architetturale per la gestione dell'I/O (Input/Output) su disco.
+ * Astrae le operazioni di salvataggio e lettura fisica dei file, garantendo la sicurezza
+ * contro le collisioni (tramite UUID) e prevenendo vulnerabilità di Path Traversal.
+ */
+
 @Service
 public class FileStorageService {
 
@@ -26,6 +32,7 @@ public class FileStorageService {
         }
     }
 
+    // Sanifica il nome originale, genera un UUID univoco per l'idempotenza e persiste lo stream binario sfruttando le API moderne java.nio
     public String storeFile(MultipartFile file, String subFolder) {
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
 
@@ -43,6 +50,7 @@ public class FileStorageService {
         }
     }
 
+    // Risolve il percorso fisico sul filesystem del server e lo incapsula in una UrlResource pronta per essere servita via HTTP
     public Resource loadFileAsResource(String relativePath) {
         try {
             Path filePath = this.fileStorageLocation.resolve(relativePath).normalize();

@@ -3,6 +3,12 @@ package it.norlan.clientportal.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Entità JPA astratta al vertice della gerarchia degli attori del portale.
+ * Definisce la strategia di ereditarietà JOINED per mappare le sottoclassi su tabelle separate,
+ * centralizzando i dati di autenticazione (credenziali), i ruoli di accesso e le policy di sicurezza.
+ */
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Entity
 @Table(name = "utente")

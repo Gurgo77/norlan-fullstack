@@ -17,6 +17,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Controller REST per l'infrastruttura di sistema e l'auditing.
+ * Gestisce l'intero ciclo di vita delle notifiche push/in-app degli utenti
+ * e l'esposizione e manutenzione dei log di sicurezza ed errore (Auditing).
+ */
+
 @RestController
 @RequestMapping("/api/sistema")
 @CrossOrigin(origins = "*")
@@ -28,6 +34,7 @@ public class SistemaController {
     @Autowired
     private LogSincronizzazioneService logService;
 
+    // Endpoint per il recupero delle notifiche (totali e da leggere) e per alimentare i counter dell'interfaccia utente
     @GetMapping("/notifiche/utente/{idUtente}")
     public ResponseEntity<List<NotificaDTO>> getNotificheUtente(@PathVariable Integer idUtente) {
         List<NotificaDTO> notifiche = notificaService.getNotificheUtente(idUtente)
@@ -51,7 +58,7 @@ public class SistemaController {
         long conteggio = notificaService.contaNonLette(idUtente);
         return ResponseEntity.ok(conteggio);
     }
-
+    // Gestisce il cambio di stato della notifica (es. segna come letta) e la sua eliminazione dal database
     @PatchMapping("/notifiche/{idNotifica}/letta")
     public ResponseEntity<Void> segnaNotificaComeLetta(@PathVariable Integer idNotifica) {
         notificaService.segnaComeLetta(idNotifica);
@@ -64,6 +71,7 @@ public class SistemaController {
         return ResponseEntity.noContent().<Void>build();
     }
 
+    // Endpoint dedicati all'auditing: lettura dello storico eventi di sistema, monitoraggio degli errori e creazione log
     @GetMapping("/logs")
     public ResponseEntity<List<LogSincronizzazioneDTO>> getAllLogs() {
         List<LogSincronizzazioneDTO> logs = logService.findAll()
@@ -92,6 +100,7 @@ public class SistemaController {
         return new ResponseEntity<>(logService.convertToDTO(salvato), HttpStatus.CREATED);
     }
 
+    // Operazione di manutenzione: elimina i log obsoleti antecedenti a una determinata soglia di tempo per liberare spazio
     @DeleteMapping("/logs/pulizia")
     public ResponseEntity<Void> pulisciLogVecchi(@RequestParam(defaultValue = "30") int giorniVecchiaia) {
         LocalDateTime dataLimite = LocalDateTime.now().minusDays(giorniVecchiaia);

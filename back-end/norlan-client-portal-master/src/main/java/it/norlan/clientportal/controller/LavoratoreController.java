@@ -15,6 +15,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Controller REST per la gestione delle anagrafiche dei dipendenti aziendali.
+ * Implementa le operazioni CRUD sui lavoratori e la tracciabilità completa
+ * dell'assegnazione e della manutenzione dei Dispositivi di Protezione Individuale (DPI).
+ */
+
 @RestController
 @RequestMapping("/api/lavoratori")
 @CrossOrigin(origins = "*")
@@ -26,6 +32,7 @@ public class LavoratoreController {
     @Autowired
     private AssegnazioneDPIService dpiService;
 
+    // Endpoint per la consultazione delle schede anagrafiche dei dipendenti, globalmente o filtrate per azienda
     @GetMapping
     public ResponseEntity<List<DipendenteDTO>> getAllDipendenti() {
         List<DipendenteDTO> dipendenti = dipendenteService.findAll()
@@ -51,6 +58,7 @@ public class LavoratoreController {
         return ResponseEntity.ok(dipendenti);
     }
 
+    // Endpoint per la creazione, l'aggiornamento e l'eliminazione dei profili dei lavoratori
     @PostMapping("/azienda/{idAzienda}")
     public ResponseEntity<DipendenteDTO> createDipendente(@PathVariable Integer idAzienda, @RequestBody Dipendente dipendente) {
         dipendente.setRuolo(Utente.Ruolo.DIPENDENTE);
@@ -90,6 +98,7 @@ public class LavoratoreController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // Gestisce il ciclo di vita dei Dispositivi di Protezione Individuale (assegnazione al dipendente e storico)
     @GetMapping("/{idDipendente}/dpi")
     public ResponseEntity<List<AssegnazioneDPIDTO>> getDpiByDipendente(@PathVariable Integer idDipendente) {
         List<AssegnazioneDPIDTO> dpi = dpiService.trovaPerDipendente(idDipendente)
@@ -108,6 +117,7 @@ public class LavoratoreController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // Genera un report proattivo sui DPI che necessitano di revisione o sostituzione entro i giorni specificati
     @GetMapping("/dpi/in-scadenza")
     public ResponseEntity<List<AssegnazioneDPIDTO>> getDpiInScadenza(@RequestParam(defaultValue = "30") int giorni) {
         List<AssegnazioneDPIDTO> dpiInScadenza = dpiService.trovaInScadenzaRevisione(giorni)
@@ -117,6 +127,7 @@ public class LavoratoreController {
         return ResponseEntity.ok(dpiInScadenza);
     }
 
+    // Rimuove permanentemente l'assegnazione di un DPI dallo storico del lavoratore
     @DeleteMapping("/dpi/{idDpi}")
     public ResponseEntity<Void> deleteDpiAssignment(@PathVariable Integer idDpi) {
         return dpiService.findById(idDpi).map(dpi -> {

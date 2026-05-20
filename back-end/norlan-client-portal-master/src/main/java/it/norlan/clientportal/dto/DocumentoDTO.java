@@ -7,6 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+/**
+ * Data Transfer Object (DTO) per l'entità Documento.
+ * Trasferisce i metadati dei file fisici (certificati, attestati, contratti) includendo
+ * lo stato di validità, il percorso su disco e i flag precalcolati sulle scadenze.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

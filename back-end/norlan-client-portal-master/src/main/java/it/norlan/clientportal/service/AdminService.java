@@ -11,6 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+/**
+ * Livello di servizio (Business Logic) per la gestione dell'Amministratore di sistema.
+ * Coordina le transazioni sul database (@Transactional) e applica un vincolo architetturale
+ * rigoroso per garantire l'esistenza di un unico super-utente globale (Pattern Singleton).
+ */
+
 @Service
 public class AdminService {
 
@@ -25,6 +31,7 @@ public class AdminService {
         return adminRepository.findAll().stream().findFirst();
     }
 
+    // Valida l'unicità dell'amministratore e ne registra le credenziali applicando l'hashing crittografico alla password
     @Transactional
     public Admin salvaAdmin(Admin admin) {
         if (adminRepository.count() >= 1) {
@@ -51,6 +58,7 @@ public class AdminService {
         return adminRepository.save(adminEsistente);
     }
 
+    // Mappa l'entità di database nel rispettivo Data Transfer Object (DTO) per un'esposizione sicura verso il client
     public AdminDTO convertToDTO(Admin admin) {
         AdminDTO dto = new AdminDTO();
 

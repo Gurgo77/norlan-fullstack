@@ -10,6 +10,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.lang.reflect.Method;
 import java.util.concurrent.Executor;
 
+/**
+ * Configurazione per la gestione dell'esecuzione asincrona (Multithreading).
+ * Abilita l'uso dell'annotazione @Async in Spring Boot per svincolare
+ * task lenti (es. invio email o push notification) dal thread principale.
+ */
 @Configuration
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
@@ -17,10 +22,13 @@ public class AsyncConfig implements AsyncConfigurer {
     @Bean(name = "notificheExecutor")
     public Executor notificheExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        // Pool dedicato alle notifiche: gestisce max 10 thread e accoda fino a 100 richieste
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(10);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("NotificaThread-");
+
         executor.initialize();
         return executor;
     }
@@ -31,7 +39,7 @@ public class AsyncConfig implements AsyncConfigurer {
 
             @Override
             public void handleUncaughtException(Throwable ex, Method method, Object... params) {
-
+                // Intercetta e stampa nei log eventuali errori sfuggiti nei thread in background
                 System.err.println("Errore nel thread asincrono;");
                 System.err.println("Metodo fallito: " + method.getName());
                 System.err.println("Causa dell'errore: " + ex.getMessage());
@@ -43,4 +51,3 @@ public class AsyncConfig implements AsyncConfigurer {
         };
     }
 }
-

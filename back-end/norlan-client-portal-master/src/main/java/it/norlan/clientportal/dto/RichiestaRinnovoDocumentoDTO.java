@@ -7,6 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Data Transfer Object (DTO) per le richieste di rinnovo documentale.
+ * Trasferisce i dati per tracciare il workflow e gli stati di approvazione
+ * delle pratiche di rinnovo richieste dalle aziende o generate dal sistema.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

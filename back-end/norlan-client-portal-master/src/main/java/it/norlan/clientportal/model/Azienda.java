@@ -3,6 +3,12 @@ package it.norlan.clientportal.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Entità JPA che rappresenta l'Azienda cliente nel database.
+ * Estende l'Utente base per l'accesso al portale e mappa i dati anagrafici
+ * e fiscali (P.IVA, PEC, Sede) necessari per la compliance normativa e documentale.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

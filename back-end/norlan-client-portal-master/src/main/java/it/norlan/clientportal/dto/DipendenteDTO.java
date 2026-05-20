@@ -5,6 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Data Transfer Object (DTO) per l'entità Dipendente (Lavoratore).
+ * Mappa le informazioni anagrafiche, il codice fiscale e i collegamenti all'azienda
+ * di appartenenza, schermando eventuali dati sensibili non necessari alla vista.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

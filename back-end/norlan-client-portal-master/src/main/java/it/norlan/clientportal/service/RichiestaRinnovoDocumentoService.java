@@ -11,6 +11,12 @@ import it.norlan.clientportal.model.Notifica;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Livello di servizio (Business Logic) per la gestione del workflow di rinnovo documentale.
+ * Traccia il ciclo di vita delle pratiche burocratiche e automatizza le comunicazioni di stato
+ * verso le aziende clienti, garantendo totale trasparenza sull'iter operativo.
+ */
+
 @Service
 public class RichiestaRinnovoDocumentoService {
 
@@ -35,6 +41,7 @@ public class RichiestaRinnovoDocumentoService {
         repository.deleteById(id);
     }
 
+    // Inizializza la pratica di rinnovo registrando il timestamp di sistema e forzando l'inserimento nello stato iniziale di default (IN_ATTESA)
     @Transactional
     public RichiestaRinnovoDocumento creaRichiesta(RichiestaRinnovoDocumento richiesta) {
         if (richiesta.getDataRichiesta() == null) {
@@ -46,6 +53,7 @@ public class RichiestaRinnovoDocumentoService {
         return repository.save(richiesta);
     }
 
+    // Gestisce l'avanzamento del workflow della pratica e innesca automaticamente un alert multi-canale (Email/In-App) per aggiornare l'azienda cliente
     @Transactional
     public void cambiaStato(Integer idRichiesta, RichiestaRinnovoDocumento.StatoRinnovo nuovoStato) {
         repository.findById(idRichiesta).ifPresent(r -> {
@@ -79,6 +87,7 @@ public class RichiestaRinnovoDocumentoService {
         return repository.findByStato(stato);
     }
 
+    // Mappa l'entità nel DTO eseguendo il "flattening" dei dati (appiattimento), estraendo i dettagli del documento e dell'azienda per semplificare il lavoro del frontend
     public RichiestaRinnovoDocumentoDTO convertToDTO(RichiestaRinnovoDocumento richiesta) {
         RichiestaRinnovoDocumentoDTO dto = new RichiestaRinnovoDocumentoDTO();
 

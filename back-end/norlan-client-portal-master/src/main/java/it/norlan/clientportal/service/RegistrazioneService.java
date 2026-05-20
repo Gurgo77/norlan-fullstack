@@ -11,6 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Livello di servizio (Business Logic) per la fase di onboarding e registrazione.
+ * Sfrutta il Design Pattern "Factory" per astrarre l'istanziazione polimorfica degli attori
+ * (Azienda, Docente, Dipendente) e orchestra la crittografia delle credenziali al primo accesso.
+ */
+
 @Service
 public class RegistrazioneService {
 
@@ -32,6 +38,7 @@ public class RegistrazioneService {
     @Autowired
     private LogSincronizzazioneService logService;
 
+    // Delega la creazione alla Factory, popola i dati anagrafici specifici tramite downcasting e innesca la mail di benvenuto con le credenziali provvisorie
     @Transactional
     public Utente registraNuovoUtente(AuthRequestDTO dto) {
         Utente nuovoUtente = utenteFactory.creaUtente(dto.getRuolo());

@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA per la gestione dell'archivio didattico.
+ * Associa i percorsi fisici dei file (es. slide, dispense in PDF) a uno specifico
+ * Corso di Formazione, rendendoli disponibili per il download agli iscritti.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

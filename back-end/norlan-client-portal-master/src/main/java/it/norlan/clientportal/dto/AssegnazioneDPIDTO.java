@@ -7,6 +7,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+/**
+ * Data Transfer Object (DTO) per la gestione dei Dispositivi di Protezione Individuale.
+ * Mappa i dettagli di consegna e le date di scadenza/revisione del DPI assegnato al dipendente.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

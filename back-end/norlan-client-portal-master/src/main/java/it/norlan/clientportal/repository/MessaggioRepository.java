@@ -6,6 +6,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 
+/**
+ * Repository JPA per i Materiali Didattici.
+ * Facilita l'accesso e la gestione dei file di supporto (es. dispense, slide),
+ * filtrandoli dinamicamente per lo specifico corso di formazione associato.
+ */
+
 public interface MessaggioRepository extends JpaRepository<Messaggio, Integer> {
 
     @Query("SELECT m FROM Messaggio m WHERE " +

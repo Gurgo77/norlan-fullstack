@@ -3,6 +3,12 @@ package it.norlan.clientportal.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Entità JPA che rappresenta il Formatore/Docente.
+ * Estende l'Utente base arricchendolo con i dettagli anagrafici e la
+ * specializzazione tecnica necessaria per l'assegnazione ai corsi di formazione.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

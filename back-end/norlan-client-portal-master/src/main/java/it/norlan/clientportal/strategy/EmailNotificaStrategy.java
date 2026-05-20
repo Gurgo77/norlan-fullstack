@@ -12,6 +12,12 @@ import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+/**
+ * Implementazione concreta del Design Pattern "Strategy" per il canale EMAIL.
+ * Incapsula la logica di interfacciamento con il server SMTP (JavaMailSender)
+ * e sfrutta il motore Thymeleaf per il rendering dinamico (Server-Side) dei template HTML.
+ */
+
 @Component
 public class EmailNotificaStrategy implements NotificaStrategy {
 
@@ -27,6 +33,7 @@ public class EmailNotificaStrategy implements NotificaStrategy {
     @Value("${spring.mail.username}")
     private String mittente;
 
+    // Analizza il payload (intercettando marcatori custom come "[CHAT]"), compila il contesto del template HTML e assembla il MimeMessage per l'inoltro
     @Override
     public void invia(Notifica notifica) {
         String emailDestinatario = notifica.getDestinatario().getEmail();
@@ -72,6 +79,7 @@ public class EmailNotificaStrategy implements NotificaStrategy {
             mailSender.send(message);
             System.out.println("[EMAIL HTML] Inviata con successo a: " + emailDestinatario);
 
+            // Gestisce la Fault Tolerance: intercetta i fallimenti di rete o del server SMTP registrando tempestivamente l'anomalia nel sistema di Auditing
         } catch (Exception e) {
             String erroreDettagliato = e.getMessage();
             if (e.getCause() != null) {
@@ -87,6 +95,7 @@ public class EmailNotificaStrategy implements NotificaStrategy {
         }
     }
 
+    // Espone la chiave di routing (Routing Key) al Context del pattern Strategy per la selezione e risoluzione dinamica dell'algoritmo a runtime
     @Override
     public CanaleNotifica getCanaleSupportato() {
         return CanaleNotifica.EMAIL;

@@ -7,6 +7,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
 
+/**
+ * Entità JPA fulcro della gestione documentale del portale.
+ * Mappa i percorsi fisici dei file (es. DVR, Attestati) e sfrutta il Design Pattern "State"
+ * per gestire il transito rigoroso tra gli stati di Firma, Approvazione e Archiviazione.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

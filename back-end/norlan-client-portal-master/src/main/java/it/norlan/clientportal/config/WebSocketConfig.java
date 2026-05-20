@@ -18,6 +18,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.socket.config.annotation.*;
 
+/**
+ * Configurazione del Message Broker per WebSocket (Protocollo STOMP).
+ * Abilita la comunicazione bidirezionale in tempo reale (chat e notifiche push)
+ * e implementa un intercettore sui canali per autenticare gli utenti tramite JWT.
+ */
+
 @Configuration
 @EnableWebSocketMessageBroker
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
@@ -29,11 +35,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
+    // Registra l'endpoint di connessione iniziale utilizzato dal frontend per agganciarsi al WebSocket
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
     }
 
+    // Configura i canali di smistamento messaggi (pubblici/broadcasting e privati per singolo utente)
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/user", "/topic");
@@ -49,6 +57,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                    // Intercetta la richiesta di connessione per autenticare l'utente estraendo e validando il token JWT
                     String token = accessor.getFirstNativeHeader("Authorization");
 
                     if (token != null && token.startsWith("Bearer ")) {

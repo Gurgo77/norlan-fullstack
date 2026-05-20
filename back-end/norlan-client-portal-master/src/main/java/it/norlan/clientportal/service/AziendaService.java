@@ -12,6 +12,12 @@ import it.norlan.clientportal.model.Notifica;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Livello di servizio (Business Logic) per l'entità Azienda.
+ * Coordina l'anagrafica aziendale gestendo operazioni complesse come l'eliminazione a cascata (Cascade Delete)
+ * dei dipendenti associati e l'integrazione con i moduli di notifica e auditing di sistema.
+ */
+
 @Service
 public class AziendaService {
 
@@ -40,6 +46,7 @@ public class AziendaService {
         return aziendaRepository.findById(id);
     }
 
+    // Persiste l'anagrafica aziendale a database e innesca la notifica in-app di benvenuto in caso di nuova registrazione
     @Transactional
     public Azienda salvaAzienda(Azienda azienda) {
         boolean isNuovaAzienda = (azienda.getIdUtente() == null);
@@ -58,6 +65,7 @@ public class AziendaService {
         return salvata;
     }
 
+    // Gestisce l'eliminazione a cascata per mantenere l'integrità referenziale: rimuove massivamente tutti i dipendenti prima dell'azienda
     @Transactional
     public void eliminaAzienda(Integer id) {
         Azienda azienda = aziendaRepository.findById(id)
@@ -74,6 +82,7 @@ public class AziendaService {
         );
     }
 
+    // Mappa l'entità nel DTO calcolando dinamicamente il flag "hasDipendenti" tramite un'interrogazione ottimizzata al repository
     public AziendaDTO convertToDTO(Azienda azienda) {
         AziendaDTO dto = new AziendaDTO();
         dto.setIdUtente(azienda.getIdUtente());
