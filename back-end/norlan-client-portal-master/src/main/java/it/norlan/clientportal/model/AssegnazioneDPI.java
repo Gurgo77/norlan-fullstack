@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
 
+/**
+ * Entità JPA per il tracciamento dei Dispositivi di Protezione Individuale (DPI).
+ * Memorizza la consegna logistica ai dipendenti e le date limite per la
+ * revisione obbligatoria o la sostituzione dei presidi di sicurezza.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

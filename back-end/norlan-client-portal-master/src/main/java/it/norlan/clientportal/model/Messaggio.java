@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA che modella i messaggi della chat interna.
+ * Memorizza il testo della conversazione, lo stato di lettura e traccia le relazioni
+ * (Many-to-One) sia con l'utente mittente che con il destinatario.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

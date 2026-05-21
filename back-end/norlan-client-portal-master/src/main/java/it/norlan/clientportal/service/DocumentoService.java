@@ -12,6 +12,12 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Livello di servizio (Business Logic) per l'infrastruttura documentale.
+ * Orchestra il ciclo di vita dei file avvalendosi del Design Pattern "State"
+ * ed esegue operazioni massive (Batch), come la distribuzione aggregata degli attestati formativi.
+ */
+
 @Service
 public class DocumentoService {
 
@@ -48,14 +54,12 @@ public class DocumentoService {
         return documentoRepository.findByAziendaIdUtente(idAzienda);
     }
 
+    // Persiste il documento applicando regole di validazione temporali rigide (minimo 30 giorni dalla data di caricamento) e innesca le notifiche
     @Transactional
     public Documento salvaDocumento(Documento documento) {
-
         validaRequisitiScadenza(documento.getDataScadenza());
-
         Documento salvato = documentoRepository.save(documento);
         Utente destinatario = salvato.getAzienda();
-
         logService.registraEvento(
                 "Upload nuovo documento aziendale",
                 true,
@@ -132,6 +136,7 @@ public class DocumentoService {
         return doc.getDataScadenza().isBefore(LocalDate.now());
     }
 
+    // Delega al Design Pattern "State" l'avanzamento rigoroso delle pratiche burocratiche (Caricato -> In Attesa di Firma -> Approvato -> Archiviato)
     @Transactional
     public void richiediFirmaDocumento(Integer id) {
         Documento doc = documentoRepository.findById(id)
@@ -206,6 +211,7 @@ public class DocumentoService {
         documentoRepository.save(doc);
     }
 
+    // Operazione batch complessa: raggruppa i dipendenti presenti per Azienda, genera i pacchetti documentali, li vincola al database e chiude la FSM del corso (CERTIFICATO)
     @Transactional
     public void distribuisciAttestatiMassivi(Integer idCorso, Map<Integer, String> pathFileUpload) {
         CorsoFormazione corso = corsoRepository.findById(idCorso)
@@ -282,6 +288,7 @@ public class DocumentoService {
         );
     }
 
+    // Trasforma l'entità complessa in un DTO piatto, calcolando a runtime il flag "scaduto" confrontando la validità con il clock di sistema
     public DocumentoDTO convertToDTO(Documento documento) {
         DocumentoDTO dto = new DocumentoDTO();
 

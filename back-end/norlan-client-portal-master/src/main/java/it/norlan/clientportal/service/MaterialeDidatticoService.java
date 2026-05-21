@@ -13,6 +13,12 @@ import it.norlan.clientportal.model.Notifica;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Livello di servizio (Business Logic) per la gestione del Materiale Didattico.
+ * Centralizza l'archiviazione logica delle risorse formative e implementa un sistema di notifica
+ * di tipo "fan-out" per avvisare in tempo reale (In-App ed Email) tutti gli studenti iscritti.
+ */
+
 @Service
 public class MaterialeDidatticoService {
 
@@ -35,6 +41,7 @@ public class MaterialeDidatticoService {
         return repository.findById(id);
     }
 
+    // Valida l'integrità del percorso file, persiste il record e innesca un ciclo di notifiche (Broadcasting) rivolto all'intera platea degli iscritti
     @Transactional
     public MaterialeDidattico salvaMateriale(MaterialeDidattico materiale) {
         if (materiale.getDataCaricamento() == null) {
@@ -87,6 +94,7 @@ public class MaterialeDidatticoService {
         repository.deleteById(idMateriale);
     }
 
+    // Trasforma l'entità complessa nel rispettivo DTO, estraendo solo i riferimenti essenziali del corso per ottimizzare il payload HTTP verso il client
     public MaterialeDidatticoDTO convertToDTO(MaterialeDidattico materiale) {
         MaterialeDidatticoDTO dto = new MaterialeDidatticoDTO();
 

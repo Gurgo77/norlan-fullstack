@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.io.Serializable;
 
+/**
+ * Entità JPA che risolve la relazione Molti-a-Molti tra Utenti e Corsi (Join Table).
+ * Utilizza una chiave primaria composita (@EmbeddedId) e traccia l'avanzamento
+ * dell'utente (presenza confermata dal docente ed eventuale attestato generato).
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

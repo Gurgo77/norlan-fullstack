@@ -5,6 +5,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
+/**
+ * Data Transfer Object (DTO) per il tracciamento delle iscrizioni.
+ * Funge da tabella di giunzione tra Utente e Corso, trasportando i dati sullo stato
+ * di presenza, l'emissione dell'attestato finale e il flag per il feedback inviato.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

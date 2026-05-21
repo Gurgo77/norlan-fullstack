@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA dedicata all'Auditing e al monitoraggio dell'applicazione.
+ * Memorizza in modo persistente gli eventi cruciali di sistema, i tentativi di accesso
+ * e le eccezioni tecniche, fungendo da "scatola nera" per le analisi di sicurezza.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

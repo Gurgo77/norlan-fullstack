@@ -17,6 +17,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
+/**
+ * Controller REST incaricato di gestire i processi di autenticazione e sicurezza.
+ * Fornisce gli endpoint per le procedure di Login (emissione token JWT),
+ * Logout e Cambio Password Obbligatorio al primo accesso.
+ */
+
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
@@ -33,7 +39,7 @@ public class AuthController {
 
     @Autowired
     private LogSincronizzazioneService logService;
-
+    // Gestisce l'autenticazione delle credenziali, genera il token JWT e traccia l'evento nei log di sistema
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequestDTO request) {
         try {
@@ -82,6 +88,7 @@ public class AuthController {
     @Autowired
     private it.norlan.clientportal.service.UtenteService utenteService;
 
+    // Consente la modifica della password verificando la validità di quella vecchia prima del salvataggio
     @PutMapping("/cambia-password")
     public ResponseEntity<String> cambiaPassword(
             Authentication authentication,
@@ -112,7 +119,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Errore durante l'aggiornamento della password");
         }
     }
-
+    // Endpoint formale di logout: istruisce l'applicazione client a invalidare e distruggere il JWT locale
     @PostMapping("/logout")
     public ResponseEntity<String> logout() {
         return ResponseEntity.ok("Logout effettuato con successo. Il client deve eliminare il token.");

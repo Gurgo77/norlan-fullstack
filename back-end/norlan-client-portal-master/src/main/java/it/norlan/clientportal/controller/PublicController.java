@@ -10,6 +10,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
+/**
+ * Controller REST dedicato agli endpoint pubblici (esenti da autenticazione JWT).
+ * Gestisce le interazioni dall'esterno del portale, come le richieste di informazioni
+ * provenienti dal form di contatto della landing page.
+ */
+
 @RestController
 @RequestMapping("/api/public")
 @CrossOrigin(origins = "*")
@@ -21,6 +27,7 @@ public class PublicController {
     @Autowired
     private NotificaService notificaService;
 
+    // Valida il consenso privacy del form di contatto e inoltra la richiesta come notifica email all'Amministratore
     @PostMapping("/contatto")
     public ResponseEntity<?> riceviContatto(@RequestBody ContattoWebDTO form) {
 

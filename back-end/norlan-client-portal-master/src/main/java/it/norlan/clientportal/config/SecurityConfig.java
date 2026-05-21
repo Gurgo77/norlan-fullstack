@@ -24,6 +24,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
+/**
+ * Configurazione centrale della sicurezza (Spring Security).
+ * Gestisce l'autenticazione tramite token JWT (Stateless), le policy CORS per il frontend
+ * e definisce i permessi di accesso (RBAC - Role Based Access Control) per ogni endpoint.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -38,6 +43,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Disabilita CSRF (non necessario con JWT) e mappa gli endpoint ai rispettivi ruoli (Admin, Azienda, ecc.)
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
@@ -72,6 +78,7 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated()
                 )
+                // Imposta la sessione come Stateless: il server non ricorda l'utente, serve il token a ogni richiesta
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -84,10 +91,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // Autorizza esplicitamente il frontend SvelteKit in sviluppo a comunicare con queste API
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
-
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -109,6 +116,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // Utilizza BCrypt per garantire un hashing crittografico forte delle password nel database
         return new BCryptPasswordEncoder();
     }
 }

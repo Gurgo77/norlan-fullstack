@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente UI che rappresenta la scheda sintetica di un'Azienda cliente/registrata.
+     * Mostra i dati anagrafici essenziali (Ragione Sociale, P.IVA, Sede) e le azioni rapide.
+     * Utilizza le "Runes" di Svelte 5 ($props) per l'iniezione delle proprietà.
+     */
     import {
         Trash2,
         ChevronRight,
@@ -17,8 +22,8 @@
         hasDipendenti?: boolean;
         canViewDetails?: boolean;
         canDelete?: boolean;
-        onView?: () => void;
-        onDelete?: () => void;
+        onView?: () => void; // Callback per il routing alla pagina di dettaglio
+        onDelete?: () => void; // Callback per chiamare l'API di eliminazione (gestita dal parent)
     }
 
     let {

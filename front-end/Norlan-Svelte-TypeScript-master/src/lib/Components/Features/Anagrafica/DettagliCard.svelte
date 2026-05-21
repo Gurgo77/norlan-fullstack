@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente UI per la visualizzazione di dettaglio di un'anagrafica (es. Dipendente o Docente).
+     * Genera dinamicamente un'intestazione con pulsanti di azione e una griglia di attributi
+     * passati tramite la proprietà 'items'.
+     */
     import { fade } from 'svelte/transition';
     import {
         Building2, Edit3, Mail, MessageSquare,

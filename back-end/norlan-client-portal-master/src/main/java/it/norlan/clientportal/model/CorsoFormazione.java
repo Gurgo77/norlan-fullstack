@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA che modella un Corso di Formazione (es. Sicurezza sul Lavoro).
+ * Gestisce le coordinate temporali e logistico-spaziali dell'evento, l'assegnazione
+ * del formatore (Docente) e il ciclo di vita (Stato) del registro presenze.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

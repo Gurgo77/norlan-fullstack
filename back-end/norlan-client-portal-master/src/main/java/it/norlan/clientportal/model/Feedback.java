@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA per la gestione dei questionari di valutazione dei corsi.
+ * Implementa una relazione One-to-One con l'iscrizione e sfrutta il Lifecycle Hook
+ * di JPA (@PrePersist) per validare l'integrità matematica dei voti prima del salvataggio.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

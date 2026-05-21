@@ -7,6 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Data Transfer Object (DTO) per le notifiche di sistema.
+ * Incapsula i messaggi di avviso (es. allerte di scadenza, nuovi messaggi),
+ * il loro livello di priorità e lo stato di lettura per la campanella nel frontend.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

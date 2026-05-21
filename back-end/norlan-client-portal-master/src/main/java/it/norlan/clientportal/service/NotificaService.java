@@ -13,6 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Livello di servizio (Business Logic) per l'orchestrazione delle comunicazioni.
+ * Sfrutta l'elaborazione asincrona (Multithreading via @Async) per non bloccare i thread HTTP
+ * e adotta il Design Pattern "Strategy" per disaccoppiare la logica di invio in base al canale (Email, In-App).
+ */
+
 @Service
 public class NotificaService {
 
@@ -36,6 +42,7 @@ public class NotificaService {
         return notificaRepository.findByDestinatarioIdUtenteAndLettaFalseOrderByDataInvioDesc(idUtente);
     }
 
+    // Sposta il task di notifica su un thread pool dedicato in background, delegando l'effettivo delivery al "Strategy Pattern" per massimizzare le performance
     @Async("notificheExecutor")
     @Transactional
     public void inviaNotifica(Utente destinatario, String messaggio, Notifica.Priorita priorita, Notifica.CanaleNotifica canale) {
@@ -51,6 +58,7 @@ public class NotificaService {
         notificaContext.eseguiStrategia(notifica);
     }
 
+    // Aggiorna lo stato di lettura del messaggio gestendo la concorrenza tramite Optimistic Locking, prevenendo scritture sporche
     @Transactional
     public void segnaComeLetta(Integer idNotifica) {
         notificaRepository.findById(idNotifica).ifPresent(n -> {
@@ -69,6 +77,7 @@ public class NotificaService {
         return notificaRepository.countByDestinatarioIdUtenteAndLettaFalse(idUtente);
     }
 
+    // Mappa l'entità nel DTO serializzabile per il frontend, incapsulando i dati critici e prevenendo l'esposizione diretta dell'oggetto di dominio
     public NotificaDTO convertToDTO(Notifica notifica) {
         NotificaDTO dto = new NotificaDTO();
 

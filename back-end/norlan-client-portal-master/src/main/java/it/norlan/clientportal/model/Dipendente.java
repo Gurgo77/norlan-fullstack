@@ -3,6 +3,12 @@ package it.norlan.clientportal.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * Entità JPA che definisce il Lavoratore/Dipendente.
+ * Eredita i campi di accesso come Utente e mappa la relazione vincolante (Many-to-One)
+ * con l'Azienda datrice di lavoro, aggiungendo anagrafica e Codice Fiscale.
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity

@@ -7,6 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Data Transfer Object (DTO) per l'entità Corso di Formazione.
+ * Trasporta le informazioni di base del corso, inclusi i dettagli logistici (data, luogo, capacità massima)
+ * e i riferimenti al docente assegnato.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

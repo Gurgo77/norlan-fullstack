@@ -5,6 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Data Transfer Object (DTO) per l'entità Docente.
+ * Incapsula i dati anagrafici e la specializzazione tecnica dei formatori aziendali
+ * che terranno i corsi di sicurezza.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

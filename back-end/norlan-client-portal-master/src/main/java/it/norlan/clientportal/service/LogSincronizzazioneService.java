@@ -11,6 +11,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Livello di servizio (Business Logic) per l'Auditing e il monitoraggio di sistema.
+ * Centralizza la tracciabilità delle operazioni sensibili e implementa routine di
+ * manutenzione automatizzata (Cron Jobs) per la gestione del ciclo di vita dei dati (Data Retention).
+ */
+
 @Service
 public class LogSincronizzazioneService {
 
@@ -22,6 +28,7 @@ public class LogSincronizzazioneService {
         return repository.findAllByOrderByDataEventoDesc();
     }
 
+    // Persiste in tempo reale le tracce di audit (successi o anomalie), fungendo da punto centralizzato per la registrazione degli eventi di sistema
     @Transactional
     public LogSincronizzazione registraEvento(String descrizione, boolean esito, String note) {
         LogSincronizzazione log = new LogSincronizzazione();
@@ -44,6 +51,7 @@ public class LogSincronizzazioneService {
         repository.deleteByDataEventoBefore(dataLimite);
     }
 
+    // Task asincrono schedulato (Cron Job) eseguito ogni domenica alle 03:00 AM: applica rigorosamente la policy di Data Retention a 30 giorni per preservare le performance del DB
     @Scheduled(cron = "0 0 3 ? * SUN")
     @Transactional
     public void esecuzionePuliziaAutomatica() {

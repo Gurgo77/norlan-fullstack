@@ -11,6 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Livello di servizio (Business Logic) per la gestione dell'anagrafica Dipendenti.
+ * Coordina l'inserimento, la validazione formale e garantisce rigorosamente l'integrità referenziale del database
+ * attraverso procedure complesse di cancellazione manuale a cascata (Manual Cascade Delete).
+ */
+
 @Service
 public class DipendenteService {
 
@@ -56,6 +62,7 @@ public class DipendenteService {
         return dipendenteRepository.findById(id);
     }
 
+    // Esegue un "Manual Cascade Delete": rimuove in modo sicuro tutte le dipendenze (DPI, iscrizioni, chat, feedback) prima di eliminare il record padre
     @Transactional
     public void eliminaDipendente(Integer id) {
         Dipendente dip = dipendenteRepository.findById(id)
@@ -87,6 +94,7 @@ public class DipendenteService {
         );
     }
 
+    // Associa il lavoratore all'azienda madre, valida il formato del Codice Fiscale e applica l'hashing crittografico alle credenziali
     @Transactional
     public Dipendente salvaDipendente(Dipendente dipendente, Integer aziendaId) {
         boolean isNuovo = (dipendente.getIdUtente() == null);
@@ -116,6 +124,7 @@ public class DipendenteService {
         }).orElseThrow(() -> new RuntimeException("Azienda non trovata con ID: " + aziendaId));
     }
 
+    // Appiattisce (flattening) la gerarchia della classe estraendo i dati essenziali dell'azienda collegata per un rapido consumo lato client
     public DipendenteDTO convertToDTO(Dipendente dipendente) {
         DipendenteDTO dto = new DipendenteDTO();
         dto.setIdUtente(dipendente.getIdUtente());

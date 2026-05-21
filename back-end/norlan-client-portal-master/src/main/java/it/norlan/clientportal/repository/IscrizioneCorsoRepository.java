@@ -9,6 +9,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
+/**
+ * Repository JPA per le iscrizioni (Join Table tra Utente e Corso).
+ * Centralizza l'estrazione delle presenze e degli attestati, utilizzando
+ * query JPQL custom (@Query) per verificare i vincoli di appartenenza studente-docente.
+ */
+
 @Repository
 public interface IscrizioneCorsoRepository extends JpaRepository<IscrizioneCorso, IscrizioneId> {
 

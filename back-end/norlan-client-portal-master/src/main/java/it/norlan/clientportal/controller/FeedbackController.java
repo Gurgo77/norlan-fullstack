@@ -8,6 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Controller REST per la gestione dei feedback dei corsi di formazione.
+ * Consente la raccolta dei moduli di valutazione inviati dagli utenti e l'estrazione
+ * delle statistiche aggregate e delle metriche di gradimento per singolo corso.
+ */
+
 @RestController
 @RequestMapping("/api/feedback")
 public class FeedbackController {
@@ -15,6 +21,7 @@ public class FeedbackController {
     @Autowired
     private FeedbackService feedbackService;
 
+    // Valida e registra un nuovo feedback inviato da un utente al termine di un corso
     @PostMapping("/invia")
     public ResponseEntity<?> inviaFeedback(@Valid @RequestBody FeedbackDTO feedbackDTO) {
 
@@ -28,6 +35,7 @@ public class FeedbackController {
         }
     }
 
+    // Recupera i dati aggregati e le medie dei punteggi di valutazione per un determinato corso
     @GetMapping("/corso/{idCorso}")
     public ResponseEntity<?> getStatisticheCorso(@PathVariable Integer idCorso) {
         try {

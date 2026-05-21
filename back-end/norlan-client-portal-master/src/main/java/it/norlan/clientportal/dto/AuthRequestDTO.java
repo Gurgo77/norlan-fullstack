@@ -5,6 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Data Transfer Object (DTO) "polimorfico" per le richieste di Autenticazione e Onboarding.
+ * Incapsula sia le credenziali di login (email, password), sia l'intero set di campi anagrafici
+ * necessari per la registrazione dinamica di nuove Aziende, Docenti o Dipendenti.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

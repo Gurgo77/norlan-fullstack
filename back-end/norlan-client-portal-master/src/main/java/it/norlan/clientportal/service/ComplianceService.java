@@ -10,12 +10,19 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Livello di servizio (Business Logic) dedicato al calcolo delle metriche di Conformità Normativa.
+ * Implementa l'algoritmo di valutazione dei rischi analizzando lo scadenziario documentale
+ * e restituendo un indicatore semaforico (KPI) per popolare le dashboard del frontend.
+ */
+
 @Service
 public class ComplianceService {
 
     @Autowired
     private DocumentoRepository documentoRepository;
 
+    // Scansiona l'archivio dell'azienda catalogando i documenti per urgenza temporale e delibera il livello di rischio globale (Verde, Giallo, Rosso)
     public ComplianceDTO calcolaComplianceAzienda(Integer idAzienda) {
         List<Documento> documenti = documentoRepository.findByAziendaIdUtente(idAzienda);
 

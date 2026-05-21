@@ -15,6 +15,12 @@ import it.norlan.clientportal.model.Notifica;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Livello di servizio (Business Logic) per l'orchestrazione dei Corsi di Formazione.
+ * Gestisce l'intero ciclo di vita didattico implementando una rigorosa Macchina a Stati Finiti (FSM)
+ * che impedisce transizioni illegali e coordina log, iscrizioni e comunicazioni asincrone con i partecipanti.
+ */
+
 @Service
 public class CorsoFormazioneService {
 
@@ -103,6 +109,7 @@ public class CorsoFormazioneService {
         return salvato;
     }
 
+    // Valida le transizioni di stato della Macchina a Stati Finiti (FSM) bloccando, ad esempio, l'avvio di corsi senza iscritti
     @Transactional
     public void aggiornaStato(Integer idCorso, CorsoFormazione.StatoCorso nuovoStato) {
         CorsoFormazione corso = corsoRepository.findById(idCorso)
@@ -149,6 +156,7 @@ public class CorsoFormazioneService {
         }
     }
 
+    // Chiude il ciclo didattico e innesca le notifiche automatiche (richiesta feedback studenti e alert validazione Admin)
     @Transactional
     public void concludiCorso(Integer idCorso) {
         CorsoFormazione corso = corsoRepository.findById(idCorso).orElseThrow();
@@ -196,6 +204,7 @@ public class CorsoFormazioneService {
         return corsoRepository.findByStato(stato);
     }
 
+    // Cicla massivamente il registro presenze, validando gli studenti e mandando la pratica in firma digitale (ATTESA_FIRMA_DOCENTE)
     @Transactional
     public void validaPresenzeAdmin(Integer idCorso, List<Integer> idUtentiPresenti) {
         CorsoFormazione corso = corsoRepository.findById(idCorso)
@@ -230,6 +239,7 @@ public class CorsoFormazioneService {
         );
     }
 
+    // Implementa il controllo d'accesso (RBAC) per assicurare che solo il docente titolare possa controfirmare il registro
     @Transactional
     public void controfirmaDocente(Integer idCorso, Integer idDocente) {
         CorsoFormazione corso = corsoRepository.findById(idCorso)

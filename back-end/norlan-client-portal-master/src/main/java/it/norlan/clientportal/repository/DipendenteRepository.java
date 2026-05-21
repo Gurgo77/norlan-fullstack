@@ -8,6 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
+/**
+ * Repository JPA per l'entità Dipendente.
+ * Oltre alle query di lettura, sfrutta le annotazioni @Modifying e @Query per
+ * eseguire cancellazioni massive (Bulk Delete) in JPQL legate a una singola azienda.
+ */
+
 @Repository
 public interface DipendenteRepository extends JpaRepository<Dipendente, Integer> {
 

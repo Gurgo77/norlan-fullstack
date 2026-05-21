@@ -6,6 +6,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Data Transfer Object (DTO) per i log di sistema e di sicurezza.
+ * Trasporta le informazioni sugli eventi tracciati (esito, note tecniche, timestamp)
+ * per popolare i cruscotti di auditing dell'Amministratore.
+ */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

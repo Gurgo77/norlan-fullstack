@@ -12,6 +12,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * Livello di servizio (Business Logic) base per l'entità polimorfica Utente.
+ * Centralizza la logica di sicurezza (hashing crittografico) e l'interfacciamento con Spring Security
+ * per validare le credenziali in fase di login e gestire le procedure sicure di reset delle password.
+ */
+
 @Service
 public class UtenteService {
 
@@ -38,6 +44,7 @@ public class UtenteService {
         return utenteRepository.save(utente);
     }
 
+    // Valida le credenziali confrontando l'input in chiaro con l'hash salvato a DB, prevenendo vulnerabilità di sicurezza (Timing Attacks)
     public boolean verificaCredenziali(String email, String passwordChiara) {
         Optional<Utente> utenteOpt = utenteRepository.findByEmail(email);
 
@@ -48,6 +55,7 @@ public class UtenteService {
         return false;
     }
 
+    // Modifica in sicurezza la chiave d'accesso, disattiva il flag di "cambio obbligatorio" (Force Reset) e innesca un alert di sicurezza via email
     @Transactional
     public void cambiaPassword(String email, String vecchiaPassword, String nuovaPassword) {
         Utente utente = utenteRepository.findByEmail(email)
@@ -73,6 +81,7 @@ public class UtenteService {
         );
     }
 
+    // Mappa l'entità nel DTO omettendo volutamente l'hash della password per prevenire esposizioni accidentali (Data Leak) verso il client
     public UtenteDTO convertToDTO(Utente utente) {
         UtenteDTO dto = new UtenteDTO();
         dto.setIdUtente(utente.getIdUtente());

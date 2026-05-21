@@ -25,6 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Controller REST per l'amministrazione del modulo Formazione.
+ * Coordina il ciclo di vita dei corsi, l'iscrizione degli utenti, i registri delle presenze
+ * con firme elettroniche, la dispensa dei materiali didattici e la distribuzione degli attestati.
+ */
+
 @RestController
 @RequestMapping("/api/formazione")
 @CrossOrigin(origins = "*")
@@ -48,6 +54,7 @@ public class FormazioneController {
     @Autowired
     private DocumentoService documentoService;
 
+    // Endpoint dedicati alla ricerca, creazione, aggiornamento di stato ed eliminazione dei corsi di formazione
     @GetMapping("/corsi")
     public ResponseEntity<List<CorsoFormazioneDTO>> getAllCorsi() {
         List<CorsoFormazioneDTO> corsi = corsoService.findAll()
@@ -102,6 +109,7 @@ public class FormazioneController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // Endpoint per la gestione e l'estrazione delle iscrizioni degli utenti ai rispettivi corsi
     @GetMapping("/iscrizioni/utente/{idUtente}")
     public ResponseEntity<List<IscrizioneCorsoDTO>> getIscrizioniByUtente(@PathVariable Integer idUtente) {
         List<IscrizioneCorsoDTO> iscrizioni = iscrizioneService.trovaIscrizioniUtente(idUtente)
@@ -131,7 +139,7 @@ public class FormazioneController {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }
-
+    // Gestisce il workflow del registro di classe: convalida delle presenze da parte dell'Admin e controfirma del docente
     @PostMapping("/corsi/{id}/valida-presenze")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> validaPresenzeAdmin(
@@ -156,6 +164,7 @@ public class FormazioneController {
         return ResponseEntity.ok(Map.of("message", "Registro controfirmato con successo."));
     }
 
+    // Gestisce il caricamento massivo e la distribuzione dei certificati finali in PDF, e il relativo download lato utente
     @PostMapping(value = "/corsi/{id}/distribuisci-attestati", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> distribuisciAttestati(
@@ -222,6 +231,7 @@ public class FormazioneController {
         return ResponseEntity.notFound().build();
     }
 
+    // Endpoint per la gestione delle dispense e dei materiali di studio (caricamento, download e rimozione)
     @GetMapping("/corsi/{idCorso}/materiali")
     public ResponseEntity<List<MaterialeDidatticoDTO>> getMaterialiByCorso(@PathVariable Integer idCorso) {
         List<MaterialeDidatticoDTO> materiali = materialeService.trovaPerCorso(idCorso)

@@ -14,6 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Livello di servizio (Business Logic) per il sistema di recensioni e telemetria didattica.
+ * Applica rigidi vincoli di dominio basati su chiavi composite e sfrutta le funzionalità
+ * funzionali di Java (Stream API) per l'aggregazione statistica dei KPI qualitativi.
+ */
+
 @Service
 public class FeedbackService {
 
@@ -23,6 +29,7 @@ public class FeedbackService {
     @Autowired
     private IscrizioneCorsoRepository iscrizioneRepository;
 
+    // Intercetta la chiave composita (Utente-Corso) e utilizza pattern difensivi (Guard Clauses) per impedire recensioni duplicate o da parte di utenti non validati
     @Transactional
     public Feedback registraFeedback(FeedbackDTO dto) {
         IscrizioneCorso.IscrizioneId idComposito = new IscrizioneCorso.IscrizioneId(dto.getIdUtente(), dto.getIdCorso());
@@ -51,6 +58,7 @@ public class FeedbackService {
         return feedbackRepository.save(feedback);
     }
 
+    // Aggrega i dati grezzi tramite Java Stream API (Map-Reduce) per calcolare a runtime le medie aritmetiche e filtrare i commenti per la reportistica
     @Transactional(readOnly = true)
     public FeedbackStatsDTO getStatisticheCorso(Integer idCorso) {
         List<Feedback> feedbacks = feedbackRepository.findByIscrizione_Id_IdCorso(idCorso);

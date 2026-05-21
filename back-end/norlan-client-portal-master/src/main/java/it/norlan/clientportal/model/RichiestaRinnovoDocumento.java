@@ -4,6 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Entità JPA per il tracciamento del workflow di rinnovo documentale.
+ * Collega una richiesta formale a un documento preesistente e ne monitora
+ * l'avanzamento burocratico (in attesa, in lavorazione, completato).
+ */
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Entity
