@@ -51,7 +51,7 @@ class FeedbackControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Feedback archiviato con successo."));
+                .andExpect(content().string("Feedback archiviato con successo e metriche aggiornate."));
     }
 
     @Test

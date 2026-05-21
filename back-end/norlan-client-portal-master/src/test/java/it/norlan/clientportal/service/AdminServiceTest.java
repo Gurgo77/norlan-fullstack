@@ -107,7 +107,7 @@ class AdminServiceTest {
                 () -> adminService.salvaAdmin(inputAdmin)
         );
 
-        assertEquals("Configurazione negata: Il sistema prevede un unico admin globale.", exception.getMessage());
+        assertEquals("Configurazione negata: Il sistema prevede un unico Amministratore globale.", exception.getMessage());
         verify(adminRepository, never()).save(any());
     }
 
@@ -160,7 +160,7 @@ class AdminServiceTest {
                 () -> adminService.aggiornaAdmin(1, dto)
         );
 
-        assertEquals("Admin non trovato", exception.getMessage());
+        assertEquals("Amministratore non trovato", exception.getMessage());
         verify(adminRepository, never()).save(any());
     }
 

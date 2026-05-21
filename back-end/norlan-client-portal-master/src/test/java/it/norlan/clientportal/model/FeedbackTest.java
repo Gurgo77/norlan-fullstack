@@ -48,8 +48,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test
@@ -62,8 +61,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test
@@ -76,8 +74,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test
@@ -90,8 +87,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test

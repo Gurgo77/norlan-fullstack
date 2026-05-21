@@ -34,7 +34,7 @@ class ComplianceServiceTest {
         assertEquals(LivelloRischio.VERDE, result.getStatoGlobale());
         assertEquals(0, result.getDocumentiScaduti());
         assertEquals(0, result.getDocumentiInScadenza());
-        assertEquals("Compliance ok: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
+        assertEquals("Conformità garantita: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
     }
 
     @Test

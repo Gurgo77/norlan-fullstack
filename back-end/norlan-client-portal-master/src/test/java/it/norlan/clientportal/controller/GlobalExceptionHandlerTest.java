@@ -51,12 +51,11 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<String> response = globalExceptionHandler.handleDataIntegrityException(eccezione);
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertEquals("Operazione bloccata dal database perchè probabile violazione di vincoli relazionali.", response.getBody());
-
+        assertEquals("Operazione bloccata dal database (probabile violazione di vincoli relazionali).", response.getBody());
         verify(logService).registraEvento(
                 eq("Blocco sicurezza: Violazione integrità dati"),
                 eq(false),
-                eq("Eccezione database, causa radice del database")
+                eq("Eccezione database: Foreign Key Constraint o Unique Constraint fallito. Dettaglio tecnico: Violazione vincolo unico")
         );
     }
 
@@ -68,12 +67,12 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<String> response = globalExceptionHandler.handleDataIntegrityException(eccezione);
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertEquals("Operazione bloccata dal database perchè probabile violazione di vincoli relazionali.", response.getBody());
+        assertEquals("Operazione bloccata dal database (probabile violazione di vincoli relazionali).", response.getBody());
 
         verify(logService).registraEvento(
                 eq("Blocco sicurezza: Violazione integrità dati"),
                 eq(false),
-                eq("Eccezione database, causa radice del database")
+                eq("Eccezione database: Foreign Key Constraint o Unique Constraint fallito. Dettaglio tecnico: Causa radice del database")
         );
     }
 

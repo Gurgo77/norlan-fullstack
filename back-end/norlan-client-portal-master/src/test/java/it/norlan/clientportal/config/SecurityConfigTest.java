@@ -1,9 +1,11 @@
 package it.norlan.clientportal.config;
 
+import it.norlan.clientportal.security.CustomUserDetailsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -23,6 +25,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {
 
+    @Mock
+    private CustomUserDetailsService userDetailsService;
+
     @InjectMocks
     private SecurityConfig securityConfig;
 
@@ -40,7 +45,7 @@ class SecurityConfigTest {
 
     @Test
     void authenticationProvider_ConfiguraDaoProviderConEncoderEUserDetailsService() {
-        AuthenticationProvider provider = securityConfig.authenticationProvider();
+        var provider = securityConfig.authenticationProvider();
 
         assertNotNull(provider, "L'AuthenticationProvider non deve essere nullo");
         assertTrue(provider instanceof DaoAuthenticationProvider, "Il provider deve essere un'istanza di DaoAuthenticationProvider");
