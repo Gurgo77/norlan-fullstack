@@ -86,16 +86,15 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
             <version>0.11.5</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -146,11 +145,21 @@
                     </excludes>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+
+                <configuration>
+                    <excludes>
+                        <exclude>it/norlan/clientportal/dto/**/*</exclude>
+                        <exclude>it/norlan/clientportal/repository/**/*</exclude>
+                        <exclude>it/norlan/clientportal/model/**/*</exclude>
+                        <exclude>it/norlan/clientportal/config/**/*</exclude>
+                        <exclude>it/norlan/clientportal/NorlanClientPortalApplication.class</exclude>
+                    </excludes>
+                </configuration>
+
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -174,12 +183,6 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <excludes>
-                                <exclude>it/norlan/clientportal/dto/**</exclude>
-                                <exclude>it/norlan/clientportal/repository/**</exclude>
-                                <exclude>it/norlan/clientportal/*Application.class</exclude>
-                                <exclude>**/*Builder.class</exclude>
-                            </excludes>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>

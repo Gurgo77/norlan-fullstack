@@ -70,7 +70,7 @@ class PublicControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Messaggio inviato con successo!"));
 
-        String expectedCorpoMail = "Nuovo messaggio dal form di contatto:\n\n"
+        String expectedCorpoMail = "Nuovo messaggio dal form web di NorLan:\n\n"
                 + "Nome: Mario Rossi\n"
                 + "Email di contatto: mario.rossi@test.it\n\n"
                 + "Messaggio:\nRichiesta di informazioni sui corsi.";

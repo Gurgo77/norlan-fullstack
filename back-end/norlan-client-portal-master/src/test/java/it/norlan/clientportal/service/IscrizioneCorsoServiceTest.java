@@ -3,6 +3,7 @@ import it.norlan.clientportal.dto.IscrizioneCorsoDTO;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.model.IscrizioneCorso.IscrizioneId;
 import it.norlan.clientportal.repository.CorsoFormazioneRepository;
+import it.norlan.clientportal.repository.FeedbackRepository;
 import it.norlan.clientportal.repository.IscrizioneCorsoRepository;
 import it.norlan.clientportal.repository.UtenteRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,9 @@ class IscrizioneCorsoServiceTest {
 
     @Mock
     private IscrizioneCorsoRepository iscrizioneRepository;
+
+    @Mock
+    private FeedbackRepository feedbackRepository;
 
     @Mock
     private NotificaService notificaService;
@@ -217,9 +221,13 @@ class IscrizioneCorsoServiceTest {
 
     @Test
     void convertToDTO_IscrizioneCompleta_MappaTuttiICampi() {
+
         Documento documento = new Documento();
         documento.setIdDocumento(99);
-        iscrizione.setDocumentoAttestato(documento);
+        this.iscrizione.setDocumentoAttestato(documento);
+
+        when(feedbackRepository.findByIscrizione_Id_IdUtenteAndIscrizione_Id_IdCorso(anyInt(), anyInt()))
+                .thenReturn(Optional.empty());
 
         IscrizioneCorsoDTO dto = iscrizioneService.convertToDTO(iscrizione);
 
@@ -231,6 +239,7 @@ class IscrizioneCorsoServiceTest {
         assertFalse(dto.getPresenzaConfermata());
         assertEquals(99, dto.getIdDocumento());
         assertEquals("PROGRAMMATO", dto.getStatoCorso());
+        assertNotNull(dto);
     }
 
     @Test

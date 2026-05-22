@@ -144,7 +144,7 @@ class DocenteServiceTest {
         verify(logService).registraEvento(
                 eq("Eliminazione anagrafica: DOCENTE"),
                 eq(true),
-                eq("Cancellato docente ID: 1")
+                eq("Cancellato docente ID: 1 (Luigi Verdi)")
         );
     }
 

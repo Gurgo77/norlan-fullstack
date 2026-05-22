@@ -54,8 +54,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     // Boundary Value Analysis (Valore Limite Superiore): collauda lo sforamento della scala (6), dimostrando l'efficacia delle Guard Clauses interne all'entità
@@ -69,8 +68,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test
@@ -83,8 +81,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test
@@ -97,8 +94,7 @@ class FeedbackTest {
                 () -> feedback.prePersistValidation()
 
         );
-        assertEquals("I rating devono essere un valore compreso tra 1 e 5", exception.getMessage());
-
+        assertEquals("I valori di rating devono essere compresi tra 1 e 5.", exception.getMessage());
     }
 
     @Test

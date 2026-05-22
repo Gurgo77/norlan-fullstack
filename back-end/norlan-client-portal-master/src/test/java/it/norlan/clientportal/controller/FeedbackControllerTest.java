@@ -55,7 +55,7 @@ class FeedbackControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Feedback archiviato con successo."));
+                .andExpect(content().string("Feedback archiviato con successo e metriche aggiornate."));
     }
 
     // Negative Testing sulle regole di business: verifica che la violazione di una Guard Clause di dominio (es. corso non terminato) venga correttamente tradotta in un HTTP 400 (Bad Request)

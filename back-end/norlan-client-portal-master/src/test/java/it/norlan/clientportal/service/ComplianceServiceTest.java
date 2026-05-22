@@ -38,7 +38,7 @@ class ComplianceServiceTest {
         assertEquals(LivelloRischio.VERDE, result.getStatoGlobale());
         assertEquals(0, result.getDocumentiScaduti());
         assertEquals(0, result.getDocumentiInScadenza());
-        assertEquals("Compliance ok: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
+        assertEquals("Conformità garantita: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
     }
 
     // Time-Based Boundary Analysis (Soglia Critica): collauda la reattività del motore di compliance garantendo l'innesco dell'allerta massima (Stato ROSSO) per violazioni normative già consolidate

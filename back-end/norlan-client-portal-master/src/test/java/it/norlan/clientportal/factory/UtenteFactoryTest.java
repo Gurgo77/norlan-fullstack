@@ -65,6 +65,6 @@ class UtenteFactoryTest {
                 IllegalArgumentException.class,
                 () -> utenteFactory.creaUtente(null)
         );
-        assertEquals("Impossibile istanziare utente: il ruolo non è inserito", exception.getMessage());
+        assertEquals("Impossibile istanziare un Utente: il ruolo non può essere nullo.", exception.getMessage());
     }
 }
