@@ -18,7 +18,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di gestione del Materiale Didattico.
+ * Verifica il routing condizionale delle notifiche (Event Broadcasting multi-canale), le policy di
+ * validazione strutturale degli allegati (Guard Clauses) e la resilienza del sistema (Graceful Degradation).
+ */
 @ExtendWith(MockitoExtension.class)
 class MaterialeDidatticoServiceTest {
 
@@ -98,6 +102,7 @@ class MaterialeDidatticoServiceTest {
         verify(repository, never()).save(any());
     }
 
+    // Input Validation (Fail-Fast): garantisce che il Service blocchi immediatamente l'elaborazione in presenza di payload semanticamente vuoti, proteggendo il DB da file "fantasma"
     @Test
     void salvaMateriale_PercorsoFileVuoto_LanciaEccezione() {
         materiale.setPercorsoFile("   ");
@@ -111,6 +116,7 @@ class MaterialeDidatticoServiceTest {
         verify(repository, never()).save(any());
     }
 
+    // Multi-Channel Event Broadcasting: verifica che l'inserimento inneschi una propagazione selettiva delle notifiche, orchestrando priorità e canali (In-App/Email) in base al ruolo dell'utente
     @Test
     void salvaMateriale_NuovoSenzaData_ImpostaDataESalvaENotifica() {
         materiale.setDataCaricamento(null);
@@ -144,6 +150,7 @@ class MaterialeDidatticoServiceTest {
         verify(notificaService).inviaNotifica(eq(docente), anyString(), eq(Notifica.Priorita.BASSA), eq(Notifica.CanaleNotifica.IN_APP));
     }
 
+    // Defensive Programming & Null-Safety: collauda la robustezza della logica di business di fronte a stati relazionali incompleti (es. corso orfano di docente), prevenendo NullPointerException in produzione
     @Test
     void salvaMateriale_SenzaDocente_NonVaInErrore() {
         corso.setDocente(null);

@@ -26,7 +26,11 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per l'infrastruttura di comunicazione Real-Time (WebSocket/STOMP).
+ * Valida il routing del Message Broker e applica rigorose tecniche di Negative Testing per verificare
+ * che l'intercettore di sicurezza respinga le connessioni Socket sprovviste di Token JWT valido.
+ */
 @ExtendWith(MockitoExtension.class)
 class WebSocketConfigTest {
 
@@ -43,6 +47,7 @@ class WebSocketConfigTest {
     void setUp() {
     }
 
+    // Verifica la corretta registrazione del tunnel bidirezionale e l'attivazione del meccanismo di fallback (SockJS) per i client non compatibili
     @Test
     void registerStompEndpoints_ConfiguraCorrettamenteEndpointESockJS() {
         StompEndpointRegistry registryMock = mock(StompEndpointRegistry.class);
@@ -69,6 +74,7 @@ class WebSocketConfigTest {
         verify(registryMock).setUserDestinationPrefix("/user");
     }
 
+    // Negative Testing: simula un tentativo di accesso non autorizzato al protocollo STOMP, garantendo che l'intercettore blocchi l'handshake (Fail-Fast)
     @Test
     void channelInterceptor_ConnessioneSenzaToken_LanciaEccezione() {
         ChannelInterceptor interceptor = estraiIntercettoreDiSicurezza();

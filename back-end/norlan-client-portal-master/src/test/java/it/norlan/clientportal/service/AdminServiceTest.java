@@ -15,7 +15,11 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Business Logic (Service).
+ * Verifica l'isolamento logico tramite Mocking del layer di persistenza (Repository)
+ * e collauda l'applicazione rigorosa delle policy di dominio aziendali e crittografiche.
+ */
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
 
@@ -53,6 +57,7 @@ class AdminServiceTest {
         assertTrue(result.isEmpty());
     }
 
+    // Verifica la corretta delega delle responsabilità di sicurezza: assicura che il Service invochi l'algoritmo di hashing (Encoder) prevenendo il salvataggio di credenziali in chiaro
     @Test
     void salvaAdmin_CountZeroConPassword_SalvaCorrettamente() {
         when(adminRepository.count()).thenReturn(0L);
@@ -96,6 +101,7 @@ class AdminServiceTest {
         verify(adminRepository).save(inputAdmin);
     }
 
+    // Negative Testing sui vincoli di dominio: garantisce che il tentativo di violare l'invariante architetturale (Singleton globale per l'Admin) venga intercettato, bloccando la transazione sul DB
     @Test
     void salvaAdmin_AdminEsistente_LanciaIllegalStateException() {
         when(adminRepository.count()).thenReturn(1L);
@@ -111,6 +117,7 @@ class AdminServiceTest {
         verify(adminRepository, never()).save(any());
     }
 
+    // Collauda la mutazione dello stato (Partial Update): verifica che il disaccoppiamento tramite DTO permetta una modifica selettiva e sicura dell'entità prima della sincronizzazione
     @Test
     void aggiornaAdmin_TrovatoEmailValida_AggiornaESalva() {
         Admin adminEsistente = new Admin();

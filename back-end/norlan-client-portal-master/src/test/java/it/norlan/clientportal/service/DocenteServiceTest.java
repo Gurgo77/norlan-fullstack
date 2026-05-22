@@ -21,7 +21,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Business Logic del dominio Didattico (Docente).
+ * Verifica le policy di validazione stringente sulle competenze tecniche (Sanitizzazione Input),
+ * l'orchestrazione crittografica delle password e l'integrità dei log di Audit.
+ */
 @ExtendWith(MockitoExtension.class)
 class DocenteServiceTest {
 
@@ -85,6 +89,7 @@ class DocenteServiceTest {
         verify(docenteRepository, never()).save(any());
     }
 
+    // Sanitizzazione e Guard Clauses: verifica che il dominio rifiuti input logicamente vuoti (Blank strings), proteggendo il database da anomalie semantiche silenziose
     @Test
     void salvaDocente_SpecializzazioneVuota_LanciaIllegalArgumentException() {
         docente.setSpecializzazioneTecnica("   ");
@@ -93,6 +98,7 @@ class DocenteServiceTest {
         verify(docenteRepository, never()).save(any());
     }
 
+    // Security Delegation: assicura che il Service funga da orchestratore sicuro, demandando tassativamente l'hashing asimmetrico al componente dedicato (PasswordEncoder) prima della persistenza
     @Test
     void salvaDocente_ConPassword_CodificaESalva() {
         docente.setPasswordHash("passwordSegreta");
@@ -118,6 +124,7 @@ class DocenteServiceTest {
         verify(docenteRepository).save(docente);
     }
 
+    // Fail-Fast & Audit Integrity: collauda il blocco immediato in caso di entità inesistente, verificando esplicitamente che il sistema non generi falsi log di cancellazione (Audit Pollution)
     @Test
     void eliminaDocente_DocenteNonTrovato_LanciaEccezione() {
         when(docenteRepository.findById(99)).thenReturn(Optional.empty());

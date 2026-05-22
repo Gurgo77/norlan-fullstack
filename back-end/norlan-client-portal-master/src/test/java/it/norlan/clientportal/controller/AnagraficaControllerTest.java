@@ -19,7 +19,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di esposizione REST (Controller).
+ * Sfrutta il framework MockMvc per simulare le transazioni HTTP in isolamento dal database,
+ * validando il rispetto rigoroso dei contratti API (Verbi, Payload JSON, HTTP Status Codes).
+ */
 @ExtendWith(MockitoExtension.class)
 class AnagraficaControllerTest {
 
@@ -50,6 +54,7 @@ class AnagraficaControllerTest {
         objectMapper = new ObjectMapper();
     }
 
+    // Valida l'endpoint di creazione (POST): verifica la serializzazione del payload e garantisce che il server risponda con lo status code semantico corretto (201 Created)
     @Test
     void registraNuovoUtente_Ritorna201() throws Exception {
         AuthRequestDTO request = new AuthRequestDTO();
@@ -110,7 +115,7 @@ class AnagraficaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idUtente").value(1));
     }
-
+    // Negative Testing sul verbo GET: collauda la resilienza dell'API simulando l'assenza della risorsa per verificare il corretto mapping dell'errore (404 Not Found)
     @Test
     void getAziendaById_NonTrovata_Ritorna404() throws Exception {
         when(aziendaService.findById(1)).thenReturn(Optional.empty());
@@ -119,6 +124,7 @@ class AnagraficaControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // Testa l'operazione di aggiornamento (PUT) e ispeziona l'albero DOM della risposta JSON tramite JsonPath per assicurarne l'integrità strutturale
     @Test
     void updateAzienda_Trovata_Ritorna200() throws Exception {
         Azienda aziendaEsistente = new Azienda();

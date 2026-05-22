@@ -19,7 +19,11 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per le policy di sicurezza architetturale (Security Posture).
+ * Verifica l'integrità dei meccanismi di crittografia delle credenziali e valida le rigide regole
+ * di restrizione CORS (Cross-Origin Resource Sharing) per prevenire vulnerabilità web e accessi non autorizzati.
+ */
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {
 
@@ -30,6 +34,7 @@ class SecurityConfigTest {
     void setUp() {
     }
 
+    // Garantisce che il sistema adotti standard crittografici moderni (BCrypt) per l'hashing irreversibile delle password, impedendo salvataggi in chiaro nel database
     @Test
     void passwordEncoder_IstanziaBCryptPasswordEncoder() {
         PasswordEncoder encoder = securityConfig.passwordEncoder();
@@ -58,6 +63,7 @@ class SecurityConfigTest {
         assertEquals(expectedManager, manager, "Deve essere restituito il manager fornito dalla configurazione");
     }
 
+    // Valida le difese del perimetro di rete: assicura che la Same-Origin Policy venga allentata esclusivamente per il frontend autorizzato (Svelte), respingendo le chiamate da domini terzi
     @Test
     void corsConfigurationSource_ApplicaRegoleRestrittivePerFrontendSvelte() {
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();

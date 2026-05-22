@@ -27,7 +27,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Autenticazione e Sicurezza (AuthController).
+ * Simula il processo di login e l'emissione dei token JWT in totale isolamento dal database,
+ * collaudando le difese perimetrali delle API e verificando il tracciamento degli accessi (Audit Logging).
+ */
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
@@ -55,6 +59,7 @@ class AuthControllerTest {
         objectMapper = new ObjectMapper();
     }
 
+    // Valida l'"Happy Path" di autenticazione: verifica la corretta negoziazione delle credenziali, la generazione del token JWT Stateless e la registrazione dell'evento di Audit
     @Test
     void login_CredenzialiCorrette_RitornaTokenEStatus200() throws Exception {
         AuthRequestDTO request = new AuthRequestDTO();
@@ -86,7 +91,7 @@ class AuthControllerTest {
 
         verify(logService).registraEvento(eq("Accesso al portale"), eq(true), anyString());
     }
-
+    // Negative Testing sulla sicurezza: simula un errore di login (es. credenziali compromesse), garantendo che il sistema reagisca con un 401 Unauthorized e logghi l'allerta di sicurezza
     @Test
     void login_CredenzialiErrate_Ritorna401() throws Exception {
         AuthRequestDTO request = new AuthRequestDTO();
@@ -124,6 +129,7 @@ class AuthControllerTest {
                 .andExpect(content().string("Utente non trovato"));
     }
 
+    // Collauda un endpoint protetto iniettando un Security Principal simulato a livello di contesto, dimostrando la capacità di testare operazioni sensibili (rotazione credenziali) in regime di autorizzazione
     @Test
     void cambiaPassword_Successo_Ritorna200() throws Exception {
         CambioPasswordDTO request = new CambioPasswordDTO();

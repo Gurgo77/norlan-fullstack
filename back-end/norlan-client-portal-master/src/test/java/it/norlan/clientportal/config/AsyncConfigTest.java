@@ -9,6 +9,11 @@ import java.lang.reflect.Method;
 import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
+/**
+ * Suite di collaudo (Unit Test) per l'infrastruttura di esecuzione asincrona.
+ * Verifica rigorosamente il dimensionamento del Thread Pool per prevenire l'esaurimento
+ * delle risorse di sistema e testa i meccanismi di Fault Tolerance (Resilienza) dei thread in background.
+ */
 
 class AsyncConfigTest {
 
@@ -19,6 +24,7 @@ class AsyncConfigTest {
         asyncConfig = new AsyncConfig();
     }
 
+    // Verifica il corretto tuning prestazionale del Thread Pool (Core e Max Size) per garantire scalabilità concorrente proteggendo la CPU da sovraccarichi
     @Test
     void notificheExecutor_ConfiguraCorrettamenteIlPoolDiThread() {
         Executor executor = asyncConfig.notificheExecutor();
@@ -33,6 +39,7 @@ class AsyncConfigTest {
         assertEquals("NotificaThread-", taskExecutor.getThreadNamePrefix(), "Il prefisso del thread deve corrispondere allo standard definito");
     }
 
+    // Sfrutta la Java Reflection per simulare un crash di sistema asincrono, verificando che l'handler intercetti l'anomalia in modalità "Fail-Safe"
     @Test
     void getAsyncUncaughtExceptionHandler_GestisceEccezioniSenzaInterruzioni() throws NoSuchMethodException {
         AsyncUncaughtExceptionHandler handler = asyncConfig.getAsyncUncaughtExceptionHandler();

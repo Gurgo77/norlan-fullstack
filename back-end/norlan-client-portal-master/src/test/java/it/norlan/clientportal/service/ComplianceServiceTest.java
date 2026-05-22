@@ -13,7 +13,11 @@ import java.util.Collections;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
-
+/**
+ * Suite di collaudo (Unit Test) per il motore di calcolo del Rischio Aziendale (Compliance Rule Engine).
+ * Verifica l'algoritmo di aggregazione delle scadenze documentali, validando le transizioni di stato
+ * (RAG Status: Red, Amber, Green) basate su partizioni di equivalenza temporali (KPI Normativi).
+ */
 @ExtendWith(MockitoExtension.class)
 class ComplianceServiceTest {
 
@@ -37,6 +41,7 @@ class ComplianceServiceTest {
         assertEquals("Compliance ok: tutti i documenti sono validi.", result.getMessaggioSuggerimento());
     }
 
+    // Time-Based Boundary Analysis (Soglia Critica): collauda la reattività del motore di compliance garantendo l'innesco dell'allerta massima (Stato ROSSO) per violazioni normative già consolidate
     @Test
     void calcolaComplianceAzienda_DocumentoScaduto_RitornaRosso() {
         Documento doc = new Documento();
@@ -66,6 +71,7 @@ class ComplianceServiceTest {
         assertEquals(1, result.getDocumentiInScadenza());
     }
 
+    // Equivalence Partitioning (Fasce di Rischio): verifica la classificazione preventiva del Warning normativo (Stato GIALLO) per i documenti che entrano nella finestra di tolleranza a 30 giorni
     @Test
     void calcolaComplianceAzienda_DocumentoInScadenzaImminente_RitornaGiallo() {
         Documento doc = new Documento();
@@ -81,6 +87,7 @@ class ComplianceServiceTest {
         assertEquals("Attenzione: alcuni documenti scadranno nei prossimi 30 giorni.", result.getMessaggioSuggerimento());
     }
 
+    // Baseline Validation (Happy Path): assicura che un set documentale con orizzonte temporale sicuro (Safe Zone) produca un aggregato di conformità totale, escludendo falsi positivi
     @Test
     void calcolaComplianceAzienda_DocumentoValido_RitornaVerde() {
         Documento doc = new Documento();

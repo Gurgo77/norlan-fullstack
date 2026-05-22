@@ -4,7 +4,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di traduzione ORM (JPA Attribute Converter).
+ * Verifica la risoluzione dell'Object-Relational Impedance Mismatch, garantendo la corretta
+ * serializzazione/deserializzazione del Behavioral Pattern (State) verso colonne scalari del database.
+ */
 class DocumentoStateConverterTest {
 
     private DocumentoStateConverter converter;
@@ -14,6 +18,7 @@ class DocumentoStateConverterTest {
         converter = new DocumentoStateConverter();
     }
 
+    // ORM Boundary Null-Safety: garantisce che la pipeline di serializzazione verso il database sia resiliente ai valori nulli, prevenendo NullPointerException durante le fasi di persistenza (Flush)
     @Test
     void convertToDatabaseColumn_StatoNull_RitornaNull() {
         String result = converter.convertToDatabaseColumn(null);
@@ -38,6 +43,7 @@ class DocumentoStateConverterTest {
         assertNull(result, "La lettura di un valore null dal DB deve restituire uno stato null.");
     }
 
+    // Object Rehydration (Deserialization Routing): collauda il meccanismo di reidratazione del Dominio, assicurando che un dato scalare (Stringa DB) venga istanziato dinamicamente nella corretta classe concreta dello State Pattern
     @Test
     void convertToEntityAttribute_Caricato_RitornaIstanzaStatoCaricato() {
         DocumentoState result = converter.convertToEntityAttribute("CARICATO");
@@ -66,6 +72,7 @@ class DocumentoStateConverterTest {
         assertInstanceOf(StatoArchiviato.class, result, "La stringa 'ARCHIVIATO' deve essere mappata alla classe StatoArchiviato.");
     }
 
+    // Data Corruption Guard Clause: difende l'integrità del Dominio intercettando "Dirty Reads" o anomalie del database (es. stringhe manomesse), bloccando il caricamento di entità in stati inconsistenti
     @Test
     void convertToEntityAttribute_ValoreSconosciuto_LanciaEccezione() {
         IllegalArgumentException exception = assertThrows(

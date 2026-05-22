@@ -9,7 +9,11 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il Behavioral Design Pattern "State" (Lato Context).
+ * Valida il ciclo di vita dell'entità di dominio (Rich Domain Model) assicurando la corretta
+ * inizializzazione e la delega polimorfica delle transizioni di stato per evitare l'anti-pattern degli if-else annidati.
+ */
 class DocumentoTest {
 
     private Documento documento;
@@ -19,6 +23,7 @@ class DocumentoTest {
         documento = new Documento();
     }
 
+    // Object Lifecycle Validation: garantisce che l'istanziazione dell'entità produca un dominio in uno stato consistente e valido (Stato di Default) sin dal momento della creazione
     @Test
     void costruttore_InizializzaConStatoCaricatoEDataOggi() {
         assertNotNull(documento.getStato());
@@ -27,6 +32,7 @@ class DocumentoTest {
         assertEquals(LocalDate.now(), documento.getDataCaricamento());
     }
 
+    // Verifica del meccanismo di Inversion of Control interno al pattern: dimostra (tramite Mocking) che il Context delega l'esecuzione logica all'implementazione concreta dello Stato corrente
     @Test
     void richiediFirma_DelegaAlloStatoCorrente() {
         DocumentoState mockStato = mock(DocumentoState.class);

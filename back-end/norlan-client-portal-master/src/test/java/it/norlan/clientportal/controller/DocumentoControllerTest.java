@@ -29,6 +29,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+/**
+ * Suite di collaudo (Unit Test) per il layer REST di gestione documentale.
+ * Verifica le operazioni di I/O (Upload/Download di MultipartFile) tramite simulazione in memoria
+ * e collauda l'esposizione web della Macchina a Stati Finiti (FSM) del dominio documentale.
+ */
 @ExtendWith(MockitoExtension.class)
 class DocumentoControllerTest {
 
@@ -99,6 +104,7 @@ class DocumentoControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // Collauda lo streaming binario (Download): simula un file system virtuale (ByteArrayResource) per verificare l'impostazione corretta degli header HTTP (es. Content-Disposition)
     @Test
     void downloadDocumento_Trovato_RitornaFilePdf() throws Exception {
         Documento doc = new Documento();
@@ -120,6 +126,7 @@ class DocumentoControllerTest {
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"test.pdf\""));
     }
 
+    // Verifica l'ingestione dei dati (Upload): sfrutta MockMultipartFile per simulare un payload multipart/form-data, isolando il test dal file system fisico
     @Test
     void uploadDocumento_DatiValidi_Ritorna201() throws Exception {
         Azienda azienda = new Azienda();
@@ -181,6 +188,7 @@ class DocumentoControllerTest {
         verify(documentoService).archiviaDocumento(1);
     }
 
+    // Integrazione FSM ed Exception Handling: assicura che il rigetto di una transizione di stato a livello di dominio venga intercettato e tradotto in un HTTP 400 (Bad Request)
     @Test
     void archivia_StatoIllegale_Ritorna400() throws Exception {
         doThrow(new IllegalStateException("Transizione non permessa")).when(documentoService).archiviaDocumento(1);

@@ -18,7 +18,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per l'orchestrazione del Workflow Documentale.
+ * Verifica l'integrazione del Behavioral Pattern (State), la protezione temporale contro caricamenti
+ * futili (Guard Clauses cronologiche) e l'esecuzione sicura di elaborazioni massive (Batch Processing degli attestati).
+ */
 @ExtendWith(MockitoExtension.class)
 class DocumentoServiceTest {
 
@@ -95,6 +99,7 @@ class DocumentoServiceTest {
         verify(documentoRepository, never()).save(any());
     }
 
+    // Quality Gate Temporale (Anti-Corruption Layer): assicura che il sistema rigetti preventivamente documenti con ciclo di vita residuo insufficiente, tutelando l'affidabilità del monitoraggio KPI
     @Test
     void salvaDocumento_DataScadenzaTroppoVicina_LanciaIllegalArgumentException() {
         documento.setDataScadenza(LocalDate.now().plusDays(10));
@@ -188,6 +193,7 @@ class DocumentoServiceTest {
         verifyNoInteractions(iscrizioneRepository);
     }
 
+    // State-Driven Event Routing: collauda la transizione di stato verso "Approvato", garantendo che, in base al payload (Tipo Documento), venga innescato un routing condizionale delle notifiche
     @Test
     void approvaDocumento_AttestatoCorso_NotificaUtentiEAdmin() {
         documento.setStato(new StatoInAttesaFirma());
@@ -238,6 +244,7 @@ class DocumentoServiceTest {
         assertThrows(IllegalStateException.class, () -> documentoService.distribuisciAttestatiMassivi(1, new HashMap<>()));
     }
 
+    // Elaborazione Batch Relazionale: verifica l'orchestrazione di un'operazione massiva complessa, assicurando il corretto binding tra gli artefatti binari (PDF), le entità figlie (Iscrizioni) e il workflow padre (Corso)
     @Test
     void distribuisciAttestatiMassivi_Successo_GeneraAttestatiEAggiornaCorso() {
         CorsoFormazione corso = new CorsoFormazione();

@@ -23,7 +23,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer REST di amministrazione e telemetria di sistema.
+ * Verifica l'esposizione delle metriche di Auditing (Log di Sincronizzazione) e il ciclo di vita
+ * delle notifiche, collaudando le procedure di Housekeeping (manutenzione e pulizia dati obsoleti).
+ */
 @ExtendWith(MockitoExtension.class)
 class SistemaControllerTest {
 
@@ -87,7 +91,7 @@ class SistemaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("5"));
     }
-
+    // Semantic HTTP Verbs: valida l'uso del verbo PATCH per le mutazioni di stato parziali (es. cambio flag "letta"), ottimizzando il traffico di rete rispetto a una PUT completa
     @Test
     void segnaNotificaComeLetta_Ritorna200() throws Exception {
         mockMvc.perform(patch("/api/sistema/notifiche/1/letta"))
@@ -118,6 +122,7 @@ class SistemaControllerTest {
                 .andExpect(jsonPath("$[0].idLog").value(100));
     }
 
+    // System Observability: verifica l'esposizione filtrata degli Audit Log (livello ERROR), garantendo agli amministratori il monitoraggio proattivo delle anomalie infrastrutturali
     @Test
     void getErrorLogs_RitornaLista200() throws Exception {
         LogSincronizzazione log = new LogSincronizzazione();
@@ -161,6 +166,7 @@ class SistemaControllerTest {
         verify(logService).pulisciLogVecchi(any(LocalDateTime.class));
     }
 
+    // Data Lifecycle Management (Housekeeping): collauda l'endpoint di pulizia programmata, assicurando che il parametro di retention (giorni) piloti correttamente la cancellazione fisica dei log
     @Test
     void pulisciLogVecchi_ParametroGiorni_Ritorna204() throws Exception {
         mockMvc.perform(delete("/api/sistema/logs/pulizia")

@@ -17,7 +17,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Business Logic del dominio B2B (Azienda).
+ * Verifica la corretta orchestrazione dell'integrità referenziale (Cascade Deletes),
+ * l'emissione condizionale degli eventi di Onboarding e l'aggregazione dei Data Transfer Object.
+ */
 @ExtendWith(MockitoExtension.class)
 class AziendaServiceTest {
 
@@ -67,6 +71,7 @@ class AziendaServiceTest {
         assertEquals("Norlan S.r.l.", result.get().getRagioneSociale());
     }
 
+    // Event-Driven Lifecycle: verifica che il pattern Upsert distingua la creazione (ID nullo) dall'aggiornamento, innescando il workflow di Onboarding unicamente per le nuove entità
     @Test
     void salvaAzienda_NuovaAzienda_InviaNotificaBenvenuto() {
         Azienda nuovaAzienda = new Azienda();
@@ -92,6 +97,7 @@ class AziendaServiceTest {
         verify(aziendaRepository).save(azienda);
     }
 
+    // Integrità Referenziale Applicativa (Cascade Delete): assicura la rimozione a cascata delle entità figlie (Dipendenti) per prevenire record orfani, garantendo il tracciamento in Audit
     @Test
     void eliminaAzienda_Esistente_CancellaDipendentiELogga() {
         when(aziendaRepository.findById(1)).thenReturn(Optional.of(azienda));
@@ -111,6 +117,7 @@ class AziendaServiceTest {
         verify(aziendaRepository, never()).deleteById(any());
     }
 
+    // Data Aggregation Pattern: collauda la proiezione dei DTO verificando il calcolo a runtime dei campi derivati (Display Label) e l'interrogazione aggregata dello stato relazionale
     @Test
     void convertToDTO_MappaCampiCorrettamente() {
         azienda.setEmail("info@norlan.it");

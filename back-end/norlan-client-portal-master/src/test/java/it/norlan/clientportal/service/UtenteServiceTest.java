@@ -17,7 +17,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Identity & Access Management (IAM).
+ * Verifica l'orchestrazione del ciclo di vita delle credenziali, la corretta delega
+ * crittografica al framework di sicurezza e le policy transazionali di rotazione delle password.
+ */
 @ExtendWith(MockitoExtension.class)
 class UtenteServiceTest {
 
@@ -65,6 +69,7 @@ class UtenteServiceTest {
         assertTrue(result.isEmpty());
     }
 
+    // Cryptographic Delegation (Separation of Concerns): assicura che il layer di business demandi tassativamente il calcolo dell'hash al provider di sicurezza, prevenendo leak di credenziali in chiaro
     @Test
     void registraUtente_Successo_CodificaPasswordESalva() {
         Utente nuovoUtente = new Utente() {};
@@ -100,6 +105,7 @@ class UtenteServiceTest {
         assertFalse(result);
     }
 
+    // Resource Optimization (Short-Circuit Evaluation): verifica l'uscita anticipata dal flusso (Fail-Fast) per inibire l'esecuzione di algoritmi crittografici onerosi (es. BCrypt) su identità non censite, risparmiando cicli CPU
     @Test
     void verificaCredenziali_EmailNonEsistente_RitornaFalse() {
         when(utenteRepository.findByEmail("inesistente@norlan.it")).thenReturn(Optional.empty());
@@ -120,6 +126,7 @@ class UtenteServiceTest {
         verify(utenteRepository, never()).save(any());
     }
 
+    // Zero-Trust Security (Guard Clause): collauda il blocco architetturale durante la rotazione delle credenziali, garantendo che la mutazione avvenga solo previa dimostrazione crittografica del vecchio segreto
     @Test
     void cambiaPassword_VecchiaPasswordErrata_LanciaBadCredentialsException() {
         when(utenteRepository.findByEmail("test@norlan.it")).thenReturn(Optional.of(utente));
@@ -131,6 +138,7 @@ class UtenteServiceTest {
         verify(utenteRepository, never()).save(any());
     }
 
+    // State Mutation & Security Alerting: verifica l'aggiornamento transazionale dello stato (reset flag di scadenza) e il contestuale innesco del workflow di notifica (Audit Trail) a tutela dell'account
     @Test
     void cambiaPassword_Successo_AggiornaSalvaENotifica() {
         when(utenteRepository.findByEmail("test@norlan.it")).thenReturn(Optional.of(utente));

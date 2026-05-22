@@ -24,7 +24,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer REST di gestione delle Risorse Umane e Sicurezza sul Lavoro.
+ * Valida le operazioni CRUD sui lavoratori e la complessa gestione delle risorse annidate (Sub-Resources),
+ * come l'assegnazione e il monitoraggio dei DPI (Dispositivi di Protezione Individuale).
+ */
 @ExtendWith(MockitoExtension.class)
 class LavoratoreControllerTest {
 
@@ -101,6 +105,7 @@ class LavoratoreControllerTest {
                 .andExpect(jsonPath("$[0].idUtente").value(3));
     }
 
+    // Testa l'operazione di creazione (POST) verificando il corretto binding relazionale: assicura che il nuovo dipendente venga logicamente vincolato all'Azienda padre specificata nell'URI
     @Test
     void createDipendente_DatiValidi_Ritorna201() throws Exception {
         Dipendente request = new Dipendente();
@@ -136,6 +141,7 @@ class LavoratoreControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // Collauda l'idempotenza dell'aggiornamento (PUT): verifica la corretta mutazione dello stato dell'entità preservandone i vincoli relazionali preesistenti (es. l'azienda di appartenenza)
     @Test
     void updateDipendente_Trovato_Ritorna200() throws Exception {
         Dipendente dipendenteEsistente = new Dipendente();
@@ -204,6 +210,7 @@ class LavoratoreControllerTest {
                 .andExpect(jsonPath("$[0].idAssegnazione").value(100));
     }
 
+    // Validazione Architettura RESTful: testa l'inserimento di una sub-risorsa dipendente (DPI) tramite URI gerarchica (/lavoratori/{id}/dpi), garantendo la coerenza del modello dati
     @Test
     void assignDpiToDipendente_DipendenteTrovato_Ritorna201() throws Exception {
         Dipendente dipendente = new Dipendente();

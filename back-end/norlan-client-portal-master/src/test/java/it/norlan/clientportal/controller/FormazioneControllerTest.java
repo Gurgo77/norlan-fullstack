@@ -30,7 +30,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer REST del modulo Formazione.
+ * Verifica flussi di dominio complessi (iscrizioni, validazione presenze, firme digitali
+ * dei registri e distribuzione massiva di attestati) collaudando rigorosamente l'I/O binario e i codici di stato HTTP.
+ */
 @ExtendWith(MockitoExtension.class)
 class FormazioneControllerTest {
 
@@ -164,6 +168,7 @@ class FormazioneControllerTest {
                 .andExpect(jsonPath("$.idUtente").value(10));
     }
 
+    // Gestione dei Conflitti (Idempotenza): verifica che un tentativo di iscrizione duplicata violi le regole di dominio e restituisca correttamente un HTTP 409 (Conflict)
     @Test
     void iscriviUtente_GiaIscritto_Ritorna409() throws Exception {
         when(iscrizioneService.iscriviUtente(10, 1)).thenThrow(new IllegalStateException("Utente gia iscritto"));
@@ -185,6 +190,7 @@ class FormazioneControllerTest {
         verify(corsoService).validaPresenzeAdmin(1, presenti);
     }
 
+    // Authorization Testing: inietta a runtime un Security Principal mockato per simulare e validare l'azione autorizzativa (firma elettronica) da parte di uno specifico attore (Docente)
     @Test
     void controfirmaRegistro_Valido_Ritorna200() throws Exception {
         Docente docente = new Docente();
@@ -202,6 +208,7 @@ class FormazioneControllerTest {
         verify(corsoService).controfirmaDocente(1, 5);
     }
 
+    // Validazione su processi Massivi (Batch): collauda l'ingestione multipart verificando che il sistema prevenga corruzioni dei dati bloccando le discrepanze tra file caricati e aziende target
     @Test
     void distribuisciAttestati_LunghezzaMismatch_Ritorna400() throws Exception {
         MockMultipartFile file1 = new MockMultipartFile("files", "file1.pdf", MediaType.APPLICATION_PDF_VALUE, "dati".getBytes());

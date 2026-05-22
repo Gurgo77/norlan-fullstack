@@ -19,7 +19,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di esposizione REST del modulo Feedback.
+ * Verifica i flussi di ingestione delle recensioni e il recupero delle metriche aggregate (Analytics),
+ * collaudando rigorosamente la gestione degli stati di errore e le policy di dominio aziendali.
+ */
 @ExtendWith(MockitoExtension.class)
 class FeedbackControllerTest {
 
@@ -54,6 +58,7 @@ class FeedbackControllerTest {
                 .andExpect(content().string("Feedback archiviato con successo."));
     }
 
+    // Negative Testing sulle regole di business: verifica che la violazione di una Guard Clause di dominio (es. corso non terminato) venga correttamente tradotta in un HTTP 400 (Bad Request)
     @Test
     void inviaFeedback_StatoIllegale_Ritorna400() throws Exception {
         FeedbackDTO request = new FeedbackDTO();
@@ -72,6 +77,7 @@ class FeedbackControllerTest {
                 .andExpect(content().string("Violazione: Impossibile inviare feedback per un corso non ancora terminato."));
     }
 
+    // Collauda la resilienza dell'infrastruttura (Fault Injection): simula un crash di sistema (es. Database down) per garantire la soppressione dello stack trace e la corretta mappatura in HTTP 500
     @Test
     void inviaFeedback_ErroreGenerico_Ritorna500() throws Exception {
         FeedbackDTO request = new FeedbackDTO();
@@ -90,6 +96,7 @@ class FeedbackControllerTest {
                 .andExpect(content().string("Errore di sistema durante il salvataggio del feedback."));
     }
 
+    // Valida l'endpoint di Analytics (GET): simula il recupero dei KPI (medie e conteggi) e ne verifica l'integrità strutturale nel payload JSON tramite espressioni JsonPath
     @Test
     void getStatisticheCorso_Trovate_Ritorna200() throws Exception {
         FeedbackStatsDTO mockStats = new FeedbackStatsDTO();

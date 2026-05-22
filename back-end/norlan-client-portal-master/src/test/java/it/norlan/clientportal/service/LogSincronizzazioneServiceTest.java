@@ -14,7 +14,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Telemetria e Audit Logging.
+ * Verifica le policy di tracciamento degli eventi di sistema (Observability), l'estrazione
+ * delle anomalie e le routine di manutenzione autonoma della memoria (Data Housekeeping).
+ */
 @ExtendWith(MockitoExtension.class)
 class LogSincronizzazioneServiceTest {
 
@@ -47,6 +51,7 @@ class LogSincronizzazioneServiceTest {
         verify(repository).findAllByOrderByDataEventoDesc();
     }
 
+    // Advanced Mocking (Argument Captor): intercetta e ispeziona l'entità istanziata internamente a runtime, validando l'integrità del payload di Audit prima dell'effettiva persistenza
     @Test
     void registraEvento_DatiValidi_SalvaLogConDataOdierna() {
         when(repository.save(any(LogSincronizzazione.class))).thenAnswer(i -> {
@@ -97,6 +102,7 @@ class LogSincronizzazioneServiceTest {
         verify(repository).deleteByDataEventoBefore(dataLimite);
     }
 
+    // Self-Monitoring & Data Lifecycle: collauda l'innesco della pulizia automatica (Garbage Collection logica) assicurando che il sistema autotracci la manutenzione per garantire l'Audit Trail continuo
     @Test
     void esecuzionePuliziaAutomatica_EsegueCancellazioneERegistraEvento() {
         logService.esecuzionePuliziaAutomatica();

@@ -17,7 +17,11 @@ import java.security.Principal;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di comunicazione Real-Time (WebSocket/STOMP).
+ * Verifica il routing asincrono dei messaggi tramite il Message Broker e collauda
+ * i meccanismi di gestione centralizzata delle eccezioni (Error Handling) sul tunnel bidirezionale.
+ */
 @ExtendWith(MockitoExtension.class)
 class ChatControllerTest {
 
@@ -37,6 +41,7 @@ class ChatControllerTest {
     void setUp() {
     }
 
+    // Valida il pattern architetturale Point-to-Point: verifica la persistenza del payload e il corretto instradamento (Routing Push) del messaggio al client destinatario tramite il Broker
     @Test
     void sendMessage_SalvaMessaggioEInviaAlDestinatario() {
         MessaggioDTO payload = new MessaggioDTO();
@@ -60,6 +65,7 @@ class ChatControllerTest {
         );
     }
 
+    // Testa la Fault Tolerance sul socket: assicura che le violazioni di sicurezza vengano intercettate, notificate privatamente all'utente (Dead Letter Queue) e tracciate nell'Audit Log
     @Test
     void handleException_ConPrincipal_InviaErroreELogga() {
         AccessDeniedException exception = new AccessDeniedException("Accesso negato");
@@ -81,6 +87,7 @@ class ChatControllerTest {
         );
     }
 
+    // Verifica la robustezza dell'Error Handler (Fail-Safe): garantisce che l'elaborazione dell'eccezione abortisca in modo sicuro se il frame STOMP è sprovvisto di contesto di sicurezza
     @Test
     void handleException_SenzaPrincipal_NonInviaErrore() {
         AccessDeniedException exception = new AccessDeniedException("Accesso negato");

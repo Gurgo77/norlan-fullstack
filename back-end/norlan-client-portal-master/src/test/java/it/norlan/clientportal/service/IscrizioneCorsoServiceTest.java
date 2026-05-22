@@ -19,7 +19,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per l'entità associativa IscrizioneCorso.
+ * Verifica la resilienza delle logiche di associazione transazionale (Many-to-Many), l'idempotenza
+ * degli inserimenti (prevenzione duplicati) e la complessa orchestrazione delle notifiche multi-attore (Event Broadcasting).
+ */
 @ExtendWith(MockitoExtension.class)
 class IscrizioneCorsoServiceTest {
 
@@ -113,6 +117,7 @@ class IscrizioneCorsoServiceTest {
         verify(iscrizioneRepository).deleteById(iscrizioneId);
     }
 
+    // Idempotency & Concurrency: collauda il meccanismo difensivo che impedisce iscrizioni ridondanti, preservando l'integrità referenziale della chiave primaria composita nel database
     @Test
     void iscriviUtente_GiaIscritto_LanciaEccezione() {
         when(iscrizioneRepository.existsById(iscrizioneId)).thenReturn(true);
@@ -138,6 +143,7 @@ class IscrizioneCorsoServiceTest {
         assertThrows(IllegalArgumentException.class, () -> iscrizioneService.iscriviUtente(1, 10));
     }
 
+    // Event Broadcasting Pattern: assicura che una transazione di business completata (iscrizione) propaghi correttamente l'evento asincrono ai vari stakeholder (Dipendente, Docente, Azienda)
     @Test
     void iscriviUtente_Successo_SalvaENotificaTutti() {
         when(iscrizioneRepository.existsById(iscrizioneId)).thenReturn(false);

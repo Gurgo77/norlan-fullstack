@@ -14,7 +14,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di esposizione REST del modulo di Compliance.
+ * Utilizza MockMvc per testare in isolamento gli endpoint di monitoraggio dello stato normativo,
+ * verificando la corretta serializzazione degli indicatori di rischio aziendale (KPI).
+ */
 @ExtendWith(MockitoExtension.class)
 class ComplianceControllerTest {
 
@@ -30,7 +34,7 @@ class ComplianceControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(complianceController).build();
     }
-
+    // Collauda l'endpoint di interrogazione dello stato di compliance (GET): simula la risposta del Service e verifica tramite JsonPath la corretta mappatura del livello di rischio nel payload JSON
     @Test
     void getComplianceStatus_RitornaComplianceDTOEStatus200() throws Exception {
         Integer idAzienda = 1;

@@ -16,7 +16,11 @@ import java.util.List;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di orchestrazione delle Notifiche.
+ * Verifica l'integrazione del Behavioral Design Pattern (Strategy) per il routing
+ * multi-canale e la corretta mutazione di stato (Lifecycle) dei messaggi asincroni.
+ */
 @ExtendWith(MockitoExtension.class)
 class NotificaServiceTest {
 
@@ -85,6 +89,7 @@ class NotificaServiceTest {
         assertFalse(result.get(0).getLetta());
     }
 
+    // Strategy Pattern & Payload Interception: verifica che il Service assembli l'entità (Timestamp, Default Flags) e deleghi dinamicamente il delivery al Context designato, validandone l'integrità tramite ArgumentCaptor
     @Test
     void inviaNotifica_CreaNotificaEEsegueStrategia() {
         notificaService.inviaNotifica(
@@ -116,6 +121,7 @@ class NotificaServiceTest {
         verify(notificaRepository).save(notifica);
     }
 
+    // Graceful Error Handling (Idempotenza): garantisce che il tentativo di mutazione di una risorsa inesistente non scateni eccezioni bloccanti, preservando la stabilità del flusso esecutivo
     @Test
     void segnaComeLetta_NotificaNonTrovata_NessunSalvataggio() {
         when(notificaRepository.findById(999)).thenReturn(Optional.empty());
@@ -158,6 +164,7 @@ class NotificaServiceTest {
         assertNotNull(dto.getDataInvio());
     }
 
+    // Defensive Mapping (Null-Safety): collauda la resilienza del Data Transfer Object, assicurando che la serializzazione non provochi NullPointerException in presenza di relazioni orfane
     @Test
     void convertToDTO_SenzaDestinatario_MappaSenzaErrori() {
         notifica.setDestinatario(null);

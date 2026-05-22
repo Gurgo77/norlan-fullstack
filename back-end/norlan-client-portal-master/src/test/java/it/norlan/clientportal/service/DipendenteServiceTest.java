@@ -18,7 +18,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Business Logic del dominio HR (Dipendente).
+ * Verifica la rigorosa applicazione delle Guard Clauses (Validazione CF), l'orchestrazione
+ * crittografica delle credenziali e la complessa gestione delle cancellazioni a cascata (Hard Deletion) per prevenire record orfani.
+ */
 @ExtendWith(MockitoExtension.class)
 class DipendenteServiceTest {
 
@@ -99,6 +103,7 @@ class DipendenteServiceTest {
         verify(dipendenteRepository, never()).deleteById(anyInt());
     }
 
+    // Orchestrazione Hard Delete: collauda la rimozione sequenziale e transazionale di tutte le entità aggregate (DPI, Feedback, Iscrizioni, Notifiche, Messaggi) per garantire l'integrità referenziale assoluta
     @Test
     void eliminaDipendente_Successo_PulisceRelazioniEdElimina() {
 
@@ -128,6 +133,7 @@ class DipendenteServiceTest {
         verify(dipendenteRepository, never()).save(any());
     }
 
+    // Defense in Depth: verifica che l'invariante di dominio strutturale (Formato Codice Fiscale) venga validato a livello di Service, indipendentemente dai controlli eseguiti dal client
     @Test
     void salvaDipendente_CodiceFiscaleInvalido_LanciaEccezione() {
         dipendente.setCodiceFiscale("CORT0");
@@ -137,6 +143,7 @@ class DipendenteServiceTest {
         verify(dipendenteRepository, never()).save(any());
     }
 
+    // Side-Effect Management (Sicurezza e Audit): garantisce che la creazione di una nuova anagrafica inneschi inderogabilmente l'hashing asimmetrico delle credenziali e la tracciatura dell'evento di sistema
     @Test
     void salvaDipendente_NuovoDipendenteConPassword_SalvaCodificaLogga() {
         dipendente.setIdUtente(null);

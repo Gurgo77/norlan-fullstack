@@ -6,7 +6,11 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Dominio (Entity Validation).
+ * Verifica le invarianti di classe e la resilienza del modello dati, collaudando l'inizializzazione
+ * del ciclo di vita e i trigger di validazione agganciati agli eventi JPA (es. @PrePersist).
+ */
 class FeedbackTest {
 
     private Feedback feedback;
@@ -27,6 +31,7 @@ class FeedbackTest {
 
     }
 
+    // Valida le regole di business al livello più basso (Domain-Driven Design): assicura che il lifecycle hook accetti valori coerenti prima del flush sul database
     @Test
     void prePersistValidation_RatingValidi_NonLanciaEccezione() {
         feedback.setRatingDocenza(1);
@@ -38,6 +43,7 @@ class FeedbackTest {
 
     }
 
+    // Boundary Value Analysis (Valore Limite Inferiore): esegue Negative Testing sul margine inferiore (0) per garantire la resilienza contro le corruzioni del database
     @Test
     void prePersistValidation_RatingDocenzaMinoreDi1_LanciaEccezione() {
         feedback.setRatingDocenza(0);
@@ -52,6 +58,7 @@ class FeedbackTest {
 
     }
 
+    // Boundary Value Analysis (Valore Limite Superiore): collauda lo sforamento della scala (6), dimostrando l'efficacia delle Guard Clauses interne all'entità
     @Test
     void prePersistValidation_RatingDocenzaMaggioreDi5_LanciaEccezione() {
         feedback.setRatingDocenza(6);

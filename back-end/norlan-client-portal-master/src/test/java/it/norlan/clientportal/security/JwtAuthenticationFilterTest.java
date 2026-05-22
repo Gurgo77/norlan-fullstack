@@ -17,7 +17,11 @@ import java.io.IOException;
 import java.util.Collections;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il Security Filter (JWT).
+ * Verifica l'intercettazione middleware delle richieste HTTP, la validazione crittografica
+ * dei token stateless e l'iniezione sicura del Principal nel Security Context (ThreadLocal).
+ */
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
@@ -49,6 +53,7 @@ class JwtAuthenticationFilterTest {
         SecurityContextHolder.clearContext();
     }
 
+    // Autenticazione Stateless (Happy Path): verifica l'estrazione del Bearer Token dall'header HTTP, la decodifica del payload e il popolamento del contesto per autorizzare la richiesta
     @Test
     void doFilterInternal_TokenValido_ImpostaAutenticazione() throws ServletException, IOException {
         String token = "tokenValido";
@@ -94,6 +99,7 @@ class JwtAuthenticationFilterTest {
         verify(filterChain).doFilter(request, response);
     }
 
+    // Resilienza Crittografica: garantisce che token corrotti, contraffatti o scaduti vengano neutralizzati senza sollevare eccezioni bloccanti, delegando il blocco (401) ai layer successivi
     @Test
     void doFilterInternal_EccezioneEstrazione_NonImpostaAutenticazione() throws ServletException, IOException {
         String token = "tokenCorrotto";
@@ -107,6 +113,7 @@ class JwtAuthenticationFilterTest {
         verify(filterChain).doFilter(request, response);
     }
 
+    // Ottimizzazione della Filter Chain: collauda la logica di Whitelisting (Bypass), assicurando che le rotte pubbliche non inneschino l'overhead computazionale della validazione crittografica
     @Test
     void shouldNotFilter_PercorsiEsclusi_RitornaTrue() {
         when(request.getRequestURI()).thenReturn("/api/auth/login");

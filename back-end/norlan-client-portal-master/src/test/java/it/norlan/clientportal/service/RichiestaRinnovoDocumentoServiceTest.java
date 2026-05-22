@@ -19,7 +19,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di orchestrazione dei Workflow Documentali (Rinnovi).
+ * Verifica le policy di default fallback in fase di creazione (Defensive Initialization), la mutazione
+ * guidata dagli eventi (Event-Driven State Mutation) e la Null-Safety nel mapping verso i DTO.
+ */
 @ExtendWith(MockitoExtension.class)
 class RichiestaRinnovoDocumentoServiceTest {
 
@@ -90,6 +94,7 @@ class RichiestaRinnovoDocumentoServiceTest {
         verify(repository).deleteById(100);
     }
 
+    // Defensive Initialization (Default Fallback): assicura che il Service compensi eventuali payload parziali provenienti dai Controller, iniettando costanti di business (es. Stato IN_ATTESA) prima del flush sul DB
     @Test
     void creaRichiesta_ConDatiNulli_ImpostaValoriDiDefaultESalva() {
         RichiestaRinnovoDocumento nuovaRichiesta = new RichiestaRinnovoDocumento();
@@ -143,6 +148,7 @@ class RichiestaRinnovoDocumentoServiceTest {
         verifyNoInteractions(notificaService);
     }
 
+    // Event-Driven State Mutation: verifica che l'avanzamento della macchina a stati finiti (FSM) del workflow inneschi coerentemente il broadcasting multi-canale verso il tenant associato (Azienda)
     @Test
     void cambiaStato_ConAzienda_AggiornaStatoEInviaNotifiche() {
         when(repository.findById(100)).thenReturn(Optional.of(richiesta));

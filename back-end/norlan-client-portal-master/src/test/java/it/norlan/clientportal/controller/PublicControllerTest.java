@@ -22,7 +22,11 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+/**
+ * Suite di collaudo (Unit Test) per gli endpoint ad accesso pubblico (Non-Authenticated).
+ * Verifica l'acquisizione sicura dei dati dal form web, validando il rigido rispetto delle
+ * normative privacy (GDPR Compliance) e il corretto instradamento (Routing) delle notifiche interne.
+ */
 @ExtendWith(MockitoExtension.class)
 class PublicControllerTest {
 
@@ -44,6 +48,7 @@ class PublicControllerTest {
         objectMapper = new ObjectMapper();
     }
 
+    // Behavioral Testing: convalida il flusso di interscambio (Happy Path) verificando che il sistema assembli il payload testuale e lo instradi correttamente al Notification System
     @Test
     void riceviContatto_Valido_Ritorna200() throws Exception {
         ContattoWebDTO dto = new ContattoWebDTO();
@@ -78,6 +83,7 @@ class PublicControllerTest {
         );
     }
 
+    // Compliance Testing (GDPR): assicura che il mancato consenso al trattamento dati blocchi istantaneamente la richiesta (Fail-Fast), isolando i layer di persistenza e notifica (Zero Interactions)
     @Test
     void riceviContatto_PrivacyNonAccettata_Ritorna400() throws Exception {
         ContattoWebDTO dto = new ContattoWebDTO();
@@ -94,6 +100,7 @@ class PublicControllerTest {
         verifyNoInteractions(notificaService);
     }
 
+    // Collauda la resilienza architetturale in scenari di misconfiguration: assicura che l'assenza del destinatario di sistema sollevi la Root Cause corretta impedendo perdite di dati silenziose
     @Test
     void riceviContatto_AdminNonTrovato_LanciaEccezione() {
         ContattoWebDTO dto = new ContattoWebDTO();

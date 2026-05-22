@@ -18,7 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per la logica di business della Formazione Aziendale.
+ * Verifica la rigorosa orchestrazione del ciclo di vita (Macchina a Stati Finiti / FSM),
+ * i vincoli di sicurezza per la firma elettronica dei registri e l'integrità referenziale dei dati didattici.
+ */
 @ExtendWith(MockitoExtension.class)
 class CorsoFormazioneServiceTest {
 
@@ -122,6 +126,7 @@ class CorsoFormazioneServiceTest {
                 () -> corsoService.aggiornaStato(1, CorsoFormazione.StatoCorso.IN_SVOLGIMENTO));
     }
 
+    // FSM Guard Clauses: collauda le regole di transizione di stato, assicurando che l'avanzamento logico (es. avvio del corso) sia inibito in assenza delle precondizioni minime (iscritti)
     @Test
     void aggiornaStato_InSvolgimentoSenzaIscritti_LanciaIllegalStateException() {
         when(corsoRepository.findById(1)).thenReturn(Optional.of(corso));
@@ -177,6 +182,7 @@ class CorsoFormazioneServiceTest {
         verify(notificaService, times(2)).inviaNotifica(eq(admin), anyString(), any(), any());
     }
 
+    // Integrità del processo amministrativo: verifica che le operazioni burocratiche (Validazione Registro) siano confinate esclusivamente agli stati terminali del ciclo di vita del corso
     @Test
     void validaPresenzeAdmin_CorsoNonConcluso_LanciaIllegalStateException() {
         corso.setStato(CorsoFormazione.StatoCorso.PROGRAMMATO);
@@ -207,6 +213,7 @@ class CorsoFormazioneServiceTest {
         verify(logService).registraEvento(eq("Validazione registro didattico"), eq(true), anyString());
     }
 
+    // Authorization Logging (Sicurezza di Dominio): garantisce che le operazioni con valore legale (Firma Elettronica) siano ristrette tramite controlli di Ownership, bloccando attacchi di impersonificazione
     @Test
     void controfirmaDocente_DocenteNonTitolare_LanciaSecurityException() {
         when(corsoRepository.findById(1)).thenReturn(Optional.of(corso));

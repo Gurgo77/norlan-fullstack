@@ -18,7 +18,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per la logica di business legata alla Sicurezza sul Lavoro (DPI).
+ * Verifica l'integrità temporale delle assegnazioni (Domain Invariants), la corretta propagazione
+ * degli eventi di dominio (Notifiche e Audit Logging) e la resilienza del mapping dei dati (Null-Safety).
+ */
 @ExtendWith(MockitoExtension.class)
 class AssegnazioneDPIServiceTest {
 
@@ -101,6 +105,7 @@ class AssegnazioneDPIServiceTest {
         verify(dpiRepository, never()).deleteById(anyInt());
     }
 
+    // Validazione Invarianti Temporali: collauda le regole di business (Guard Clauses) assicurando che la sequenza cronologica degli eventi (Consegna -> Revisione) sia matematicamente coerente
     @Test
     void salvaAssegnazione_DataScadenzaPrimaDiConsegna_LanciaEccezione() {
         AssegnazioneDPI dpi = new AssegnazioneDPI();
@@ -116,6 +121,7 @@ class AssegnazioneDPIServiceTest {
         verify(dpiRepository, never()).save(any());
     }
 
+    // Side-Effect & Event Testing: verifica che l'inserimento inneschi correttamente la catena di eventi asincroni (Audit Log e Notification System) garantendo la tracciabilità operativa
     @Test
     void salvaAssegnazione_NuovaAssegnazione_SalvaLoggaENotifica() {
         Dipendente dipendente = new Dipendente();
@@ -210,6 +216,7 @@ class AssegnazioneDPIServiceTest {
         assertTrue(dto.isDaRevisionare());
     }
 
+    // Null-Safety & Edge Case Testing: garantisce la robustezza del layer di Data Transfer (DTO) prevenendo NullPointerException in assenza di campi opzionali (es. scadenza non definita)
     @Test
     void convertToDTO_SenzaScadenzaRevisione_NonVaInErrore() {
         Dipendente dipendente = new Dipendente();

@@ -17,7 +17,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Onboarding e Identity Management.
+ * Verifica l'integrazione del Creational Pattern (Factory) per l'istanziazione polimorfica,
+ * l'orchestrazione crittografica delle credenziali e i vincoli di integrità referenziale cross-entità.
+ */
 @ExtendWith(MockitoExtension.class)
 class RegistrazioneServiceTest {
 
@@ -51,6 +55,7 @@ class RegistrazioneServiceTest {
         dtoBase.setPassword("password123");
     }
 
+    // Creational Delegation & Onboarding: collauda l'inversione del controllo verso la Factory per l'istanziazione del corretto sottotipo e verifica l'innesco del workflow asincrono di benvenuto
     @Test
     void registraNuovoUtente_CreaAzienda_Successo() {
         dtoBase.setRuolo(Utente.Ruolo.AZIENDA);
@@ -89,6 +94,7 @@ class RegistrazioneServiceTest {
         );
     }
 
+    // Polymorphic Data Mapping: assicura che l'orchestrazione del sottotipo (Docente) consenta la corretta valorizzazione e persistenza degli attributi specifici di dominio (es. Specializzazione)
     @Test
     void registraNuovoUtente_CreaDocente_Successo() {
         dtoBase.setRuolo(Utente.Ruolo.DOCENTE);
@@ -121,6 +127,7 @@ class RegistrazioneServiceTest {
         );
     }
 
+    // Application-Level Relational Binding: verifica la corretta risoluzione del vincolo di dipendenza (Azienda-Dipendente) tramite lookup preventivo sul repository prima di consolidare l'associazione
     @Test
     void registraNuovoUtente_CreaDipendenteConAziendaValida_Successo() {
         dtoBase.setRuolo(Utente.Ruolo.DIPENDENTE);
@@ -159,6 +166,7 @@ class RegistrazioneServiceTest {
         verify(notificaService).inviaNotifica(any(), anyString(), any(), any());
     }
 
+    // Referential Integrity Guard: garantisce che il tentativo di associazione a un'entità padre inesistente (Dangling Foreign Key) provochi un blocco transazionale immediato (Fail-Fast)
     @Test
     void registraNuovoUtente_CreaDipendenteAziendaNonTrovata_LanciaEccezione() {
         dtoBase.setRuolo(Utente.Ruolo.DIPENDENTE);

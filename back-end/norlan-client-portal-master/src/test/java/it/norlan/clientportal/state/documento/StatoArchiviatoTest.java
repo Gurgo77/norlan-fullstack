@@ -3,7 +3,11 @@ import it.norlan.clientportal.model.Documento;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il nodo terminale (Sink State) della FSM documentale.
+ * Verifica l'enforcement dell'immutabilità del workflow, garantendo che un'entità
+ * giunta a fine ciclo di vita (Archiviazione) non possa subire ulteriori transizioni di stato.
+ */
 class StatoArchiviatoTest {
 
     private StatoArchiviato statoArchiviato;
@@ -15,6 +19,7 @@ class StatoArchiviatoTest {
         documento = new Documento();
     }
 
+    // Terminal State Enforcement (Immutabilità): assicura che il pattern inibisca categoricamente qualsiasi tentativo di regressione o mutazione, "congelando" definitivamente il ciclo di vita del documento
     @Test
     void richiediFirma_StatoTerminale_LanciaIllegalStateException() {
         IllegalStateException exception = assertThrows(
@@ -37,6 +42,7 @@ class StatoArchiviatoTest {
         assertEquals("Documento archiviato: operazione non permessa.", exception.getMessage());
     }
 
+    // Idempotency & Sink Node Protection: collauda il blocco difensivo contro transizioni cicliche ridondanti sullo stesso nodo, garantendo la stabilità computazionale dell'entità archiviata
     @Test
     void archivia_GiaArchiviato_LanciaIllegalStateException() {
         IllegalStateException exception = assertThrows(

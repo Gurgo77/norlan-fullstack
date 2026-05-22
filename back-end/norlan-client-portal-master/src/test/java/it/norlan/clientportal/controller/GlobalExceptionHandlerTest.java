@@ -14,7 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-
+/**
+ * Suite di collaudo (Unit Test) per l'intercettore globale delle eccezioni (AOP - Aspect-Oriented Programming).
+ * Valida la centralizzazione dell'Error Handling, garantendo che le anomalie di sistema vengano
+ * tradotte in risposte HTTP semantiche (Fault Tolerance) mascherando i dettagli tecnici agli utenti (Sicurezza).
+ */
 @ExtendWith(MockitoExtension.class)
 class GlobalExceptionHandlerTest {
 
@@ -28,6 +32,7 @@ class GlobalExceptionHandlerTest {
     void setUp() {
     }
 
+    // Valida la gestione degli errori I/O (es. File System): verifica che lo Stack Trace originale venga soppresso e sostituito da un HTTP 500 generico, delegando il tracciamento al log interno
     @Test
     void handleIOException_Ritorna500ELoggaErrore() {
         IOException eccezione = new IOException("File non trovato");
@@ -44,6 +49,7 @@ class GlobalExceptionHandlerTest {
         );
     }
 
+    // Collauda la mitigazione degli errori critici di persistenza (Database): assicura che le violazioni relazionali generino un HTTP 409 (Conflict) e che la Root Cause venga isolata nel sistema di Auditing
     @Test
     void handleDataIntegrityException_SenzaRootCause_Ritorna409ELoggaCausaDiretta() {
         DataIntegrityViolationException eccezione = new DataIntegrityViolationException("Violazione vincolo unico");
@@ -77,6 +83,7 @@ class GlobalExceptionHandlerTest {
         );
     }
 
+    // Prevenzione del Log Flooding: garantisce che i comuni errori di validazione del client (HTTP 400) non vengano persistiti su disco, proteggendo lo storage del server da saturazione dolosa
     @Test
     void handleLogicalExceptions_IllegalArgumentException_Ritorna400SenzaLog() {
         IllegalArgumentException eccezione = new IllegalArgumentException("Parametro non valido");

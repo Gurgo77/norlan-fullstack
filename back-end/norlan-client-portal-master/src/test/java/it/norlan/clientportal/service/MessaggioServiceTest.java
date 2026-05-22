@@ -22,7 +22,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di comunicazione interna (Messaging).
+ * Verifica l'implementazione di una rigorosa Matrice di Autorizzazione basata sui ruoli (RBAC)
+ * e sugli attributi relazionali (ABAC), garantendo l'isolamento dei tenant e il principio del Default-Deny.
+ */
 @ExtendWith(MockitoExtension.class)
 class MessaggioServiceTest {
 
@@ -121,6 +125,7 @@ class MessaggioServiceTest {
         verify(messaggioRepository).save(any());
     }
 
+    // Tenant Isolation (Multi-Tenancy Security): verifica che i confini logici tra organizzazioni siano inviolabili, bloccando a livello architetturale l'esfiltrazione di comunicazioni verso dipendenti di altri tenant
     @Test
     void salvaMessaggio_AziendaVersoDipendenteEsterno_LanciaAccessDeniedException() {
         when(utenteRepository.findById(2)).thenReturn(Optional.of(azienda));
@@ -156,6 +161,7 @@ class MessaggioServiceTest {
         verify(messaggioRepository).save(any());
     }
 
+    // Context-Aware Authorization (ABAC): collauda la sicurezza basata sugli attributi, assicurando che l'interazione sia consentita esclusivamente in presenza di una precondizione relazionale attiva (iscrizione al corso)
     @Test
     void salvaMessaggio_DipendenteVersoDocenteNonIscritto_LanciaAccessDeniedException() {
         when(utenteRepository.findById(3)).thenReturn(Optional.of(dipendente));
@@ -165,6 +171,7 @@ class MessaggioServiceTest {
         assertThrows(AccessDeniedException.class, () -> messaggioService.salvaMessaggio(3, 4, "Testo"));
     }
 
+    // Zero Trust (Default-Deny Policy): garantisce che qualsiasi vettore di comunicazione inter-ruolo non esplicitamente censito nella matrice dei permessi venga categoricamente intercettato e rigettato
     @Test
     void salvaMessaggio_ComunicazioneNonGestita_LanciaAccessDeniedException() {
         when(utenteRepository.findById(2)).thenReturn(Optional.of(azienda));
@@ -173,6 +180,7 @@ class MessaggioServiceTest {
         assertThrows(AccessDeniedException.class, () -> messaggioService.salvaMessaggio(2, 4, "Testo"));
     }
 
+    // Payload Formatting & Event Routing: assicura che il contenuto del messaggio venga correttamente iniettato nel template della notifica e instradato simultaneamente sui protocolli previsti (In-App e SMTP)
     @Test
     void salvaMessaggio_Successo_VerificaInvioNotificheCorrette() {
         when(utenteRepository.findById(1)).thenReturn(Optional.of(admin));

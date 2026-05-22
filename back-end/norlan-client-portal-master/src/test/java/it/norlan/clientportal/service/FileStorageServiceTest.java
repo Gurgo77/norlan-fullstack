@@ -11,7 +11,11 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
+/**
+ * Suite di collaudo (Unit/Integration Test) per il layer di gestione del File System (I/O).
+ * Sfrutta l'annotazione @TempDir di JUnit 5 per garantire l'isolamento ambientale (ephemeral storage),
+ * collaudando in modo sicuro e riproducibile l'ingestione, il recupero e la corruzione dei flussi binari.
+ */
 class FileStorageServiceTest {
 
     @TempDir
@@ -24,6 +28,7 @@ class FileStorageServiceTest {
         fileStorageService = new FileStorageService(tempDir.toString());
     }
 
+    // I/O Integration Testing: valida l'ingestione sicura dei flussi multipart e la normalizzazione dei percorsi, verificando matematicamente l'avvenuta scrittura sul disco virtuale
     @Test
     void storeFile_SalvataggioCorretto_RitornaPercorsoRelativo() {
         MockMultipartFile mockFile = new MockMultipartFile(
@@ -41,6 +46,7 @@ class FileStorageServiceTest {
         assertTrue(Files.exists(tempDir.resolve(resultPath)));
     }
 
+    // Fault Injection a basso livello: simula un'interruzione di rete durante la lettura del buffer (IOException) per garantire la resilienza del Service (Exception Wrapping)
     @Test
     void storeFile_ErroreLetturaStream_LanciaRuntimeException() throws IOException {
         MultipartFile mockFile = mock(MultipartFile.class);
@@ -55,6 +61,7 @@ class FileStorageServiceTest {
         assertTrue(exception.getMessage().contains("Errore nel salvataggio del file"));
     }
 
+    // Streaming di Ritorno (Download): collauda il caricamento fisico dal disco e la corretta astrazione del file in un oggetto Resource, pronto per l'invio HTTP tramite i Controller
     @Test
     void loadFileAsResource_FileEsistente_RitornaResourceValida() throws IOException {
         Path subFolder = tempDir.resolve("attestati");

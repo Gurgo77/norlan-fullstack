@@ -18,7 +18,11 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di Business Logic delle recensioni didattiche.
+ * Verifica il rigoroso rispetto dei vincoli di dominio (Precondizioni di partecipazione),
+ * l'idempotenza delle sottomissioni e l'aggregazione algoritmica delle metriche di Analytics (KPI).
+ */
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
 
@@ -66,6 +70,7 @@ class FeedbackServiceTest {
         verify(feedbackRepository, never()).save(any());
     }
 
+    // Validazione degli Invarianti di Dominio (State & Preconditions): assicura che il sistema rigetti sottomissioni per corsi non terminati o per utenti privi di presenza validata
     @Test
     void registraFeedback_CorsoProgrammato_LanciaEccezione() {
         corso.setStato(CorsoFormazione.StatoCorso.PROGRAMMATO);
@@ -102,6 +107,7 @@ class FeedbackServiceTest {
         verify(feedbackRepository, never()).save(any());
     }
 
+    // Anti-Spam & Idempotency: collauda il blocco architetturale contro le sottomissioni multiple, garantendo l'integrità matematica e statistica delle medie di valutazione
     @Test
     void registraFeedback_FeedbackGiaPresente_LanciaEccezione() {
         when(iscrizioneRepository.findById(iscrizioneId)).thenReturn(Optional.of(iscrizione));
@@ -140,6 +146,7 @@ class FeedbackServiceTest {
         assertTrue(result.getCommenti().isEmpty());
     }
 
+    // Data Aggregation & Analytics: verifica l'algoritmo di proiezione dei dati per le dashboard, validando il calcolo delle medie aritmetiche (Floating point) e il filtraggio dei testi vuoti
     @Test
     void getStatisticheCorso_ConFeedback_CalcolaMedieECommenti() {
         Feedback f1 = new Feedback();

@@ -13,7 +13,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
-
+/**
+ * Suite di collaudo (Unit Test) per il layer di integrazione con Spring Security (Adapter Pattern).
+ * Verifica la transcodifica sicura delle identità di dominio in profili di autorizzazione standard (UserDetails)
+ * e collauda il mapping dei privilegi per il controllo degli accessi (RBAC - Role-Based Access Control).
+ */
 @ExtendWith(MockitoExtension.class)
 class CustomUserDetailsServiceTest {
 
@@ -27,6 +31,7 @@ class CustomUserDetailsServiceTest {
     void setUp() {
     }
 
+    // Validazione dell'Identity Mapping: garantisce che le credenziali cifrate (Hash) e i ruoli di dominio vengano incapsulati fedelmente nel principal di sicurezza del framework
     @Test
     void loadUserByUsername_UtenteTrovato_RitornaUserDetails() {
         Admin utente = new Admin();
@@ -46,6 +51,7 @@ class CustomUserDetailsServiceTest {
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")));
     }
 
+    // Validazione dell'Identity Mapping: garantisce che le credenziali cifrate (Hash) e i ruoli di dominio vengano incapsulati fedelmente nel principal di sicurezza del framework
     @Test
     void loadUserByUsername_UtenteNonTrovato_LanciaEccezione() {
         when(utenteRepository.findByEmail("sconosciuto@norlan.it")).thenReturn(Optional.empty());

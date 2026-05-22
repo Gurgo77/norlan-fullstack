@@ -7,7 +7,11 @@ import it.norlan.clientportal.model.Utente;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il Creational Design Pattern "Simple Factory".
+ * Verifica l'incapsulamento della logica di istanziazione e il corretto sfruttamento
+ * del polimorfismo, garantendo il disaccoppiamento tra la creazione degli oggetti e la logica di business.
+ */
 class UtenteFactoryTest {
 
     private UtenteFactory utenteFactory;
@@ -17,6 +21,7 @@ class UtenteFactoryTest {
         utenteFactory = new UtenteFactory();
     }
 
+    // Valida il principio di polimorfismo: garantisce che la Factory ritorni l'istanza concreta corretta (es. Admin) mascherandola dietro l'astrazione della superclasse Utente
     @Test
     void creaUtente_RuoloAdmin_RitornaIstanzaAdmin() {
         Utente risultato = utenteFactory.creaUtente(Utente.Ruolo.ADMIN);
@@ -53,6 +58,7 @@ class UtenteFactoryTest {
         assertEquals(Utente.Ruolo.DIPENDENTE, risultato.getRuolo());
     }
 
+    // Defensive Programming: collauda la Guard Clause della Factory, assicurando che l'assenza di un parametro discriminante (null) venga intercettata e bloccata in modalità Fail-Fast
     @Test
     void creaUtente_RuoloNullo_LanciaIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(

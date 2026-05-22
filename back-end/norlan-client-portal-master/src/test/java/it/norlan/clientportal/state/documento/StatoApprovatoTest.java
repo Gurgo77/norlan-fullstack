@@ -3,7 +3,11 @@ import it.norlan.clientportal.model.Documento;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-
+/**
+ * Suite di collaudo (Unit Test) per il nodo intermedio (StatoApprovato) della FSM documentale.
+ * Verifica l'implementazione del Behavioral Pattern (State), garantendo il rigoroso blocco
+ * delle transizioni di workflow illegali e validando l'evoluzione coerente verso l'archiviazione.
+ */
 class StatoApprovatoTest {
 
     private StatoApprovato statoApprovato;
@@ -15,6 +19,7 @@ class StatoApprovatoTest {
         documento = new Documento();
     }
 
+    // FSM Constraint Enforcement (Anti-Regression): verifica che il nodo di stato rigetti tentativi di regressione logica (da Approvato a In Attesa), blindando la direzionalità e l'integrità del workflow
     @Test
     void richiediFirma_StatoIncompatibile_LanciaIllegalStateException() {
         IllegalStateException exception = assertThrows(
@@ -26,6 +31,7 @@ class StatoApprovatoTest {
         assertEquals("Documento già approvato, impossibile richiedere firma.", exception.getMessage());
     }
 
+    // Idempotency & Redundancy Prevention: collauda il blocco difensivo che inibisce la ri-sottomissione dello stesso comando sul medesimo stato, prevenendo mutazioni ridondanti e side-effect indesiderati
     @Test
     void approva_StatoGiaApprovato_LanciaIllegalStateException() {
         IllegalStateException exception = assertThrows(
@@ -37,6 +43,7 @@ class StatoApprovatoTest {
         assertEquals("Il documento è già stato approvato.", exception.getMessage());
     }
 
+    // Context Mutation (State Transition): assicura che l'invocazione di un evento logicamente consentito muti a runtime il puntatore polimorfico del Context (Documento) verso la successiva classe concreta (StatoArchiviato)
     @Test
     void archivia_TransizioneAmmessa_ModificaStatoInArchiviato() {
         statoApprovato.archivia(documento);
