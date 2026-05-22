@@ -1,6 +1,9 @@
 import httpClient from '$lib/api/httpClient';
 import type { AuthRequest } from '$lib/models/AuthRequest';
-
+/*
+Servizio per la gestione del ciclo di vita dell'autenticazione utente.
+Coordina login, persistenza della sessione in localStorage, logout e operazioni di sicurezza.
+*/
 export interface LoginRequest {
 	email: string;
 	password: string;
@@ -24,6 +27,7 @@ export interface UserSession {
 export class AuthService {
 	private static readonly basePath = '/api/auth';
 
+	// Esegue l'autenticazione, memorizza il token ricevuto e inizializza la sessione locale
 	static async login(credentials: AuthRequest): Promise<LoginResponse> {
 		const response = await httpClient.post<LoginResponse>(`${this.basePath}/login`, credentials);
 		const authData = response.data;
@@ -31,6 +35,7 @@ export class AuthService {
 		return authData;
 	}
 
+	// Persiste i dati utente e il token JWT nel browser per mantenere lo stato di autenticazione
 	private static setSession(authData: LoginResponse): void {
 		if (typeof window === 'undefined') return;
 
@@ -61,6 +66,7 @@ export class AuthService {
 		return localStorage.getItem('jwt_token');
 	}
 
+	// Invalida la sessione lato server e pulisce tutti i dati di autenticazione memorizzati localmente
 	static async logout(): Promise<void> {
 		if (typeof window === 'undefined') return;
 
@@ -90,6 +96,7 @@ export class AuthService {
 		return response.data;
 	}
 
+	// Determina l'URL di destinazione della dashboard in base al ruolo dell'utente autenticato
 	static getDashboardRouteByRole(ruolo?: string): string {
 		switch (ruolo) {
 			case 'ADMIN':

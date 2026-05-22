@@ -12,12 +12,17 @@
 	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
 	import { getInfoScadenza, ordinaPerScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
-
+	/*
+    Modulo Archivio Documentale (Client Panel).
+    Fornisce all'Azienda l'accesso completo, filtrabile e ordinato al proprio archivio digitale.
+    Permette il download dei file, il monitoraggio visivo delle scadenze tramite KPI
+    e la navigazione rapida verso il supporto tecnico per la richiesta di integrazioni.
+    */
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let filtroCategoria = $state<ModuloServizio | 'TUTTI'>('TUTTI');
 	let documenti = $state<Documento[]>([]);
-
+	// Recupera i file aziendali alla creazione del componente (escludendo gli attestati)
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -32,10 +37,12 @@
 		}
 	});
 
+	// Gestisce l'interazione per lo scaricamento del file fisico
 	async function handleDownload(id: number, path: string) {
 		await scaricaDocumentoUniversale(id, path);
 	}
 
+	// Ricalcola istantaneamente la lista visibile al variare della ricerca o dei filtri
 	const filteredDocs = $derived.by(() => {
 		const filtrati = documenti.filter((doc) => {
 			const matchSearch = doc.tipologia.toLowerCase().includes(searchQuery.toLowerCase());
@@ -55,6 +62,7 @@
 </script>
 
 <div in:fade class="p-4 md:p-6 pb-20">
+	<!-- Dashboard KPI: Indicatori sintetici sullo stato di validità dell'intero archivio -->
 	<div class="mb-8 md:mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 		<div class="w-full lg:w-auto">
 			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">I MIEI DOCUMENTI</h1>
@@ -72,6 +80,7 @@
 		</div>
 	</div>
 
+	<!-- Barra di Controllo: Filtri a scorrimento orizzontale (Categorie) e input di ricerca testuale -->
 	<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-2xl md:rounded-3xl border border-gray-100 bg-white p-4 md:p-6 shadow-sm">
 		<div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar-data">
 			<button
@@ -124,6 +133,7 @@
 		<div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
 			{#each filteredDocs as doc (doc.idDocumento)}
 				{@const info = getInfoScadenza(doc.dataScadenza)}
+				<!-- Card del singolo documento con feedback visivo sullo stato (colori dinamici via info.stato) -->
 				<div class="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-xl" in:scale>
 					<div class="h-1.5 w-full {info.bgTop}"></div>
 					<div class="flex-1 p-6 md:p-8">
@@ -163,6 +173,7 @@
 	{/if}
 
 	<div class="mt-12">
+		<!-- Cross-Navigation: Banner CTA a fondo pagina per richiedere documenti mancanti via Chat -->
 		<AlertCard
 				titolo="Richiesta Documenti Speciali"
 				sottotitolo="Se desideri archiviare nuovi verbali o certificati non presenti, scrivi allo staff tramite la Chat NorLan."

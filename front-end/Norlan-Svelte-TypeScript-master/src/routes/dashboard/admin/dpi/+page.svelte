@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import { fade, slide } from 'svelte/transition';
+    import { fade, slide, scale } from 'svelte/transition';
     import {
         Search, Building2, Loader2, Mail, MessageSquare,
         HardHat, ShieldOff, Clock, ShieldCheck, Trash2
@@ -13,7 +13,12 @@
     import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
     import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
-
+    /*
+    Modulo Controllo Compliance DPI (Dashboard Admin).
+    Monitora in tempo reale lo stato di validità dei Dispositivi di Protezione Individuale
+    assegnati ai lavoratori. Fornisce statistiche globali, funzionalità di sollecito
+    proattivo verso le aziende (Email/Chat) e gestione del ciclo di vita delle assegnazioni.
+    */
     let isLoading = $state(true);
     let searchQuery = $state('');
     let filtroStato = $state('TUTTI');
@@ -27,6 +32,7 @@
         await caricaDati();
     });
 
+    // Carica il dataset completo e arricchisce i dipendenti con lo storico DPI
     async function caricaDati() {
         isLoading = true;
         try {
@@ -82,6 +88,7 @@
             getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato === 'WARNING').length, 0)
     });
 
+    // Invia solleciti tramite email esterna (Gmail) o sistema interno di messaggistica
     async function sollecitaAzienda(gruppo: any, canale: 'email' | 'chat') {
         const msg = `Gentile Amministrazione di ${gruppo.nome},\n\nVi segnaliamo che dal nostro sistema di monitoraggio risultano dei Dispositivi di Protezione Individuale (DPI) scaduti o anomali assegnati ai vostri lavoratori.\n\nVi invitiamo a verificare la sezione DPI del vostro pannello e a procedere con l'aggiornamento o la sostituzione nel più breve tempo possibile per ripristinare la conformità aziendale.\n\nCordiali saluti,\nStaff NorLan`;
 
@@ -98,6 +105,7 @@
         showDeleteModal = true;
     }
 
+    // Conferma l'eliminazione di un'assegnazione DPI dal database
     async function confermaEliminaDPI() {
         if (!dpiDaEliminare) return;
         try {
@@ -126,6 +134,7 @@
         <div class="w-full xl:w-auto">
             <h1 class="text-2xl md:text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter">Controllo Compliance DPI</h1>
 
+            <!-- Statistiche Globali: Header dinamico con KPI su asset e scadenze -->
             <div class="flex flex-wrap items-center gap-2 md:gap-3 mt-4 md:mt-5">
                 {#each ['TUTTI', 'DANGER', 'WARNING', 'OK'] as s}
                     <button
@@ -168,6 +177,7 @@
 
     <div class="mb-8 md:mb-12 relative w-full max-w-xl">
         <Search class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <!-- Area Ricerca: Filtro testuale immediato per azienda o dipendente -->
         <input bind:value={searchQuery} type="text" placeholder="Cerca azienda o dipendente..." class="w-full pl-14 pr-4 py-3 md:py-4 bg-white border border-gray-100 rounded-2xl text-xs font-bold uppercase shadow-sm outline-none focus:ring-2 focus:ring-[#1B4B6B]/5 transition-all" />
     </div>
 
@@ -175,6 +185,7 @@
         <div class="py-40 text-center"><Loader2 size={48} class="animate-spin text-[#1B4B6B] mx-auto opacity-20" /></div>
     {:else}
         <div class="space-y-8 md:space-y-12">
+            <!-- Griglia Compliance: Visualizzazione raggruppata per azienda -->
             {#each gruppiFiltrati as gruppo (gruppo.nome)}
                 <div class="bg-white rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden" transition:slide>
 
@@ -210,6 +221,7 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {#each dip.dpis as dpi (dpi._uniqueKey)}
                                         <div in:scale>
+                                            <!-- Schede DPI: Visualizzazione singola assegnazione con stato visivo -->
                                             <DpiCard
                                                     ruolo="admin"
                                                     dpi={{

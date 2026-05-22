@@ -1,3 +1,8 @@
+/*
+Stili globali e configurazione del tema applicativo.
+Include le estensioni di Tailwind CSS, le definizioni dei keyframe per le animazioni UI
+(typing, pulse, spin, float) e le classi di utilità per gli effetti d'ombra personalizzati.
+*/
 @import 'tailwindcss';
 
 @theme {

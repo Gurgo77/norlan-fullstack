@@ -19,6 +19,12 @@
     import { scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
     import { getInfoScadenza, ordinaPerScadenza } from '$lib/utils/scadenzeUtils';
 
+    /*
+Manager Personale Dipendente (Dashboard Admin).
+Gestisce l'anagrafica centralizzata dei lavoratori, la loro associazione alle aziende,
+il monitoraggio degli attestati formativi e la gestione (assegnazione/scadenza)
+dei Dispositivi di Protezione Individuale (DPI).
+*/
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
         idAzienda?: string | number;
@@ -108,6 +114,7 @@
         ordinaPerScadenza(dpiCorrenti, 'dataScadenzaRevisione')
     );
 
+    // Recupera dipendenti e aziende; popola la vista iniziale (eventualmente gestendo deep-linking via ID da URL)
     onMount(async () => {
         try {
             const [resLavoratori, resAziende] = await Promise.all([
@@ -142,6 +149,7 @@
         }
     });
 
+    // Carica dettagli, documenti e DPI associati al lavoratore selezionato
     async function apriDettaglio(lavoratore: DipendenteEsteso) {
         selectedDipendente = lavoratore;
         isLoadingDettaglio = true;
@@ -279,6 +287,7 @@
         }
     }
 
+    // Invia notifiche di rinnovo DPI tramite Email
     function sollecitaViaEmail(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
         const azienda = aziende.find(a => String(a.idUtente) === String(selectedDipendente?.idAzienda));
@@ -300,6 +309,7 @@
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${azienda.email}&su=${subject}&body=${body}`, '_blank');
     }
 
+    // Invia notifiche di rinnovo DPI tramite Chat integrata
     async function sollecitaViaChat(dpi: DpiEsteso) {
         if (!selectedDipendente || !selectedDipendente.idAzienda) return;
 
@@ -380,6 +390,7 @@
                 <p class="text-gray-400 font-bold uppercase text-xs">Nessun dipendente trovato</p>
             </div>
         {:else}
+            <!-- Vista Elenco: Filtro di ricerca e raggruppamento dinamico per azienda -->
             {#each Object.entries(lavoratoriRaggruppati) as [nomeAzienda, dipendentiAzienda] (nomeAzienda)}
                 <div class="mb-12">
                     <div class="flex items-center gap-3 mb-6 pb-2 border-b-2 border-gray-100">
@@ -437,6 +448,7 @@
             {#if isLoadingDettaglio}
                 <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
             {:else}
+                <!-- Vista Dettaglio: Dashboard specifica del lavoratore con sezioni separate per Documenti e DPI -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                     <div class="space-y-6">
@@ -492,6 +504,7 @@
                                                 onDelete={() => preparaEliminaDPI(dpi)}
                                         />
 
+                                        <!-- Sezione DPI: Logica di sollecito visualizzata solo se lo stato del dispositivo è 'DANGER' -->
                                         {#if info.stato === 'DANGER'}
                                             <div class="bg-red-50/50 border border-red-100 rounded-xl p-3 shadow-sm">
                                                 <p class="text-[8px] font-black uppercase text-red-500 mb-2 text-center tracking-tighter">

@@ -1,5 +1,8 @@
 import { Priorita } from './Enums';
-
+/*
+Modello per la gestione degli alert e degli avvisi di sistema rivolti agli utenti.
+Traccia i dettagli del messaggio, lo stato di lettura e il livello di priorità dell'avviso.
+*/
 export interface NotificaData {
 	idNotifica: number;
 	idDestinatario: number;

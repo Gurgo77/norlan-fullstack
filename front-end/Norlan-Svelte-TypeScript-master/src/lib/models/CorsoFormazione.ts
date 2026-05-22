@@ -1,5 +1,8 @@
 import { StatoCorso } from './Enums';
-
+/*
+Modello di dominio per i corsi di formazione.
+Definisce i dettagli logistici del corso, lo stato attuale e i riferimenti al docente.
+*/
 export interface CorsoData {
 	idCorso: number;
 	titolo: string;

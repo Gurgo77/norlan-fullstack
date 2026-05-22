@@ -1,4 +1,10 @@
 <script lang="ts">
+	/*
+Dashboard Principale Admin (Home).
+Pannello di controllo globale che aggrega e sintetizza i dati da tutti i sottomoduli.
+Fornisce KPI in tempo reale, una vista prioritaria sulle criticità (scadenze documenti e DPI)
+e il calendario dei prossimi corsi formativi, fungendo da hub di smistamento operativo.
+*/
 	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
@@ -20,6 +26,7 @@
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import { getInfoScadenza } from '$lib/utils/scadenzeUtils';
+
 
 	interface ScadenzaTabella {
 		id: string;
@@ -60,6 +67,7 @@
 		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
 	}).format(new Date());
 
+	// Carica l'intero ecosistema dati, compila le metriche (stats) e normalizza le scadenze
 	onMount(async () => {
 		try {
 			const [datiAziende, datiDipendenti, datiDocenti, datiCorsi, tuttiDocumenti] = await Promise.all([
@@ -165,6 +173,7 @@
 		}
 	});
 
+	// Intercetta l'input della barra di ricerca globale (header) per filtrare i widget
 	const docsDaMostrare = $derived(
 			scadenzeDocs.filter(s => s.azienda.toLowerCase().includes(searchState.query.toLowerCase()) ||
 					s.dettaglio.toLowerCase().includes(searchState.query.toLowerCase())).slice(0, 5)
@@ -181,6 +190,7 @@
 </script>
 
 <div in:fade class="pb-10 md:pb-20 max-w-[1600px] mx-auto">
+	<!-- Messaggio di Benvenuto: Include la data odierna formattata dinamicamente -->
 	<div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 		<div>
 			<div class="flex items-center gap-3 mb-2">
@@ -200,6 +210,7 @@
 			<span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Analisi del sistema in corso...</span>
 		</div>
 	{:else}
+		<!-- KPI Summary: 5 StatCard animate in ingresso per dare evidenza numerica del volume di dati -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8 md:mb-10">
 			<div in:scale={{duration: 200, delay: 0}} class="h-full">
 				<StatCard titolo="Aziende Clienti" valore={stats.aziende} icona={Building2} href={resolveRoute('/dashboard/admin/aziende')} />
@@ -218,7 +229,9 @@
 			</div>
 		</div>
 
+		<!-- Layout a 3 Colonne: Widget per Documenti, DPI e Corsi in Arrivo -->
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+			<!-- Liste scrollabili con link diretti (Vedi tutto / Gestisci) per il reindirizzamento veloce -->
 			<div class="bg-white rounded-[2rem] md:rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-[350px] md:h-[420px]">
 				<div class="p-4 md:p-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 shrink-0">
 					<div class="flex items-center gap-2 md:gap-3">
@@ -303,6 +316,7 @@
 					</div>
 				</div>
 
+				<!-- Widget "Allarmi in Evidenza": Box colorato (background primario) per isolare il numero totale di criticità -->
 				<div class="bg-[#1B4B6B] rounded-[2rem] md:rounded-3xl p-6 text-white shadow-xl relative overflow-hidden shrink-0 min-h-[140px]">
 					<div class="absolute -right-4 -top-4 opacity-10">
 						<AlertCircle size={100} />

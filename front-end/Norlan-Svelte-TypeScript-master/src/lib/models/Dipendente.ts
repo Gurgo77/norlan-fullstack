@@ -1,5 +1,8 @@
 import { Ruolo } from './Enums';
-
+/*
+Entità principale per l'anagrafica del dipendente.
+Mantiene le informazioni personali e il vincolo relazionale con l'azienda di appartenenza.
+*/
 export interface DipendenteData {
 	idUtente: number;
 	nome: string;

@@ -1,8 +1,8 @@
 <script lang="ts">
     /**
-     * Componente UI per la visualizzazione di dettaglio di un'anagrafica (es. Dipendente o Docente).
-     * Genera dinamicamente un'intestazione con pulsanti di azione e una griglia di attributi
-     * passati tramite la proprietà 'items'.
+     * Componente Svelte riutilizzabile che genera una scheda di dettaglio per un'anagrafica.
+     * Mostra un'intestazione con le iniziali dell'utente e azioni condizionali (modifica, elimina, ecc.),
+     * oltre a una griglia dinamica per renderizzare gli attributi specifici passati tramite le props.
      */
     import { fade } from 'svelte/transition';
     import {
@@ -10,14 +10,13 @@
         Trash2, RefreshCw
     } from 'lucide-svelte';
     import type { Component } from 'svelte';
-
     interface DetailItem {
         label: string;
         value: string | number | undefined;
         icon: Component;
         isMono?: boolean;
     }
-
+    // Estrae i dati anagrafici e i listener degli eventi dalle properties di Svelte 5 ($props).
     let {
         nome,
         cognome,
@@ -42,6 +41,7 @@
 </script>
 
 <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-12" in:fade>
+    <!-- Intestazione principale: calcola e mostra le iniziali dell'utente, il nome completo e un eventuale sottotitolo -->
     <div class="bg-[#1B4B6B] p-6 md:p-10 text-white flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative">
         <div class="flex items-center gap-4 md:gap-6 w-full md:w-auto">
             <div class="w-16 h-16 md:w-24 md:h-24 bg-white text-[#1B4B6B] rounded-2xl md:rounded-3xl flex items-center justify-center font-black text-3xl md:text-4xl shadow-lg shrink-0">
@@ -58,7 +58,7 @@
                 <h1 class="text-2xl md:text-5xl font-extrabold uppercase tracking-tighter truncate">{nome} {cognome}</h1>
             </div>
         </div>
-
+        <!-- Barra degli strumenti: renderizza i pulsanti di azione solo se la rispettiva funzione è stata passata come prop -->
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
             {#if onUpdate}
                 <button onclick={onUpdate} class="flex-1 md:flex-none justify-center flex items-center gap-2 bg-white/20 text-white border border-white/20 px-6 py-3.5 rounded-2xl transition-all font-extrabold uppercase text-[10px] shadow-xl hover:bg-white/30 hover:scale-105 whitespace-nowrap">
@@ -93,6 +93,7 @@
     </div>
 
     <div class="p-6 md:p-8 bg-gray-50/30">
+        <!-- Griglia dei dati: itera sull'array 'items' generando dinamicamente una card per ogni attributo con la sua icona -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {#each items as item}
                 <div class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm transition-all hover:shadow-md">

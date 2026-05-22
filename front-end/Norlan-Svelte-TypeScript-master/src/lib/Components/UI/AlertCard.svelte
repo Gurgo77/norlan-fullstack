@@ -1,8 +1,13 @@
 <script lang="ts">
+    /**
+     * Componente Alert/Card flessibile.
+     * Supporta 4 varianti cromatiche e può comportarsi come un link cliccabile o come un blocco statico.
+     */
     import type { ComponentType } from 'svelte';
 
     type VarianteAlert = 'danger' | 'warning' | 'info' | 'success';
 
+    // Destrutturazione delle proprietà (Svelte 5): testi, icona dinamica, URL e stile del componente
     let {
         titolo,
         sottotitolo = '',
@@ -21,6 +26,7 @@
         href?: string;
     }>();
 
+    // Raccogliamo qui tutti i colori e gli stili per mantenere l'HTML pulito e facile da leggere.
     const temi: Record<VarianteAlert, {
         wrapper: string;
         iconBox: string;
@@ -66,6 +72,8 @@
     const t = $derived(temi[variante as VarianteAlert]);
 </script>
 
+
+<!-- Se abbiamo passato un link creiamo un tag <a> per poterci cliccare, altrimenti usiamo un normale <div>. -->
 {#if href}
     <a {href} class="block w-full p-4 rounded-2xl border transition-colors group {t.wrapper}">
         <div class="flex items-start gap-3">

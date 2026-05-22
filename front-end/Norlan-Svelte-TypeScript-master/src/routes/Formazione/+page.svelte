@@ -3,7 +3,13 @@
   import { Shield, BookOpen, Award, Clock, Users } from 'lucide-svelte';
   import DocenteCard from '$lib/Components/Features/Formazione/DocenteCard.svelte';
   import CorsoCard from '$lib/Components/Features/Formazione/CorsoCard.svelte';
+  /*
+  Componente dedicato alla gestione dell'offerta formativa.
+  Gestisce l'esposizione dinamica del catalogo corsi e del corpo docenti,
+  implementando la navigazione tra le sezioni tramite stato reattivo e selezione condizionale.
+  */
 
+  // Interfacce di tipizzazione per la strutturazione rigorosa dei dati formativi e delle schede docente
   interface Course {
     title: string;
     reference: string;
@@ -19,6 +25,7 @@
   let showDocents = $state(false);
   let courseDetails = $state<Course | null>(null);
 
+  // Repository locale dei corsi erogati (con riferimenti normativi) e del team di docenti accreditati
   let courses: Course[] = [
     {
       title: 'Datore di lavoro/RSPP (iniziale)',
@@ -225,6 +232,7 @@
     }
   ];
 
+  // Handler per la selezione del corso da menu a tendina, aggiorna il dettaglio reattivo visualizzato
   function selectCourse(event: Event) {
     const target = event.target as HTMLSelectElement;
     const selectedTitle = target.value;
@@ -340,6 +348,7 @@
     </div>
   </section>
 
+  <!-- Sezione dinamica di selezione catalogo: permette all'utente di filtrare i dettagli tecnici per tipologia di corso -->
   {#if !showDocents}
     <section class="py-12 bg-gray-50">
       <div class="max-w-6xl mx-auto px-4">
@@ -360,6 +369,7 @@
         {/if}
       </div>
     </section>
+    <!-- Visualizzazione a griglia del team docente, richiamando il componente dedicato DocenteCard per ogni profilo -->
   {:else}
     <section class="py-12 bg-gray-50" in:fade>
       <div class="max-w-6xl mx-auto px-4">

@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente Svelte per la visualizzazione a card di un singolo Docente.
+     * Mostra le informazioni principali (nome, iniziali, specializzazione) e include
+     * interazioni rapide per aprire la scheda di dettaglio o eliminare il record.
+     */
     import { Trash2, GraduationCap, BookOpen, ChevronRight } from 'lucide-svelte';
     import { scale } from 'svelte/transition';
     import type { DocenteData } from '$lib/models/Docente';
@@ -9,11 +14,12 @@
         onDelete: () => void
     } = $props();
 </script>
-
+<!-- Contenitore principale della card animato (scale), con effetti di elevazione e bordo al passaggio del mouse -->
 <div
         in:scale
         class="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group relative flex flex-col h-full overflow-hidden hover:border-[#1B4B6B]/30"
 >
+    <!-- Area principale cliccabile della card, accessibile da tastiera, che innesca l'apertura del profilo -->
     <div
             role="button"
             tabindex="0"
@@ -53,6 +59,7 @@
         </div>
     </div>
 
+    <!-- Footer della card che funge da ulteriore richiamo visivo (Call to Action) per accedere alla scheda completa -->
     <button
             onclick={onclick}
             class="mt-auto w-full p-6 pt-4 border-t border-gray-50 flex justify-between items-center hover:bg-gray-50/50 transition-colors"

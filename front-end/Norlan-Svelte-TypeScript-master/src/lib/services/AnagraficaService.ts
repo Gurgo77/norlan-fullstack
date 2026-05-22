@@ -2,7 +2,10 @@ import httpClient from '$lib/api/httpClient';
 import type { DipendenteData } from '$lib/models/Dipendente';
 import type { AziendaData } from '$lib/models/Azienda';
 import type { AdminData } from '$lib/models/Admin';
-
+/*
+Servizio per la gestione centralizzata delle anagrafiche (Aziende, Docenti, Lavoratori, Admin).
+Coordina la registrazione dei nuovi account e le operazioni CRUD interfacciandosi con il backend.
+*/
 export interface AuthRequestDTO {
 	email: string;
 	password?: string;
@@ -35,7 +38,7 @@ export interface AdminUpdate {
 
 export class AnagraficaService {
 	private static readonly basePath = '/api/anagrafica';
-
+	// Gestisce l'onboarding di nuovi utenti discriminando l'elaborazione in base al ruolo assegnato
 	static async registraUtente(dati: AuthRequestDTO): Promise<string> {
 		const response = await httpClient.post<string>(`${this.basePath}/registrazione`, dati);
 		return response.data;
@@ -51,6 +54,7 @@ export class AnagraficaService {
 		return response.data;
 	}
 
+	// Aggiorna i dati fiscali e i riferimenti di contatto per il profilo aziendale
 	static async updateAzienda(
 		idAzienda: number | string,
 		datiAggiornati: AziendaUpdate
@@ -62,6 +66,7 @@ export class AnagraficaService {
 		return response.data;
 	}
 
+	// Verifica se un'azienda possiede personale interrogando l'endpoint cross-domain dei lavoratori
 	static async hasDipendenti(idAzienda: number | string): Promise<boolean> {
 		const response = await httpClient.get<DipendenteData[]>(`/api/lavoratori/azienda/${idAzienda}`);
 
@@ -106,6 +111,7 @@ export class AnagraficaService {
 		await httpClient.put(`${this.basePath}/admin/${id}`, dati);
 	}
 
+	// Recupera l'elenco globale dei dipendenti a sistema per finalità di listing o reportistica
 	static async getAllDipendenti(): Promise<DipendenteData[]> {
 		const response = await httpClient.get<DipendenteData[]>(`${this.basePath}/dipendenti`);
 		return response.data;

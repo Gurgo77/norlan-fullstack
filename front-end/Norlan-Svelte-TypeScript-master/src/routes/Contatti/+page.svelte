@@ -2,7 +2,13 @@
   import { toast } from 'svelte-sonner';
   import { Mail, Phone, Send } from 'lucide-svelte';
   import { fade } from 'svelte/transition';
+  /*
+  Componente form di contatto pubblico.
+  Gestisce l'acquisizione dei dati utente, la validazione lato client (inclusa la clausola privacy)
+  e l'invio asincrono tramite endpoint REST dedicato.
+  */
 
+  // Stato reattivo contenente i dati del mittente e il consenso al trattamento privacy
   let formData = {
     nome: '',
     cognome: '',
@@ -13,6 +19,7 @@
 
   let status: 'idle' | 'sending' | 'success' | 'error' = 'idle';
 
+  // Gestisce l'invio del modulo, orchestrando lo stato di caricamento (UI) e la comunicazione con il server
   async function handleSubmit(e: Event) {
     e.preventDefault();
     status = 'sending';
@@ -24,6 +31,7 @@
         body: JSON.stringify(formData),
       });
 
+      // Gestisce la risposta negativa del backend, estraendo il messaggio di errore per l'utente
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Errore durante l\'invio');
@@ -93,6 +101,7 @@
     </div>
   </section>
 
+  <!-- Sidebar informativa con recapiti telefonici e indirizzi di posta elettronica -->
   <section class="py-20">
     <div class="container mx-auto px-4">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
@@ -121,6 +130,7 @@
           </div>
         </div>
         <div class="bg-gray-50 p-8 rounded-xl ombraChiSiamo">
+          <!-- Form di raccolta dati con validazione HTML5 obbligatoria e binding dello stato -->
           <h2 class="text-3xl font-bold text-[#1B4B6B] mb-8">Invia un messaggio</h2>
           <form id="Contatto" on:submit|preventDefault={handleSubmit} class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -178,6 +188,7 @@
               </div>
             </div>
 
+            <!-- Bottone dinamico che riflette lo stato corrente (invio, successo, errore) dell'operazione asincrona -->
             <button
                     type="submit"
                     disabled={status === 'sending' || !formData.privacyAccepted}

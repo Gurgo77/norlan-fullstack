@@ -9,6 +9,13 @@
 	import DpiCard from '$lib/Components/Features/Documentale/DpiCard.svelte';
 	import { getInfoScadenza, formattaDataScadenza, ordinaPerScadenza, type StatoScadenza } from '$lib/utils/scadenzeUtils';
 
+	/*
+Modulo Registro DPI (Employee Panel).
+Area dedicata alla visualizzazione e al controllo delle dotazioni di protezione
+individuale (DPI) assegnate al lavoratore. Permette il monitoraggio dello stato
+di validità (scadenze revisione) e fornisce un canale diretto per segnalare
+necessità di sostituzione o revisione dei dispositivi.
+*/
 	type OpzioneFiltro = 'TUTTI' | StatoScadenza;
 
 	interface Dpi {
@@ -40,6 +47,7 @@
 
 	const opzioniFiltro: OpzioneFiltro[] = ['TUTTI', 'OK', 'WARNING', 'DANGER'];
 
+	// Carica i DPI associati all'utente e normalizza lo stato di conformità
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -78,6 +86,7 @@
 		}
 	});
 
+	// Filtra e ordina la lista in base alla scadenza e ai criteri di ricerca utente
 	const dpiFiltrati = $derived(
 			dotazioni.filter(d => {
 				const search = searchQuery.toLowerCase();
@@ -92,6 +101,7 @@
 		attenzione: dotazioni.filter(d => d.stato === 'WARNING').length
 	});
 
+	// Genera un messaggio pre-compilato e naviga verso la chat di supporto
 	function richiediSostituzione(idDpi: number | string) {
 		const dpi = dotazioni.find(d => d.id === idDpi);
 		if (!dpi) return;
@@ -107,6 +117,7 @@
 
 <div in:fade class="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-10 p-4 md:p-6">
 
+	<!-- KPI Dashboard: Contatori veloci per DPI scaduti (DANGER) o in scadenza (WARNING) -->
 	<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8">
 		<div>
 			<h1 class="text-2xl md:text-4xl font-black text-[#1B4B6B] uppercase tracking-tighter leading-none">I Miei DPI</h1>
@@ -129,6 +140,7 @@
 		</div>
 	</div>
 
+	<!-- Barra di Ricerca e Filtri di Stato -->
 	<div class="flex flex-col md:flex-row gap-4">
 		<div class="relative flex-1 group">
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
@@ -159,6 +171,7 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione inventario DPI...</span>
 		</div>
 	{:else}
+		<!-- Griglia Dispositivi: Card informative per ogni DPI -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 			{#each dpiFiltrati as dpi (dpi.id)}
 				<div in:scale={{duration: 300}}>

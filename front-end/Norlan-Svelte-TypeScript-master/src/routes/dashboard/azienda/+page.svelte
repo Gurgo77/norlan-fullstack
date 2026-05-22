@@ -23,6 +23,12 @@
 
 	import { getInfoScadenza, formattaDataScadenza, calcolaGiorniRimanenti } from '$lib/utils/scadenzeUtils';
 
+	/*
+Dashboard Principale Azienda (Home).
+Pannello di controllo riepilogativo per il cliente (Azienda). Aggrega i dati relativi
+alla propria conformità (Documenti e DPI), la forza lavoro attiva, i corsi in programma
+e stabilisce la connessione in background con il team di supporto (Chat).
+*/
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utenteAzienda = $state<AziendaData | null>(null);
@@ -40,10 +46,12 @@
 		weekday: 'long', day: '2-digit', month: 'short', year: 'numeric'
 	});
 
+	// Filtra dinamicamente i documenti e i DPI con urgenza elevata (scaduti o in scadenza)
 	const alertScadenzeDocs = $derived(
 			documentiScadenza.filter(d => calcolaGiorniRimanenti(d.dataScadenza) <= 30)
 	);
 
+	// Filtra dinamicamente i documenti e i DPI con urgenza elevata (scaduti o in scadenza)
 	const alertDpis = $derived(
 			dpisAzienda.filter(dpi => {
 				const info = getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza);
@@ -87,6 +95,7 @@
 		setTimeout(() => { if (chatScrollContainer) chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight; }, 50);
 	}
 
+	// Recupera il profilo aziendale e tutti i dati correlati (dipendenti, documenti, chat)
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		const token = AuthService.getToken();
@@ -126,12 +135,14 @@
 		} catch (error) { console.error(error); } finally { isLoading = false; setTimeout(scrollChat, 100); }
 	});
 
+	// Interrompe la connessione WebSocket alla distruzione del componente
 	onDestroy(() => { if (chatService) chatService.disconnect(); });
 
 </script>
 
 <div in:fade class="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 p-4 md:p-6">
 
+	<!-- Intestazione: Saluto personalizzato con la Ragione Sociale dell'azienda -->
 	<div class="mb-6 md:mb-10">
 		<div class="flex items-center gap-3 mb-2 md:mb-3">
 			<div class="p-2 bg-[#1B4B6B] rounded-xl text-white shadow-sm"><Building2 size={20} /></div>
@@ -150,6 +161,7 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-10 md:mb-14">
+			<!-- Banner Compliance: Mostra il risultato della computazione 'infoStato' (Semaforo di conformità) -->
 			<div class="bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4 md:gap-5 transition-all hover:shadow-md sm:col-span-2 md:col-span-1 xl:col-span-1">
 				<div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center {status.color} shadow-lg text-white shrink-0">
 					<status.icon size={24} class={status.label === 'ATTENZIONE' ? 'text-[#1B4B6B]' : 'text-white'} />
@@ -168,6 +180,7 @@
 					testoIcona="text-[#1B4B6B]"
 					href="/dashboard/azienda/documenti"
 			/>
+			<!-- KPI Summary: Statistiche riassuntive sui volumi gestiti (Documenti, Personale, DPI, Corsi) -->
 			<StatCard
 					titolo="Forza Lavoro"
 					valore={dipendenti.length}
@@ -203,11 +216,13 @@
 				<a href="/dashboard/azienda/documenti" class="text-[9px] md:text-[10px] font-black uppercase text-gray-400 hover:text-[#1B4B6B] transition-colors flex items-center gap-1">Vedi tutte <ArrowRight size={14}/></a>
 			</div>
 
+			<!-- Griglie di Allerta: Mostrano solo le entità (Docs/DPI) che richiedono attenzione -->
 			{#if alertScadenzeDocs.length === 0}
 				<div class="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center flex flex-col items-center bg-gray-50/30">
 					<CheckCircle2 size={32} class="text-emerald-400 mb-2 opacity-50" />
 					<p class="text-gray-400 font-bold uppercase text-[10px] md:text-xs">Tutti i documenti aziendali sono in regola.</p>
 				</div>
+				<!-- Empty State Positivo: Mostrato quando l'azienda è a norma -->
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
 					{#each alertScadenzeDocs as doc (doc.idDocumento)}
@@ -298,6 +313,7 @@
 			{/if}
 		</div>
 
+		<!-- Footer Profilo: Card riassuntiva con i dati fiscali dell'azienda e link alla modifica -->
 		<div class="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
 			<div class="flex items-center gap-4 md:gap-6 min-w-0 w-full md:w-auto">
 				<div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.5rem] bg-gray-50 flex items-center justify-center text-[#1B4B6B] shrink-0 border border-gray-100 shadow-inner">

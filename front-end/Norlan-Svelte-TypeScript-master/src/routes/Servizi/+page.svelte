@@ -1,7 +1,14 @@
 <script lang="ts">
   import { ChevronRight } from 'lucide-svelte';
   import { fade } from 'svelte/transition';
+  /*
+  Componente per l'esposizione dinamica del catalogo servizi NorLan.
+  Implementa una navigazione a due colonne con selezione asincrona del servizio,
+  visualizzando in dettaglio le attività, gli incarichi e le consulenze offerte.
+  */
 
+  // Strutture dati gerarchiche per la catalogazione dei servizi:
+  // Service (titolo macro) -> ServiceContent (sezioni operative: consulenza, incarichi, rilevazioni)
   interface ServiceContent {
     title: string;
     content: string[];
@@ -12,6 +19,8 @@
     content: ServiceContent[];
   }
 
+  // Repository completo dell'offerta consulenziale, suddiviso in aree tematiche:
+  // Privacy, Sicurezza, Autocontrollo Igienico e Sistemi di Gestione certificati.
   const services: Service[] = [
     {
       title: "CONSULENZA LEGALE IN MATERIA DI PROTEZIONE DEI DATI PERSONALI (Regolamento UE 2016/679 e D.Lgs. n. 196/2003)",
@@ -170,6 +179,7 @@
 
   let activeService: number | null = null;
 
+  // Gestisce lo stato reattivo del servizio selezionato dall'utente, aggiornando il rendering del pannello di destra.
   function setActiveService(index: number) {
     activeService = index;
   }
@@ -227,6 +237,7 @@
   <section class="py-16">
     <div class="container mx-auto px-4">
       <div class="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+        <!-- Menu di navigazione laterale: elenca le macro-categorie dei servizi offerti -->
         <div class="lg:w-1/3 slide-in-bottom">
           <div class="sticky top-24 space-y-2">
             {#each services as service, index (service.title)}
@@ -246,6 +257,7 @@
           </div>
         </div>
 
+        <!-- Pannello di dettaglio: espande i contenuti tecnici del servizio selezionato tramite lista puntata -->
         <div class="lg:w-2/3">
           {#if activeService !== null}
             <div class="space-y-6">

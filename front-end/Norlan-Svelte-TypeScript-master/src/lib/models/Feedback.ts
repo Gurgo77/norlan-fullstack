@@ -1,3 +1,7 @@
+/*
+Payload e DTO per il sistema di valutazione dei corsi di formazione.
+Gestiscono l'invio delle recensioni dei discenti e l'aggregazione statistica per i docenti.
+*/
 export interface FeedbackDTO {
     idUtente: number;
     idCorso: number;

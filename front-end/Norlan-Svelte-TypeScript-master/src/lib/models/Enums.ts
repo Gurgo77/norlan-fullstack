@@ -1,3 +1,7 @@
+/*
+Dizionario globale degli enumeratori di dominio del sistema.
+Centralizza le costanti tipizzate per ruoli, stati documentali, moduli e tipologie di DPI.
+*/
 export enum Ruolo {
 	ADMIN = 'ADMIN',
 	DOCENTE = 'DOCENTE',

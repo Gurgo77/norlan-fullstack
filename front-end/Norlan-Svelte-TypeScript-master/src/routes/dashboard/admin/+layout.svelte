@@ -13,6 +13,12 @@
 	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
 	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
+	/*
+Layout Globale Dashboard Admin.
+Definisce la struttura principale dell'area amministrativa: Sidebar di navigazione (responsiva),
+Header con sistema di notifiche integrato, controllo accessi (Route Guard) e
+rendering dinamico del contenuto figlio (children).
+*/
 	interface SubMenuItem {
 		href: string;
 		label: string;
@@ -65,6 +71,7 @@
 		{ href: '/dashboard/admin/account', label: 'Il mio Account', icon: User }
 	];
 
+	// All'avvio: auto-espande i sottomenu pertinenti, verifica i permessi di root e avvia il listener delle notifiche
 	onMount(async () => {
 		if ($page.url.pathname.includes('/admin/aziende') || $page.url.pathname.includes('/admin/dipendenti') || $page.url.pathname.includes('/admin/docenti')) {
 			openMenus.utenti = true;
@@ -77,15 +84,18 @@
 		await notificheManager.init(session.idUtente);
 	});
 
+	// Gestisce la terminazione sicura della sessione e reindirizza al login
 	async function handleLogout() {
 		await AuthService.logout();
 	}
 
+	// Chiude la sidebar su dispositivi mobile dopo il click su una voce di menu
 	function closeMobileMenu() {
 		isMobileMenuOpen = false;
 	}
 </script>
 
+<!-- Listener globale: Chiude il pannello notifiche se si clicca fuori da esso -->
 <svelte:window onclick={notificheManager.close} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
@@ -98,6 +108,7 @@
 	{/if}
 
 	<div class="lg:w-72 shrink-0 relative">
+		<!-- Rendering ricorsivo/condizionale dei menu e sottomenu in base all'URL attivo -->
 		<aside class="fixed lg:sticky top-0 left-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-out {isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}">
 			<div class="p-8 shrink-0 flex items-start justify-between">
 				<div>
@@ -173,7 +184,9 @@
 		</aside>
 	</div>
 
+	<!-- Area Contenuto Principale: Qui vengono renderizzate le pagine figlie (es. /admin/dipendenti) -->
 	<main class="flex-1 flex flex-col min-w-0 w-full">
+		<!-- Header Superiore: Hamburger menu (mobile), Bell icon per notifiche e info utente -->
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shrink-0 sticky top-0 z-30">
 			<div class="flex items-center gap-4">
 				<button onclick={() => isMobileMenuOpen = true} class="p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors lg:hidden focus:outline-none">
@@ -193,6 +206,7 @@
 						{/if}
 					</button>
 
+					<!-- Dropdown Notifiche: appare al click sulla campanella, scrollabile per le notifiche passate -->
 					{#if notificheManager.isOpen}
 						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
 							<div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">

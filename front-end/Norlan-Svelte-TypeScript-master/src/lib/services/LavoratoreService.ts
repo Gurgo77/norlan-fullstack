@@ -1,5 +1,8 @@
 import httpClient from '$lib/api/httpClient';
-
+/*
+Servizio per la gestione dei lavoratori (dipendenti) e delle dotazioni DPI associate.
+Coordina le operazioni CRUD sulle anagrafiche e gestisce il ciclo di vita delle assegnazioni dei dispositivi.
+*/
 export interface DipendenteRequest {
 	nome: string;
 	cognome: string;
@@ -45,11 +48,13 @@ export class LavoratoreService {
 		return response.data;
 	}
 
+	// Recupera l'elenco dei lavoratori appartenenti a una specifica azienda
 	static async getByAzienda(idAzienda: number | string): Promise<DipendenteDTO[]> {
 		const response = await httpClient.get<DipendenteDTO[]>(`${this.basePath}/azienda/${idAzienda}`);
 		return response.data;
 	}
 
+	// Registra un nuovo lavoratore nel sistema, associandolo all'azienda di riferimento
 	static async create(idAzienda: number | string, dati: DipendenteRequest): Promise<DipendenteDTO> {
 		const response = await httpClient.post<DipendenteDTO>(
 			`${this.basePath}/azienda/${idAzienda}`,
@@ -70,6 +75,7 @@ export class LavoratoreService {
 		await httpClient.delete(`${this.basePath}/${idLavoratore}`);
 	}
 
+	// Recupera lo storico dei dispositivi DPI assegnati a uno specifico lavoratore
 	static async getDpiByLavoratore(idLavoratore: number | string): Promise<AssegnazioneDPIDTO[]> {
 		const response = await httpClient.get<AssegnazioneDPIDTO[]>(
 			`${this.basePath}/${idLavoratore}/dpi`
@@ -77,6 +83,7 @@ export class LavoratoreService {
 		return response.data;
 	}
 
+	// Registra l'assegnazione di un nuovo DPI a un lavoratore, definendo date di consegna e scadenza
 	static async assegnaDpi(
 		idLavoratore: number | string,
 		payload: AssegnazioneDPIRequest
@@ -88,6 +95,7 @@ export class LavoratoreService {
 		return response.data;
 	}
 
+	// Filtra i DPI assegnati che raggiungeranno la data di revisione entro il numero di giorni indicato
 	static async getDpiInScadenza(giorni: number = 30): Promise<AssegnazioneDPIDTO[]> {
 		const response = await httpClient.get<AssegnazioneDPIDTO[]>(
 			`${this.basePath}/dpi/in-scadenza`,

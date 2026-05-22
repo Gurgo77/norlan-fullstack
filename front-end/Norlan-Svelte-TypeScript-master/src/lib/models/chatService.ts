@@ -1,7 +1,10 @@
 import { Client } from '@stomp/stompjs';
 import type { MessaggioRequest } from '$lib/models/MessaggioRequest';
 import type { Messaggio } from '$lib/models/Messaggio';
-
+/*
+Servizio per la gestione della chat in tempo reale tramite WebSocket e STOMP.
+Gestisce la connessione al broker, la ricezione asincrona e l'invio dei messaggi.
+*/
 let stompClient: Client;
 
 export const chatService = {

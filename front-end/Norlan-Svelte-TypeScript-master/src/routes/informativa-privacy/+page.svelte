@@ -1,5 +1,10 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
+  /*
+Pagina informativa sul trattamento dei dati personali (Informativa Privacy).
+Fornisce trasparenza sulle finalità, modalità di trattamento e diritti dell'interessato
+in conformità al Regolamento UE 2016/679 (GDPR).
+*/
   </script>
   
   <style>
@@ -20,6 +25,7 @@
   </style>
   
   <div class="min-h-screen pt-20 bg-white" in:fade out:fade>
+    <!-- Sezione Hero: Banner introduttivo con immagine istituzionale -->
     <section class="relative h-[70vh] flex items-center justify-center overflow-hidden">
       <div class="absolute inset-0 w-full h-full blur-sm">
         <img
@@ -40,6 +46,7 @@
     </section>
   
     <section class="py-20 bg-gray-50 text-center px-4">
+      <!-- Corpo dell'informativa: suddiviso per blocchi tematici secondo gli standard di compliance GDPR -->
       <div class="max-w-4xl mx-auto text-left">
         <h2 class="text-2xl md:text-3xl font-bold text-[#1B4B6B] mb-4">Informativa sulla Privacy</h2>
         <p class="text-gray-600 mb-4">

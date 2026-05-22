@@ -10,7 +10,11 @@
     import { AuthService } from '$lib/services/AuthService';
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
-
+    /*
+Componente di gestione profilo Amministratore.
+Gestisce il recupero delle informazioni di sistema, la visualizzazione dei privilegi
+e la logica di aggiornamento delle credenziali di accesso tramite form dedicato.
+*/
     let isLoading = $state(true);
     let admin = $state<AdminData | null>(null);
     let isPasswordFormVisible = $state(false);
@@ -27,6 +31,7 @@
     let passwordSuccessMessage = $state('');
     let isChangingPassword = $state(false);
 
+    // Recupera i dati dell'admin all'avvio e inizializza lo stato dell'interfaccia
     onMount(async () => {
         const session = AuthService.getSession();
         if (session) {
@@ -39,6 +44,7 @@
         isLoading = false;
     });
 
+    // Gestisce l'invocazione della utility di cambio password, normalizzando i feedback visivi e resettando lo stato del form al successo dell'operazione.
     async function handlePasswordChange() {
         passwordError = '';
         passwordSuccessMessage = '';
@@ -84,6 +90,7 @@
         <p class="text-gray-400 text-xs md:text-sm font-medium mt-1">Gestisci le informazioni di sistema e le credenziali di root</p>
     </div>
 
+    <!-- Visualizzazione stato di caricamento durante il fetching dei permessi -->
     {#if isLoading}
         <div class="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 class="animate-spin text-[#1B4B6B]" size={40} />
@@ -92,6 +99,7 @@
     {:else if admin}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
+            <!-- Sidebar profilo: mostra il ruolo e i privilegi del sistema -->
             <div class="space-y-6 md:space-y-8">
                 <div class="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
                     <div class="w-24 h-24 md:w-32 md:h-32 bg-gray-100 rounded-2xl md:rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden shrink-0">
@@ -110,6 +118,7 @@
                 </div>
             </div>
 
+            <!-- Sezione impostazioni: pannello principale per la gestione delle credenziali -->
             <div class="lg:col-span-2 space-y-6 md:space-y-8">
                 <div class="bg-white p-6 md:p-10 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100">
                     <div class="flex items-center gap-3 mb-6 md:mb-10">
@@ -140,6 +149,7 @@
                             </div>
                         </button>
 
+                        <!-- Form espandibile di sicurezza: input per cambio password con toggle di visibilità -->
                         {#if isPasswordFormVisible}
                             <div in:fade class="p-5 md:p-8 bg-gray-50 rounded-2xl md:rounded-[30px] border border-gray-100 space-y-6 mt-4">
                                 <div class="grid grid-cols-1 gap-6">

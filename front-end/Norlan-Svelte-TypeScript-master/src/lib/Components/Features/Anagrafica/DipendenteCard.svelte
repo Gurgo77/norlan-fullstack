@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente Svelte che renderizza una card riassuntiva per un'anagrafica.
+     * Mostra le info principali (nome, ruolo, azienda, corsi) e mette a disposizione azioni rapide
+     * configurabili tramite props, come la modifica, l'eliminazione o la visualizzazione del profilo.
+     */
     import {
         Trash2,
         Edit3,
@@ -50,7 +55,7 @@
         onContact,
         onViewDetails
     }: Props = $props();
-
+    // Genera reattivamente le iniziali dell'utente (es. "MR" per Mario Rossi) per l'avatar circolare
     let iniziali = $derived(`${nome?.[0] || ''}${cognome?.[0] || ''}`.toUpperCase());
 </script>
 
@@ -65,7 +70,7 @@
             <Trash2 size={18} />
         </button>
     {/if}
-
+    <!-- Corpo principale della card, reso accessibile e cliccabile per aprire i dettagli completi del profilo -->
     <div
             role={canViewDetails ? "button" : "none"}
             tabindex={canViewDetails ? 0 : -1}
@@ -95,14 +100,14 @@
                 {/if}
             </div>
         </div>
-
+        <!-- Sezione condizionale che mostra il codice fiscale, formattato con un font monospazio per migliore leggibilità -->
         {#if codiceFiscale}
             <div class="mb-5 flex items-center justify-between text-[10px] font-bold uppercase bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                 <span class="text-gray-400 flex items-center gap-1"><IdCard size={12}/> C. Fiscale</span>
                 <span class="text-[#1B4B6B] font-mono tracking-wider">{codiceFiscale}</span>
             </div>
         {/if}
-
+        <!-- Area dedicata all'anteprima dei corsi: ne mostra al massimo 2, riepilogando i rimanenti con un contatore (+N) -->
         <div class="mt-auto pt-2">
             {#if corsi.length > 0}
                 <div class="flex items-center gap-1.5 mb-2.5">
@@ -129,7 +134,7 @@
             {/if}
         </div>
     </div>
-
+    <!-- Footer della card contenente i pulsanti per le azioni rapide (modifica, contatta) e il link esplicito al profilo -->
     <div class="p-4 border-t border-gray-50 bg-gray-50/50 flex items-center justify-between gap-2">
         <div class="flex gap-2">
             {#if canEdit}

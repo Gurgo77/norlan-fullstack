@@ -1,3 +1,7 @@
+/*
+Modello di dominio per i messaggi scambiati all'interno della piattaforma.
+Gestisce le informazioni su mittente, destinatario, contenuto testuale e stato di lettura.
+*/
 export interface MessaggioData {
 	idMessaggio: number;
 	idMittente: number;

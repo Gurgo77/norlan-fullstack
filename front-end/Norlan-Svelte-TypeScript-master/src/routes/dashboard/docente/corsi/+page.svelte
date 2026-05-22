@@ -17,6 +17,11 @@
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
+	/*
+Modulo Pannello Docenza (Docent Panel).
+Orchestra il workflow formativo dal lato del docente: gestione didattica (materiali),
+validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedback).
+*/
 	interface CorsoFormazioneEsteso extends CorsoFormazione {
 		numeroIscritti?: number;
 		isLoadingIscritti?: boolean;
@@ -58,6 +63,7 @@
 	let materialiCaricati = $state<any[]>([]);
 	let isLoadingMateriali = $state(false);
 
+	// Recupera i corsi di pertinenza del docente e inizializza il conteggio iscritti
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -97,6 +103,7 @@
 
 	function triggerBanner(msg: string, type: 'OK' | 'ERR' = 'OK') { actionSuccess = { type, msg }; setTimeout(() => actionSuccess = null, 4000); }
 
+	// Recupera le metriche di gradimento e visualizza i commenti anonimi dei corsisti
 	async function apriStatisticheFeedback(corso: CorsoFormazioneEsteso) {
 		selectedCorso = corso; showModalFeedback = true; isLoadingFeedback = true; statsFeedback = null;
 		try { statsFeedback = await FeedbackService.getStatisticheCorso(corso.idCorso); }
@@ -162,6 +169,7 @@
 		}
 	}
 
+	// Gestisce il workflow di caricamento file (upload) con refreshing automatico della lista
 	async function caricaMaterialeDidattico() {
 		if (!selectedCorsoMateriale || !fileMateriale || !titoloMateriale.trim()) return;
 		isUploadingMateriale = true;
@@ -193,6 +201,7 @@
 		}
 	}
 
+	// Firma ufficiale del registro presenze da parte del docente
 	async function controfirmaRegistro() {
 		if (!selectedCorso) return;
 		isActionLoading = true;
@@ -211,6 +220,7 @@
 </script>
 
 <div in:fade class="pb-20 max-w-7xl mx-auto p-4 md:p-6">
+	<!-- Banner Notifiche (Toast): Feedback positivo/negativo per ogni azione (firma, upload, cambio stato) -->
 	{#if actionSuccess}
 		<div class="fixed top-20 md:top-24 right-4 md:right-8 z-[250] {actionSuccess.type === 'OK' ? 'bg-emerald-600' : 'bg-red-600'} text-white px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl shadow-2xl flex items-center gap-3 md:gap-4 border border-white/20 transition-all" in:scale out:fade>
 			{#if actionSuccess.type === 'OK'}<CheckCircle2 size={24} class="w-5 h-5 md:w-6 md:h-6" />{:else}<AlertTriangle size={24} class="w-5 h-5 md:w-6 md:h-6" />{/if}

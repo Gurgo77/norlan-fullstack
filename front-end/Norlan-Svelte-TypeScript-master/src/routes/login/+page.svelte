@@ -7,6 +7,11 @@
 	import { isAxiosError } from 'axios';
 	import { onMount } from 'svelte';
 
+	/*
+Componente di autenticazione utente.
+Gestisce l'accesso al portale tramite invio credenziali, validazione lato client,
+gestione dei reindirizzamenti basata sul ruolo e protezione della sessione tramite check all'onMount.
+*/
 	let email = $state('');
 	let password = $state('');
 	let isLoading = $state(false);
@@ -14,6 +19,7 @@
 
 	let showPassword = $state(false);
 
+	// Verifica all'avvio se esiste una sessione attiva; in caso positivo, reindirizza l'utente alla dashboard pertinente
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (session) {
@@ -21,6 +27,8 @@
 		}
 	});
 
+	// Gestisce il processo di login asincrono: invia le credenziali, valida la risposta,
+	// gestisce il flusso obbligatorio di cambio password e instrada l'utente alla dashboard corretta.
 	async function handleLogin(e: Event) {
 		e.preventDefault();
 		errorMessage = '';
@@ -49,6 +57,7 @@
 				goto(resolveRoute('/dashboard'));
 			}
 
+			// Intercetta gli errori di rete o di autenticazione (401), normalizzando i messaggi di feedback per l'utente finale
 		} catch (err: unknown) {
 			console.error('Errore riscontrato durante la procedura di autenticazione:', err);
 

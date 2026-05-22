@@ -2,6 +2,11 @@
   import { fade } from "svelte/transition";
   import { Lock, Shield, ClipboardCheck, Settings } from "lucide-svelte";
 
+  /*
+Componente Home Page del portale NorLan.
+Funge da punto di ingresso principale, presentando l'identità del brand, una panoramica
+dei servizi core (compliance normativa) e call-to-action strategiche verso le pagine interne.
+*/
   class ServicePreview {
     icon: typeof Lock;
     title: string;
@@ -14,6 +19,7 @@
     }
   }
 
+  // Modello dati per l'anteprima dei servizi mostrati nella griglia della Home Page
   const services: ServicePreview[] = [
     new ServicePreview(
       Lock,
@@ -39,6 +45,7 @@
 </script>
 
 <div class="min-h-screen bg-white" in:fade out:fade>
+  <!-- Sezione Hero: Impatto visivo iniziale con immagine di sfondo, titolo e call-to-action principale -->
   <section class="h-screen flex items-center justify-center relative bg-cover bg-center">
     <div class="absolute inset-0 bg-[url('/NorLan.jpg')] bg-cover bg-center blur-sm blur"></div>
 
@@ -51,6 +58,7 @@
     </div>
   </section>
 
+  <!-- Sezione Identitaria: Breve introduzione alla mission NorLan con link al profilo professionale -->
   <section class="py-20 bg-gray-50 text-center">
     <h2 class="text-3xl md:text-4xl font-bold text-[#1B4B6B]">Chi Siamo</h2>
     <p class="text-gray-600 text-lg max-w-3xl mx-auto mt-4">
@@ -61,6 +69,7 @@
 
   <div class="h-0.5 w-full bg-gradient-to-r from-[#1B4B6B] to-[#2C7DA0]"></div>
 
+  <!-- Griglia dinamica dei servizi: mostra le 4 macro-aree di consulenza (Privacy, Sicurezza, HACCP, Sistemi) -->
   <section class="py-20 text-center">
     <h2 class="text-3xl md:text-4xl font-bold text-[#1B4B6B]">I Nostri Servizi</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mt-8">

@@ -12,6 +12,13 @@
 	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
 	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
 
+	/*
+Modulo Messaggistica Dipendente (Client Panel).
+Facilita la comunicazione bidirezionale tra il lavoratore e i suoi referenti.
+Gestisce due canali prioritari: il Supporto Tecnico (Staff NorLan) e la
+comunicazione interna aziendale (HR/Amministrazione), integrando WebSocket per
+il real-time e persistenza storica tramite database.
+*/
 	interface Contatto {
 		id: number;
 		nome: string;
@@ -39,6 +46,7 @@
 			)
 	);
 
+	// Recupera il profilo del dipendente, compila la rubrica e stabilisce il canale WebSocket
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		token = AuthService.getToken() || '';
@@ -99,10 +107,12 @@
 		}
 	});
 
+	// Chiude la connessione WebSocket alla navigazione fuori dal modulo
 	onDestroy(() => {
 		if (chatService) chatService.disconnect();
 	});
 
+	// Aggiorna lo stato `activeContact` e scarica la cronologia messaggi dal server
 	async function selectContact(contatto: Contatto) {
 		activeContact = contatto;
 		messaggi = [];
@@ -112,6 +122,7 @@
 		}
 	}
 
+	// Invia il messaggio via WebSocket e aggiorna istantaneamente la vista (aggiornamento ottimistico)
 	function sendMessage() {
 		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
 
@@ -144,6 +155,7 @@
 	}
 </script>
 
+<!-- Wrapper Principale: Altezza vincolata per simulare un'esperienza app nativa -->
 <div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-10rem)] flex bg-white rounded-2xl md:rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
 	<div class="w-full md:w-1/3 border-r border-gray-100 flex-col bg-gray-50/50 {activeContact ? 'hidden md:flex' : 'flex'}">
@@ -190,6 +202,7 @@
 		</div>
 	</div>
 
+	<!-- Wrapper Principale: Altezza vincolata per simulare un'esperienza app nativa -->
 	<div class="w-full md:flex-1 flex-col bg-white {activeContact ? 'flex' : 'hidden md:flex'}">
 		{#if activeContact}
 			<div class="p-4 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">

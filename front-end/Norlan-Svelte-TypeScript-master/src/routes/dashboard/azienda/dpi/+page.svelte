@@ -12,6 +12,12 @@
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 	import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
+	/*
+Modulo Registro DPI (Client Panel).
+Offre all'Azienda una visione aggregata e centralizzata di tutti i Dispositivi
+di Protezione Individuale assegnati alla propria forza lavoro. Permette di
+filtrare per criticità, effettuare nuove assegnazioni e aggiornare le scadenze.
+*/
 	interface DpiRegistro {
 		idAssegnazione?: number;
 		id?: number;
@@ -52,6 +58,7 @@
 	let showConfirmModal = $state(false);
 	let dpiToDelete = $state<number | string | null>(null);
 
+	// Recupera tutti i lavoratori e, in parallelo, costruisce il registro DPI completo
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -124,6 +131,7 @@
 		showDpiModal = true;
 	}
 
+	// Gestisce la creazione o il rinnovo di un DPI, aggiornando la lista reattiva locale
 	async function salvaDPI() {
 		if (!formDpi.idDipendente) return;
 		isSavingDpi = true;
@@ -188,6 +196,7 @@
 			})
 	);
 
+	// Elabora la lista piatta in gruppi associati a ciascun lavoratore
 	const groupedRegistro = $derived(
 			Object.values(
 					filteredRegistro.reduce((acc, dpi) => {
@@ -207,6 +216,7 @@
 </script>
 
 <div in:fade class="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-10 p-4 md:p-6">
+	<!-- Dashboard KPI: Evidenzia i DPI scaduti o in scadenza (StatCards) -->
 	<div class="mb-6 md:mb-10 flex flex-col lg:flex-row justify-between items-start gap-6">
 		<div class="w-full lg:w-auto">
 			<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Registro DPI</h1>
@@ -243,6 +253,7 @@
 		</div>
 	</div>
 
+	<!-- Barra Strumenti: Filtri di stato (Tutti, OK, In Scadenza, Scaduto) e ricerca testuale -->
 	<div class="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
 		<div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 custom-scrollbar-data">
 			{#each ['TUTTI', 'OK', 'WARNING', 'DANGER'] as f (f)}
@@ -271,6 +282,7 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione registro DPI...</span>
 		</div>
 	{:else}
+		<!-- Visualizzazione Raggruppata: Itera sui gruppi di dipendenti -->
 		<div class="space-y-8 md:space-y-12">
 			{#each groupedRegistro as gruppo (gruppo.id)}
 				<div in:fade>
@@ -284,6 +296,7 @@
                    </span>
 					</div>
 
+					<!-- Griglia DPI: Le schede dei dispositivi per quello specifico dipendente -->
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 						{#each gruppo.dpis as item (item.idAssegnazione || item.id)}
 							{@const nomeDpiReale = (item.tipo === 'ALTRO' && item.nomeDpi) ? item.nomeDpi : (item.tipo || 'DPI').replace(/_/g, ' ')}

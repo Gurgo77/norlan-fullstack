@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { resolveRoute } from '$app/paths';
 	import {
@@ -16,6 +16,12 @@
 	import DettagliDocCard from '$lib/Components/Features/Documentale/DettagliDocCard.svelte';
 	import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
+	/*
+Dashboard Principale Dipendente (Home).
+Hub personale del lavoratore. Sintetizza in un'unica vista lo stato globale
+della propria compliance, l'equipaggiamento assegnato (DPI), i corsi in programma
+e include un widget fluttuante (FAB) per la chat diretta con lo Staff NorLan.
+*/
 	let isLoading = $state(true);
 	let currentUser = $state<UserSession | null>(null);
 	let utente = $state<DipendenteDTO | null>(null);
@@ -37,6 +43,7 @@
 
 	function scrollChat() { if (chatScrollContainer) setTimeout(() => chatScrollContainer!.scrollTop = chatScrollContainer!.scrollHeight, 50); }
 
+	// Fetch parallelo dei dati lavoratore e smistamento logico (DPI, Impegni, Attestati)
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		if (!currentUser) return;
@@ -93,8 +100,9 @@
 		} catch (error) { console.error(error); } finally { isLoading = false; setTimeout(scrollChat, 100); }
 	});
 
-	onDestroy(() => chatService?.disconnect());
+	// Chiude la connessione WebSocket quando l'utente naviga via dalla pagina	onDestroy(() => chatService?.disconnect());
 
+	// Gestisce l'invio del messaggio al server e l'aggiornamento reattivo del DOM
 	function inviaMessaggioChat() {
 		if (!chatMessage.trim() || !chatService || !currentUser || !utente) return;
 		chatService.sendMessage({ idMittente: currentUser.idUtente, idDestinatario: 1, testo: chatMessage });
@@ -105,6 +113,7 @@
 
 <div in:fade class="max-w-[1400px] mx-auto pb-24 p-4 md:p-8">
 
+	<!-- Intestazione: Saluto personalizzato e data odierna -->
 	<div class="mb-8 md:mb-10">
 		<div class="flex items-center gap-2 text-[#1B4B6B] mb-2">
 			<LayoutDashboard size={18} class="shrink-0" />
@@ -123,6 +132,7 @@
 		</div>
 	{:else}
 		<div class="w-full overflow-x-auto pb-4 -mx-2 px-2 sm:mx-0 sm:px-0 custom-scrollbar-data mb-10">
+			<!-- KPI Dashboard: Widget globale e StatCard riassuntive -->
 			<div class="flex lg:grid lg:grid-cols-4 gap-4 min-w-max lg:min-w-0">
 				<div class="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4 relative overflow-hidden w-64 lg:w-auto">
 					<div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none text-[#1B4B6B]">
@@ -142,10 +152,12 @@
 			</div>
 		</div>
 
+		<!-- Layout a Colonne Asimmetriche -->
 		<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
 			<div class="lg:col-span-8 flex flex-col gap-8 md:gap-10">
 
+				<!-- Sezione Corsi in Programma (Impegni) -->
 				{#if impegni.length > 0}
 					<section>
 						<div class="flex justify-between items-center mb-6 px-2">
@@ -175,6 +187,7 @@
 					</section>
 				{/if}
 
+				<!-- Sezione Ultimi Attestati (Documentazione) -->
 				{#if materiali.length > 0}
 					<section>
 						<div class="flex justify-between items-center mb-6 px-2">
@@ -205,6 +218,7 @@
 			</div>
 
 			<div class="lg:col-span-4">
+				<!-- Widget DPI: Card verticale con lista delle attrezzature assegnate -->
 				{#if dotazioniDPI.length > 0}
 					<section class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-gray-100 relative overflow-hidden h-full flex flex-col min-h-[400px]">
 						<div class="absolute -top-10 -right-10 text-[#1B4B6B]/5 pointer-events-none">
@@ -239,6 +253,7 @@
 	{/if}
 </div>
 
+<!-- Chat Fluttuante (FAB): Widget persistente in basso a destra -->
 <div class="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex flex-col items-end">
 	{#if isChatOpen}
 		<div transition:scale={{ duration: 200, start: 0.9 }} class="mb-4 flex h-[450px] w-[calc(100vw-3rem)] sm:w-80 flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-2xl">

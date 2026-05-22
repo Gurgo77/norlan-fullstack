@@ -1,5 +1,8 @@
 import { CheckCircle, Clock, ShieldAlert } from 'lucide-svelte';
-
+/*
+Utility per la gestione logica e visuale delle scadenze temporali.
+Fornisce strumenti per il calcolo dei giorni rimanenti, la categorizzazione (StatoScadenza), la formattazione e l'ordinamento di liste basate su date.
+*/
 export type StatoScadenza = 'OK' | 'WARNING' | 'DANGER';
 
 export interface InfoScadenza {
@@ -15,6 +18,7 @@ export interface InfoScadenza {
 }
 
 
+// Calcola la differenza in giorni tra la data odierna e la data di scadenza fornita, normalizzando il tempo
 export function calcolaGiorniRimanenti(dataScadenza: string | Date | undefined | null): number {
 	try {
 		if (!dataScadenza || dataScadenza === '9999-12-31') return 9999;
@@ -35,6 +39,7 @@ export function calcolaGiorniRimanenti(dataScadenza: string | Date | undefined |
 }
 
 
+// Analizza una data di scadenza e restituisce un oggetto configurato con icone, colori e label per l'interfaccia (Badge/UI)
 export function getInfoScadenza(dataScadenza: string | Date | undefined | null): InfoScadenza {
 	try {
 		const giorni = calcolaGiorniRimanenti(dataScadenza);
@@ -93,7 +98,7 @@ export function getInfoScadenza(dataScadenza: string | Date | undefined | null):
 			peso: 3
 		};
 	} catch (error) {
-		console.error("[scadenzeUtils] Errore nel recupero info scadenza:", error);
+		console.error('[scadenzeUtils] Errore nel recupero info scadenza:', error);
 		return {
 			giorniRimanenti: 9999,
 			stato: 'OK',
@@ -109,6 +114,7 @@ export function getInfoScadenza(dataScadenza: string | Date | undefined | null):
 }
 
 
+// Ordina un array di oggetti in base al loro stato di scadenza e successivamente in ordine cronologico
 export function ordinaPerScadenza<T>(
 	array: T[],
 	proprietaData: keyof T,
@@ -138,6 +144,7 @@ export function ordinaPerScadenza<T>(
 }
 
 
+// Converte una stringa data in formato locale italiano o restituisce un placeholder se la data è assente o indefinita
 export function formattaDataScadenza(data?: string | null): string {
 	try {
 		if (!data || data === '9999-12-31') return 'Senza scadenza';

@@ -13,6 +13,13 @@
 	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
 	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
+	/*
+Layout Globale Dashboard Docente.
+Definisce l'infrastruttura di navigazione e operativa per l'area riservata ai docenti.
+Implementa il controllo accessi (Route Guard per il ruolo 'DOCENTE'), una sidebar
+orientata alla gestione didattica, il sistema di notifiche integrato e il rendering
+dei contenuti specifici del modulo di docenza.
+*/
 	interface DocenteRaw {
 		nome?: string;
 		cognome?: string;
@@ -35,6 +42,7 @@
 		{ href: '/dashboard/docente/account', label: 'Il mio Account', icon: Users }
 	];
 
+	// Carica i dati anagrafici del docente e inizializza il gestore delle notifiche
 	onMount(async () => {
 		const session = await verificaAutenticazioneERuolo(['DOCENTE']);
 		if (!session) return;
@@ -54,6 +62,7 @@
 		}
 	});
 
+	// Gestisce il logout pulito, invalidando la sessione e reindirizzando al login
 	async function handleLogout() {
 		await AuthService.logout();
 	}
@@ -65,11 +74,13 @@
 		return currentPath.startsWith(href);
 	}
 
+	// Chiude il menu laterale mobile dopo la navigazione
 	function closeMobileMenu() {
 		isMobileMenuOpen = false;
 	}
 </script>
 
+<!-- Listener globale per la chiusura del pannello notifiche -->
 <svelte:window onclick={notificheManager.close} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
@@ -83,6 +94,7 @@
 	{/if}
 
 	<div class="lg:w-72 shrink-0 relative">
+		<!-- Sidebar: Menu di navigazione Docente (Dashboard, Messaggi, Corsi, Studenti) -->
 		<aside class="fixed lg:sticky top-0 left-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-out {isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}">
 			<div class="p-8 shrink-0 flex items-start justify-between">
 				<div>
@@ -122,7 +134,9 @@
 		</aside>
 	</div>
 
+	<!-- Main Area: Content slot per le pagine figlio -->
 	<main class="flex-1 flex flex-col min-w-0 w-full">
+		<!-- Header: Contiene il centro notifiche e il profilo docente loggato -->
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shrink-0 sticky top-0 z-30">
 			<div class="flex items-center gap-4">
 				<button onclick={() => isMobileMenuOpen = true} class="p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors lg:hidden focus:outline-none">

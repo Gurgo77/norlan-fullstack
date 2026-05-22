@@ -12,11 +12,18 @@
 	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 	import DocCard from '$lib/Components/Features/Documentale/DocumentoCard.svelte';
 
+	/*
+Modulo Archivio Attestati (Client Panel).
+Area dedicata alla consultazione e al download dei certificati formativi ottenuti dal dipendente.
+Filtra automaticamente le iscrizioni per mostrare solo i corsi completati e validati,
+offrendo un accesso immediato ai file PDF ufficiali.
+*/
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let utente = $state<DipendenteDTO | null>(null);
 	let iscrizioni = $state<IscrizioneCorso[]>([]);
 
+	// Carica i dati del dipendente e l'intero storico delle iscrizioni
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -36,6 +43,7 @@
 		}
 	});
 
+	// Gestisce il download dei PDF tramite l'utility di sistema dedicata
 	async function scaricaAttestato(idDocumento: number, filePath: string) {
 		await scaricaDocumentoUniversale(idDocumento, filePath);
 	}
@@ -63,6 +71,7 @@
 					})
 	);
 
+	// Converte le date ISO in stringhe leggibili (es: 15 MAGGIO 2026)
 	function formattaData(dataIso: string) {
 		return new Date(dataIso).toLocaleDateString('it-IT', {
 			day: '2-digit', month: 'long', year: 'numeric'
@@ -83,6 +92,7 @@
 
 	<div class="flex flex-col gap-4">
 		<div class="relative group w-full md:max-w-md">
+			<!-- Input di Ricerca: Filtro in tempo reale sui titoli dei corsi in archivio -->
 			<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1B4B6B] transition-colors" size={20} />
 			<input
 					bind:value={searchQuery}
@@ -99,6 +109,7 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Apertura archivio...</span>
 		</div>
 	{:else}
+		<!-- Griglia Attestati: Itera sugli attestati filtrati -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
 			{#each attestatiDisponibili as item (item.info.id)}
 				<div in:scale={{duration: 200}}>
@@ -112,6 +123,7 @@
 			{/each}
 		</div>
 
+		<!-- Empty State: Mostrato quando l'utente non ha ancora certificati o ha filtrato troppo -->
 		{#if attestatiDisponibili.length === 0}
 			<div class="py-20 md:py-32 text-center bg-gray-50/50 rounded-3xl md:rounded-[2.5rem] border border-dashed border-gray-200 col-span-full px-4">
 				<FileText size={48} class="mx-auto text-gray-200 mb-4" />

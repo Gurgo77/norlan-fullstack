@@ -1,3 +1,7 @@
+/*
+Modello per la registrazione degli eventi di sistema e delle sincronizzazioni.
+Traccia l'esito delle operazioni, le date di esecuzione e le eventuali note tecniche per il debugging.
+*/
 export interface LogSincronizzazioneData {
 	idLog: number;
 	descrizioneEvento: string;

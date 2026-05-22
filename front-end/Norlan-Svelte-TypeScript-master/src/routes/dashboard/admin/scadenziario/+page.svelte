@@ -15,7 +15,12 @@
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 	import { scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
 	import {getInfoScadenza, calcolaGiorniRimanenti, formattaDataScadenza, ordinaPerScadenza} from '$lib/utils/scadenzeUtils';
-
+	/*
+Modulo Scadenziario Documentale (Dashboard Admin).
+Fornisce una vista centralizzata e ad alta priorità sui documenti aziendali
+in scadenza (entro 30 giorni) o già scaduti. Esclude le pratiche non critiche
+e permette l'intervento rapido (download, navigazione all'azienda, eliminazione).
+*/
 	let documenti = $state<Documento[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -25,6 +30,7 @@
 	let docDaEliminare = $state<Documento | null>(null);
 	let errorMessage = $state('');
 
+	// Recupera tutti i documenti all'avvio della vista
 	onMount(async () => {
 		try {
 			documenti = await DocumentoService.getAllDocumenti();
@@ -35,6 +41,7 @@
 		}
 	});
 
+	// Reindirizza l'admin al profilo dell'azienda associata al documento critico
 	function vaiAdAzienda(idAzienda: number | undefined) {
 		if (!idAzienda) {
 			console.error("ID Azienda mancante nel documento");
@@ -49,6 +56,7 @@
 		showDeleteModal = true;
 	}
 
+	// Gestisce l'eliminazione del documento con catch specifico per errori API
 	async function confermaEliminazione() {
 		if (!docDaEliminare) return;
 		isDeleting = true;
@@ -66,6 +74,7 @@
 		isDeleting = false;
 	}
 
+	// Pipeline reattiva: filtra per data (max 30gg), tipologia e testo, poi ordina per urgenza
 	const filteredDocumenti = $derived.by(() => {
 		const filtrati = documenti.filter(d => {
 			if (d.tipologia === TipoDocumento.ATTESTATO_CORSO) return false;
@@ -100,6 +109,7 @@
 		</div>
 	</div>
 
+	<!-- KPI Dashboard: Contatori in tempo reale delle criticità attuali -->
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 		<StatCard
 				titolo="Pratiche in Scadenza"
@@ -119,6 +129,7 @@
 		/>
 	</div>
 
+	<!-- Input di Ricerca: Filtra rapidamente i documenti in scadenza per azienda -->
 	<div class="relative w-full max-w-md">
 		<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
 		<input
@@ -137,6 +148,7 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+			<!-- Grid Documenti: Visualizzazione schede per ogni pratica in warning/danger -->
 			{#each filteredDocumenti as doc (doc.idDocumento)}
 				{@const info = getInfoScadenza(doc.dataScadenza)}
 				<div in:scale>
@@ -159,6 +171,7 @@
 	{/if}
 </div>
 
+<!-- Modale di Eliminazione: Conferma distruttiva con gestione errori visuale (errorMessage) -->
 <ModalCard bind:isOpen={showDeleteModal} maxWidth="max-w-md" headerClass="bg-red-600">
 	{#snippet title()}
 		<Trash2 size={20}/> <span class="font-black uppercase tracking-tighter">Elimina Documento?</span>

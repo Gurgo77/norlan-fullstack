@@ -1,5 +1,8 @@
 import { ModuloServizio, TipoDocumento, StatoDocumento } from './Enums';
-
+/*
+Modello per la gestione documentale aziendale.
+Mappa i metadati dei file caricati, il loro stato di approvazione e le relative scadenze di validità.
+*/
 export interface DocumentoData {
 	idDocumento: number;
 	idAzienda: number;

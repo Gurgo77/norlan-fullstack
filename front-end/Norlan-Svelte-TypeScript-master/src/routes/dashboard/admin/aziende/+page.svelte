@@ -27,6 +27,12 @@
 	import { uploadDocumentoUniversale, scaricaDocumentoUniversale, eliminaDocumentoUniversale } from '$lib/utils/documentoUtils';
 	import { getInfoScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
+	/*
+Manager Anagrafica Aziendale (Dashboard Admin).
+Coordina l'intero ciclo di vita delle entità "Azienda": gestione CRUD anagrafica,
+gestione del personale dipendente, workflow documentale (upload/delete/download)
+e integrazione con sistemi di notifica/chat.
+*/
 	let aziende = $state<Azienda[]>([]);
 	let dipendentiCorrenti = $state<DipendenteDTO[]>([]);
 	let documentiCorrenti = $state<Documento[]>([]);
@@ -92,6 +98,7 @@
 
 	const documentiAziendaliFiltrati = $derived(documentiCorrenti.filter(doc => doc.tipologia !== 'ATTESTATO_CORSO'));
 
+	// Carica l'elenco aziende e inizializza lo stato dei dettagli (dipendenti/documenti)
 	onMount(async () => {
 		try {
 			const res = await AnagraficaService.getAllAziende();
@@ -117,6 +124,7 @@
 		}
 	});
 
+	// Recupera i dati completi di un'azienda (anagrafica, personale e documenti)
 	async function apriDettaglio(aziendaPreview: Azienda) {
 		selectedAzienda = aziendaPreview;
 
@@ -184,6 +192,8 @@
 		}
 	}
 
+
+	// Gestisce il ciclo di vita (CRUD) per dipendenti tramite servizi universali
 	async function salvaNuovoDipendente() {
 		if (!isDipendenteValid || !selectedAzienda) return;
 
@@ -238,6 +248,7 @@
 		showUploadModal = true;
 	}
 
+	// Gestisce l'upload, l'aggiornamento e l'eliminazione dei file nel sistema documentale
 	async function gestisciUpload() {
 		if (!uploadFile || !selectedAzienda || !formDocumento.dataScadenza || !formDocumento.dataRilascio) return;
 		isUploading = true;
@@ -288,7 +299,7 @@
 		};
 		showModal = true;
 	}
-
+	// Gestisce il ciclo di vita (CRUD) per aziende tramite servizi universali
 	async function salvaAzienda() {
 		if (!isFormValid || isSaving) return;
 		isSaving = true;
@@ -362,7 +373,9 @@
 </script>
 
 <div in:fade class="max-w-7xl mx-auto p-4 md:p-6">
+	<!-- Grid Aziende: elenco dinamico delle aziende filtrate dallo stato di ricerca -->
 	{#if !selectedAzienda}
+		<!-- Pannello di controllo: filtri di ricerca e pulsante per nuova registrazione -->
 		<div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 			<div>
 				<h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Anagrafiche Aziende</h1>
@@ -565,6 +578,7 @@
 		{/snippet}
 	</ModalCard>
 
+	<!-- Modali di Sistema: form di registrazione/upload e verifiche di sicurezza (eliminazione) -->
 	<ModalCard bind:isOpen={showModal} maxWidth="max-w-2xl">
 		{#snippet title()}
 			{#if isEditing}
@@ -632,6 +646,7 @@
 		{/snippet}
 	</ModalCard>
 
+	<!-- Modali di Sistema: form di registrazione/upload e verifiche di sicurezza (eliminazione) -->
 	<ModalCard bind:isOpen={showDeleteModal} maxWidth="max-w-md" headerClass="bg-red-600">
 		{#snippet title()}
 			<AlertTriangle size={20}/> <span class="font-black uppercase tracking-tighter">Eliminazione Azienda</span>

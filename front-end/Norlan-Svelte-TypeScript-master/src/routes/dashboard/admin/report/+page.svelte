@@ -9,9 +9,12 @@
 	import { SistemaService } from '$lib/services/SistemaService';
 	import type { LogSincronizzazione } from '$lib/models/LogSincronizzazione';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
-
-	let { children } = $props();
-
+	/*
+Modulo Report & Audit Log (Dashboard Admin).
+Gestisce la visualizzazione, il filtraggio e l'esportazione CSV della cronologia
+delle attività di sistema. Utilizza una logica di categorizzazione automatica
+per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
+*/
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
@@ -29,6 +32,7 @@
 		currentPage = 1;
 	});
 
+	// Recupera tutti i log dal server e ordina per timestamp decrescente
 	onMount(async () => {
 		try {
 			logs = await SistemaService.getAllLogs();
@@ -48,6 +52,7 @@
 		return 'SISTEMA';
 	}
 
+	// Logica di filtraggio avanzata per descrizioni e stato di gravità (INFO/ERROR)
 	const filteredLogs = $derived(
 			logs.filter(l => {
 				const matchSearch = l.descrizioneEvento.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -69,6 +74,7 @@
 	const documentiProcessati = $derived(logs.filter(l => getCategory(l.descrizioneEvento) === 'DOCUMENTI').length);
 	const erroriSicurezza = $derived(logs.filter(l => !l.esitoPositivo).length);
 
+	// Esporta la vista corrente in formato CSV, inclusi timestamp e dettagli tecnici
 	function esportaReport() {
 		if (filteredLogs.length === 0) {
 			alert('Nessun log da esportare con i filtri attuali.');
@@ -113,6 +119,7 @@
 		</button>
 	</div>
 
+	<!-- Dashboard KPI: Card informative per un colpo d'occhio rapido sui trend di sistema -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
 		<StatCard titolo="Operazioni Totali" valore={operazioniTotali} icona={Activity} bgIcona="bg-blue-50" testoIcona="text-[#1B4B6B]" hoverBgIcona="group-hover:bg-[#1B4B6B]"/>
 		<StatCard titolo="Accessi Rilevati" valore={accessiRilevati} icona={User} bgIcona="bg-green-50" testoIcona="text-green-600" hoverBgIcona="group-hover:bg-green-600"/>
@@ -125,6 +132,7 @@
 			<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
 				<div class="relative w-full md:w-72">
 					<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+					<!-- Filtri di ricerca: Ricerca testuale e toggle per gravità (filtroGravita) -->
 					<input
 							bind:value={searchQuery}
 							type="text"
@@ -214,6 +222,7 @@
 					Pagina {currentPage} di {totalPages}
 				</p>
 				<div class="flex gap-2">
+					<!-- Paginazione: Navigazione client-side tra i risultati estratti -->
 					<button
 							disabled={currentPage === 1}
 							onclick={() => currentPage--}

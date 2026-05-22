@@ -2,7 +2,10 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import httpClient from '$lib/api/httpClient';
 import { Messaggio, type MessaggioData } from '$lib/models/Messaggio';
-
+/*
+Servizio per la gestione della comunicazione in tempo reale tramite WebSocket (protocollo STOMP).
+Gestisce la connessione, l'abbonamento ai canali privati e il recupero dello storico messaggi.
+*/
 export interface ChatMessagePayload {
 	idMittente: number;
 	idDestinatario: number;
@@ -19,6 +22,7 @@ export class ChatService {
 		private onError: (err: string) => void
 	) {}
 
+	// Inizializza il client STOMP con fallback WebSocket, configura i listener e avvia la connessione
 	connect(token: string, userId: number | string): void {
 		if (typeof window !== 'undefined' && !('global' in window)) {
 			(window as Window & { global?: Window }).global = window;
@@ -57,12 +61,14 @@ export class ChatService {
 		this.client.activate();
 	}
 
+	// Disattiva la connessione WebSocket e libera le risorse del client STOMP
 	disconnect(): void {
 		if (this.client && this.client.active) {
 			this.client.deactivate();
 		}
 	}
 
+	// Pubblica un nuovo messaggio sul canale di destinazione dopo aver verificato lo stato attivo della connessione
 	sendMessage(payload: ChatMessagePayload): void {
 		if (this.client && this.client.connected) {
 			this.client.publish({
@@ -74,6 +80,7 @@ export class ChatService {
 		}
 	}
 
+	// Recupera l'intero storico dei messaggi tra due utenti tramite una richiesta HTTP REST
 	static async getCronologia(id1: number, id2: number): Promise<Messaggio[]> {
 		const response = await httpClient.get<MessaggioData[]>(
 			`${this.basePath}/cronologia/${id1}/${id2}`

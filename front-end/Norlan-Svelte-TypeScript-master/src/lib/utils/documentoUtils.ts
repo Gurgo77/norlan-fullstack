@@ -1,5 +1,10 @@
 import { DocumentoService } from '$lib/services/DocumentoService';
+/*
+Utility per la gestione unificata delle operazioni documentali (upload, download, eliminazione).
+Gestisce la trasformazione di file in Blob, il parsing degli errori server-side e il download lato client.
+*/
 
+// Crea un URL temporaneo per il Blob e innesca il download automatico del file nel browser
 function downloadBlob(blob: Blob, fileName: string): void {
 	const url = window.URL.createObjectURL(blob);
 	const link = document.createElement('a');
@@ -11,6 +16,7 @@ function downloadBlob(blob: Blob, fileName: string): void {
 	window.URL.revokeObjectURL(url);
 }
 
+// Normalizza gli errori provenienti dalle chiamate HTTP, gestendo anche il caso in cui la risposta sia un Blob (es. errore di download)
 async function estraiMessaggioErrore(error: any): Promise<string> {
 	const data = error.response?.data;
 

@@ -18,6 +18,12 @@
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 
+	/*
+Modulo Gestione Formazione (Dashboard Admin).
+Orchestra l'intero workflow formativo: dalla programmazione dei corsi alla gestione
+delle presenze, fino alla distribuzione digitale degli attestati e all'analisi
+statistica dei feedback ricevuti dai corsisti.
+*/
 	interface CorsoConMateriali extends CorsoFormazione {
 		materiali: any[];
 		isLoadingMateriali: boolean;
@@ -109,6 +115,7 @@
 		return Array.from(map.values());
 	});
 
+	// Recupera corsi, docenti e dipendenti; pre-carica i materiali per i corsi attivi
 	onMount(async () => {
 		try {
 			const [corsiRes, docentiRes, dipendentiRes] = await Promise.all([
@@ -212,6 +219,7 @@
 		}
 	}
 
+	// Gestisce la validazione amministrativa del registro presenze per un corso specifico
 	async function confermaPresenze() {
 		if (!selectedCorso) return;
 		isActionLoading = true;
@@ -250,6 +258,7 @@
 		}
 	}
 
+	// Distribuisce attestati PDF (caricamento massivo per azienda)
 	async function confermaDistribuzioneAttestati() {
 		if (!selectedCorso) return;
 		const missing = aziendeCoinvolte.some(a => !fileUploads[a.idAzienda]);
@@ -272,6 +281,7 @@
 		}
 	}
 
+	// Recupera le metriche di gradimento e i commenti degli utenti
 	async function apriStatisticheFeedback(corso: CorsoFormazione) {
 		selectedCorso = corso;
 		showModalFeedback = true;
@@ -366,6 +376,7 @@
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+					<!-- Statistiche di Stato: Visualizza i corsi divisi per categoria (Conclusi, In Svolgimento, Programmati) -->
 					{#each corsiConclusi as corso (corso.idCorso)}
 						<div class="flex flex-col gap-3" in:scale>
 							<AlertCard
@@ -414,6 +425,7 @@
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+					<!-- Statistiche di Stato: Visualizza i corsi divisi per categoria (Conclusi, In Svolgimento, Programmati) -->
 					{#each corsiInSvolgimento as corso (corso.idCorso)}
 						<div in:scale>
 							<DashboardCorsoCard
@@ -456,6 +468,7 @@
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+					<!-- Statistiche di Stato: Visualizza i corsi divisi per categoria (Conclusi, In Svolgimento, Programmati) -->
 					{#each corsiProgrammati as corso (corso.idCorso)}
 						<div in:scale>
 							<DashboardCorsoCard
@@ -593,6 +606,7 @@
 	{/snippet}
 </ModalCard>
 
+<!-- Modale Validazione Presenze: Permette il controllo capillare dei partecipanti -->
 <ModalCard bind:isOpen={showModalPresenze} maxWidth="max-w-2xl">
 	{#snippet title()}
 		<CheckSquare size={20}/> <span class="font-black uppercase tracking-tighter leading-tight">Validazione Presenze: {selectedCorso?.titolo}</span>
@@ -626,6 +640,7 @@
 	{/snippet}
 </ModalCard>
 
+<!-- Modale Upload Attestati: Interfaccia per il caricamento file dedicato per azienda -->
 <ModalCard bind:isOpen={showModalUpload} maxWidth="max-w-3xl" headerClass="bg-emerald-600">
 	{#snippet title()}
 		<UploadCloud size={20}/> <span class="font-black uppercase tracking-tighter">Distribuzione Attestati Aziendali</span>

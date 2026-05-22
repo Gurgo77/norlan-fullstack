@@ -1,8 +1,12 @@
 import { AnagraficaService } from '$lib/services/AnagraficaService';
 import { LavoratoreService } from '$lib/services/LavoratoreService';
-
+/*
+Modulo di utilità per la gestione unificata delle operazioni CRUD sugli utenti.
+Fornisce interfacce standardizzate per creare, aggiornare ed eliminare diverse tipologie di entità (Aziende, Docenti, Dipendenti).
+*/
 export type UserType = 'AZIENDA' | 'DIPENDENTE' | 'DOCENTE';
 
+// Gestisce la creazione di nuove entità utente instradando la richiesta verso il servizio specifico in base al ruolo
 export async function creaUtenteUniversale<T = any>(
 	tipo: UserType,
 	payload: any
@@ -46,6 +50,7 @@ export async function creaUtenteUniversale<T = any>(
 	}
 }
 
+// Esegue l'aggiornamento parziale o completo dei dati utente previa validazione del tipo di entità
 export async function aggiornaUtenteUniversale<T = any>(
 	tipo: UserType,
 	id: number,
@@ -88,6 +93,7 @@ export async function aggiornaUtenteUniversale<T = any>(
 	}
 }
 
+// Invia la richiesta di eliminazione dell'utente e normalizza i messaggi di errore (inclusi i conflitti 409)
 export async function eliminaUtenteUniversale(
 	tipo: UserType,
 	id: number | string
@@ -126,6 +132,7 @@ export async function eliminaUtenteUniversale(
 			msg = backendMsg.msg;
 		} else if (backendMsg?.message) {
 			msg = backendMsg.message;
+			// Gestisce il caso di blocco integrità referenziale nel database (es. vincoli di chiave esterna attivi)
 		} else if (error.response?.status === 409) {
 			msg = "Impossibile eliminare: l'utente ha documenti, corsi o dati collegati che lo bloccano nel database.";
 		} else if (error.response?.status === 500) {

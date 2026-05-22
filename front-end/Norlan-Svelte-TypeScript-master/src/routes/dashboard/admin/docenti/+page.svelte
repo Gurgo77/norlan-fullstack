@@ -17,6 +17,11 @@
     import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
     import { creaUtenteUniversale, aggiornaUtenteUniversale, eliminaUtenteUniversale } from '$lib/utils/anagraficaUtils';
 
+    /*
+Manager Anagrafica Docenti (Dashboard Admin).
+Coordina il ciclo di vita dei formatori NorLan: gestione CRUD, visualizzazione
+delle specializzazioni tecniche e monitoraggio del calendario dei corsi formativi assegnati.
+*/
     let docenti = $state<DocenteData[]>([]);
     let corsiDocente = $state<CorsoFormazione[]>([]);
     let isLoading = $state(true);
@@ -68,6 +73,7 @@
         ] as any[];
     });
 
+    // Recupera la lista docenti e gestisce il caricamento (con gestione errori)
     onMount(async () => {
         try {
             const res = await AnagraficaService.getAllDocenti();
@@ -79,6 +85,7 @@
         }
     });
 
+    // Recupera i corsi associati al docente selezionato
     async function apriDettaglio(docente: DocenteData) {
         selectedDocente = docente;
         isLoadingDettaglio = true;
@@ -120,6 +127,7 @@
         showAddModal = true;
     }
 
+    // Gestisce la persistenza dei dati e la sincronizzazione dello stato locale
     async function salvaDocente() {
         if (!isFormValid || isSaving) return;
         isSaving = true;
@@ -186,6 +194,7 @@
 
 <div in:fade class="max-w-7xl mx-auto p-4 md:p-6">
     {#if !selectedDocente}
+        <!-- Pannello di Ricerca e Registrazione: header della dashboard docenti -->
         <div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 class="text-2xl md:text-4xl font-extrabold text-[#1B4B6B] uppercase tracking-tighter">Corpo Docenti</h1>
@@ -207,6 +216,7 @@
         {#if isLoading}
             <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
         {:else}
+            <!-- Grid Docenti: lista schede dei docenti filtrabile -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {#each filteredDocenti as d (d.idUtente)}
                     <DocenteCard
@@ -221,6 +231,7 @@
         <div in:fade>
             <button onclick={() => (selectedDocente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-6 md:mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco docenti</button>
 
+            <!-- Vista Dettaglio: Scheda informativa con specializzazione e lista corsi -->
             <DettagliCard
                     nome={selectedDocente?.nome || ''}
                     cognome={selectedDocente?.cognome || ''}
@@ -260,6 +271,7 @@
         </div>
     {/if}
 
+    <!-- Modali di Sistema: Form registrazione docente e conferma eliminazione -->
     <ModalCard bind:isOpen={showAddModal} maxWidth="max-w-lg">
         {#snippet title()}
             {#if isEditing}

@@ -16,6 +16,12 @@
 	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
 	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
 
+	/*
+Modulo di Messaggistica Real-Time.
+Gestisce l'interfaccia di comunicazione tra utenti (Admin, Aziende, Dipendenti, Docenti).
+Implementa la sincronizzazione dei messaggi tramite ChatService, la navigazione nella rubrica
+organizzata per gruppi aziendali e la visualizzazione delle conversazioni attive.
+*/
 	interface ContattoRubricaData {
 		idUtente: number;
 		nomeVisualizzato: string;
@@ -70,6 +76,7 @@
 			}).filter(g => g !== null) as GruppoAzienda[]
 	);
 
+	// Recupera i dati (Aziende, Dipendenti, Docenti) e inizializza la connessione WebSocket
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		token = AuthService.getToken() || '';
@@ -168,6 +175,7 @@
 		}
 	});
 
+	// Interrompe la connessione al servizio chat alla distruzione del componente
 	onDestroy(() => {
 		if (chatService) chatService.disconnect();
 	});
@@ -180,6 +188,7 @@
 		}
 	}
 
+	// Cambia il contatto attivo, carica lo storico dei messaggi e scrolla a fondo pagina
 	async function selectContact(contatto: ContattoRubricaData) {
 		activeContact = contatto;
 		messaggi = [];
@@ -189,6 +198,7 @@
 		}
 	}
 
+	// Invia il messaggio al destinatario tramite il servizio e aggiorna localmente la vista
 	function sendMessage() {
 		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
 
@@ -222,6 +232,7 @@
 </script>
 
 <div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-10rem)] flex bg-white rounded-2xl md:rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
+	<!-- Rubrica (Sidebar): Ricerca contatti e visualizzazione gerarchica Aziende/Dipendenti -->
 	<div class="w-full md:w-80 border-r border-gray-100 bg-gray-50/50 shrink-0 flex-col {activeContact ? 'hidden md:flex' : 'flex'}">
 		<div class="p-4 md:p-8 pb-4 border-b border-gray-100 bg-white">
 			<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter flex items-center gap-3">
@@ -304,6 +315,7 @@
 		</div>
 	</div>
 
+	<!-- Area Conversazione: Intestazione contatto, flusso dei messaggi e input di invio -->
 	<div class="w-full md:flex-1 bg-white flex-col {activeContact ? 'flex' : 'hidden md:flex'}">
 		{#if activeContact}
 			<div class="p-4 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
@@ -355,6 +367,7 @@
 				</form>
 			</div>
 		{:else}
+
 			<div class="flex-1 flex flex-col items-center justify-center text-gray-300 p-10 md:p-20 text-center">
 				<div class="p-6 md:p-10 bg-gray-50 rounded-[30px] md:rounded-[50px] mb-6 md:mb-8" in:scale>
 					<MessageSquare size={60} class="md:w-[80px] md:h-[80px] opacity-20 text-[#1B4B6B]" />

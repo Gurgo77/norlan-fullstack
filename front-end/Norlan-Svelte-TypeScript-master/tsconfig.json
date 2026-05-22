@@ -1,3 +1,8 @@
+/**
+ * Configurazione principale di TypeScript per il frontend SvelteKit.
+ * Estende il setup autogenerato dal framework e imposta le regole del
+ * compilatore per garantire sicurezza dei tipi e compatibilità con Vite.
+ */
 {
 	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {

@@ -12,6 +12,12 @@
 	import { AnagraficaService } from '$lib/services/AnagraficaService';
 	import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
+	/*
+Modulo Profilo Docente (Docent Panel).
+Area personale per il docente. Consente la visualizzazione delle proprie
+informazioni anagrafiche e della specializzazione tecnica, offrendo uno
+strumento autonomo per la gestione in sicurezza delle credenziali di accesso.
+*/
 	let isLoading = $state(true);
 	let docente = $state<DocenteData | null>(null);
 	let isPasswordFormVisible = $state(false);
@@ -28,6 +34,7 @@
 	let passwordSuccessMessage = $state('');
 	let isChangingPassword = $state(false);
 
+	// Recupera il profilo del docente al montaggio del componente
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -40,6 +47,7 @@
 		}
 	});
 
+	// Gestisce il cambio credenziali con validazione, feedback di errore/successo e reset dello stato
 	async function handlePasswordChange() {
 		passwordError = '';
 		passwordSuccessMessage = '';
@@ -84,6 +92,7 @@
 			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizzazione dati...</p>
 		</div>
 	{:else if docente}
+		<!-- Pannello Profilo: Layout a colonna per identità e competenza tecnica -->
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
 			<div class="space-y-6 md:space-y-8">
@@ -105,6 +114,7 @@
 				</div>
 			</div>
 
+			<!-- Colonna Dettagli: Dati contatto e Sezione Password -->
 			<div class="lg:col-span-2 space-y-6 md:space-y-8">
 				<div class="bg-white p-6 md:p-10 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100">
 					<div class="flex items-center gap-3 mb-6 md:mb-10">
@@ -130,6 +140,7 @@
 					</div>
 
 					<div class="mt-8 md:mt-12 pt-8 md:pt-10 border-t border-gray-50 space-y-4">
+						<!-- Sezione Password (Accordion espandibile) -->
 						<button
 								onclick={() => isPasswordFormVisible = !isPasswordFormVisible}
 								class="w-full flex items-center justify-between p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">

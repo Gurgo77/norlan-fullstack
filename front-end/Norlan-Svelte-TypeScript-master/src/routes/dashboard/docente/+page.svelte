@@ -17,6 +17,12 @@
 	import AlertCard from '$lib/Components/UI/AlertCard.svelte';
 	import DashboardCorsoCard from '$lib/Components/Features/Formazione/DashboardCorsoCard.svelte';
 
+	/*
+Modulo Dashboard Docente (Home).
+Hub centrale per il professionista della formazione. Fornisce KPI sintetici,
+un calendario delle lezioni imminenti e un'area dedicata alla gestione burocratica
+(registri da firmare) per garantire la conformità formativa dei corsi erogati.
+*/
 	interface DashboardStats {
 		corsiInCorso: number;
 		studentiTotali: number;
@@ -44,6 +50,7 @@
 		weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
 	}).format(new Date());
 
+	// Fetch parallelo dei corsi e calcolo delle metriche di carico didattico
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -84,6 +91,7 @@
 			const oggiZero = new SvelteDate();
 			oggiZero.setHours(0, 0, 0, 0);
 
+			// Elaborazione delle lezioni future, ordinamento cronologico e slicing dei risultati
 			const lezioniElaborate = corsiAttivi
 					.map(corso => {
 						const d = new Date(corso.dataOrario);
@@ -138,13 +146,16 @@
 			<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Sincronizzazione dati didattici...</span>
 		</div>
 	{:else}
+		<!-- KPI Dashboard: Statistiche globali sulla docenza -->
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 			<StatCard titolo="Corsi in Aula" valore={stats.corsiInCorso} icona={BookOpen} bgIcona="bg-blue-50" testoIcona="text-blue-600" hoverBgIcona="group-hover:bg-blue-600"/>
 			<StatCard titolo="Studenti Iscritti" valore={stats.studentiTotali} icona={Users} bgIcona="bg-emerald-50" testoIcona="text-emerald-600" hoverBgIcona="group-hover:bg-emerald-500"/>
 		</div>
 
+		<!-- Layout a 3 Colonne: Lezioni (sinistra) e Azioni (destra) -->
 		<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
+			<!-- Colonna Sinistra: Prossime Lezioni (DashboardCorsoCard) -->
 			<div class="xl:col-span-2 space-y-6">
 				<div class="flex items-center justify-between px-1 md:px-2">
 					<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Prossime Lezioni</h2>
@@ -180,6 +191,7 @@
 				{/if}
 			</div>
 
+			<!-- Colonna Destra: Azioni Richieste (Registri da firmare) e Shortcut -->
 			<div class="space-y-6">
 				<div class="flex items-center justify-between px-1 md:px-2">
 					<h2 class="text-lg md:text-xl font-black text-[#1B4B6B] uppercase tracking-tighter">Azioni Richieste</h2>
@@ -191,6 +203,7 @@
 						<div class="space-y-3 mb-6">
 							{#each corsiDaValidare as corso}
 								<div in:fade>
+									<!-- Elenco registri da chiudere (AlertCard) -->
 									<AlertCard
 											titolo={corso.titolo}
 											sottotitolo="Conferma le presenze per finire"

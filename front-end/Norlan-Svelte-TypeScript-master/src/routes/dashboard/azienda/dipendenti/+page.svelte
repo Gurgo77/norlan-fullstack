@@ -25,6 +25,12 @@
     import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
     import { ordinaPerScadenza, formattaDataScadenza } from '$lib/utils/scadenzeUtils';
 
+    /*
+Manager Personale Dipendente (Client Panel).
+Permette all'Azienda cliente di gestire in autonomia la propria anagrafica lavoratori.
+Include funzionalità CRUD per i dipendenti, assegnazione e monitoraggio dei
+Dispositivi di Protezione Individuale (DPI), e visualizzazione degli attestati formativi.
+*/
     interface DipendenteEsteso extends DipendenteDTO {
         nomeAzienda?: string;
     }
@@ -99,6 +105,7 @@
         { label: 'Posizione', value: 'Dipendente Operativo', icon: Building2 as any }
     ];
 
+    // Recupera l'elenco dipendenti vincolato all'azienda loggata
     onMount(async () => {
         try {
             const session = AuthService.getSession();
@@ -122,6 +129,7 @@
         }
     });
 
+    // Carica il dettaglio del lavoratore (inclusi DPI e attestati) al click sulla card
     async function apriDettaglio(lavoratore: DipendenteEsteso) {
         selectedDipendente = lavoratore;
         isLoadingDettaglio = true;
@@ -253,6 +261,7 @@
         showDpiModal = true;
     }
 
+    // Registra una nuova consegna o aggiorna le scadenze di un DPI assegnato
     async function salvaDPI() {
         if (!selectedDipendente) return;
         isSavingDpi = true;
@@ -303,6 +312,7 @@
 </script>
 
 <div in:fade class="max-w-7xl mx-auto p-4 md:p-6">
+    <!-- Pannello Principale: Ricerca e Griglia Lavoratori -->
     {#if !selectedDipendente}
         <div class="mb-6 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -323,6 +333,7 @@
 
         {#if isLoading}
             <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
+
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {#each filteredLavoratori as l (l.idUtente)}
@@ -353,6 +364,7 @@
         <div in:fade>
             <button onclick={() => (selectedDipendente = null)} class="flex items-center gap-2 text-[#1B4B6B] font-extrabold uppercase text-[10px] mb-6 md:mb-8 hover:gap-3 transition-all"><ChevronLeft size={16} /> Torna all'elenco dipendenti</button>
 
+            <!-- Pannello di Dettaglio: Si attiva selezionando un lavoratore specifico -->
             <DettagliCard
                     nome={selectedDipendente.nome}
                     cognome={selectedDipendente.cognome}
@@ -367,6 +379,7 @@
             {#if isLoadingDettaglio}
                 <div class="py-20 text-center"><Loader2 size={40} class="animate-spin mx-auto text-[#1B4B6B]" /></div>
             {:else}
+                <!-- Layout a 2 Colonne: Attestati Formativi (sinistra) e Registro DPI (destra) -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                     <div class="space-y-6">
@@ -378,6 +391,7 @@
                         </div>
 
                         {#if sortedDocumentiCorrenti.length > 0}
+                            <!-- Sezione DPI: Include il bottone "Assegna" per registrare nuove consegne -->
                             <div class="space-y-4">
                                 {#each sortedDocumentiCorrenti as doc (doc.idDocumento || Math.random())}
                                     <DettagliDocCard
@@ -432,6 +446,7 @@
     {/if}
 </div>
 
+<!-- Modali Operativi: Form per Lavoratori, Form per DPI, Conferme distruttive -->
 <ModalCard bind:isOpen={showAddModal} maxWidth="max-w-2xl">
     {#snippet title()}
         {#if isEditing}

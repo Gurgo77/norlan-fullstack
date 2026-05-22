@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente Svelte per la visualizzazione a card di un documento aziendale.
+     * Mostra lo stato di validità (con colori dinamici), le date di scadenza/caricamento
+     * e una barra delle azioni (scarica, gestisci, elimina) che varia in base al ruolo dell'utente.
+     */
     import { FileText, Download, CheckCircle2, Clock, AlertTriangle, Trash2, Calendar, Building2 } from 'lucide-svelte';
 
     export type DocStato = 'OK' | 'WARNING' | 'DANGER' | 'INFO';
@@ -22,8 +27,10 @@
         mostraScadenza?: boolean;
     }
 
+    // Definizione delle proprietà in ingresso, inclusi i dati del documento, il ruolo dell'utente e le funzioni di callback (azioni)
     let { documento, ruolo = 'dipendente', onDownload, onDelete, onManage,mostraScadenza = true }: Props = $props();
 
+    // Funzione helper che mappa lo stato del documento (OK, WARNING, DANGER, INFO) a colori, etichette e icone specifiche
     const getStatoConfig = (stato: DocStato) => {
         switch (stato) {
             case 'OK': return { label: 'Valido', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', bar: 'bg-emerald-500', icon: CheckCircle2 };
@@ -38,6 +45,7 @@
 </script>
 
 <div class="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lg relative">
+    <!-- Barra superiore decorativa, colorata dinamicamente in base allo stato del documento (es. rosso per scaduto, verde per valido) -->
     <div class="absolute top-0 left-0 w-full h-1.5 {sc.bar}"></div>
 
     <div class="relative flex items-start gap-3 p-5 pb-2 mt-1">
@@ -60,6 +68,7 @@
             <span class="text-[9px] font-black uppercase tracking-wider">{sc.label}</span>
         </div>
 
+        <!-- Sezione dedicata ai metadati (date di scadenza e caricamento), con il testo che diventa rosso in caso di stato DANGER -->
         <div class="space-y-2">
             {#if documento.dataScadenza && mostraScadenza}
                 <div class="flex items-center gap-2 text-[10px] font-bold uppercase {documento.stato === 'DANGER' ? 'text-red-500' : 'text-[#1B4B6B]'}">
@@ -76,6 +85,7 @@
         </div>
     </div>
 
+    <!-- Footer della card contenente i pulsanti di azione: l'eliminazione è protetta e nascosta se il ruolo è "dipendente" -->
     <div class="mt-auto border-t border-gray-50 bg-gray-50/50 p-4 flex gap-2">
         {#if onManage}
             <button

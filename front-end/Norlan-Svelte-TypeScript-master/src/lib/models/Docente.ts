@@ -1,3 +1,7 @@
+/*
+Entità per la profilazione dei formatori.
+Include l'anagrafica di base, la specializzazione tecnica e la biografia del docente.
+*/
 export interface DocenteData {
 	idUtente: number;
 	nome: string;

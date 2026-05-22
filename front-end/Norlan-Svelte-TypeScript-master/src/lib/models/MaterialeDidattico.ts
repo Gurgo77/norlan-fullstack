@@ -1,3 +1,7 @@
+/*
+Entità per la gestione delle risorse e dei documenti associati ai corsi di formazione.
+Mantiene i riferimenti ai file caricati, collegandoli al corso specifico e alla data di upload.
+*/
 export interface MaterialeDidatticoData {
 	idMateriale: number;
 	idCorso: number;

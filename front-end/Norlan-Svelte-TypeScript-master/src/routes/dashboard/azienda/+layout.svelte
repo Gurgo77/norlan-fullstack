@@ -14,7 +14,12 @@
 	import NotificaItem from '$lib/Components/Features/Notifiche/NotificaItem.svelte';
 	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
 	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
-
+	/*
+Layout Globale Dashboard Azienda.
+Definisce la struttura e la navigazione dell'area riservata ai clienti (Aziende).
+Implementa la protezione delle rotte (Route Guarding), la barra di navigazione laterale,
+il sistema di notifiche integrato e il rendering dell'interfaccia utente specifica per il tenant.
+*/
 	let { children } = $props();
 	let aziendaNome = $state('Caricamento...');
 	let aziendaEmail = $state('...');
@@ -36,6 +41,7 @@
 		return $page.url.pathname === `${base}${path}`;
 	}
 
+	// Verifica i permessi, carica i dati del profilo aziendale e avvia il motore delle notifiche
 	onMount(async () => {
 		const session = await verificaAutenticazioneERuolo(['AZIENDA']);
 		if (!session) return;
@@ -54,15 +60,18 @@
 		}
 	});
 
+	// Gestisce il logout sicuro invalidando la sessione e reindirizzando alla landing page
 	async function handleLogout() {
 		await AuthService.logout();
 	}
 
+	// Chiude il menu laterale su dispositivi mobile dopo il tap su una voce di navigazione
 	function closeMobileMenu() {
 		isMobileMenuOpen = false;
 	}
 </script>
 
+<!-- Chiusura automatica del pannello notifiche in caso di click all'esterno -->
 <svelte:window onclick={notificheManager.close} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
@@ -76,6 +85,7 @@
 	{/if}
 
 	<div class="lg:w-72 shrink-0 relative">
+		<!-- Sidebar Azienda: Menu di navigazione contestuale al ruolo. Off-canvas su mobile -->
 		<aside class="fixed lg:sticky top-0 left-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-out {isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}">
 			<div class="p-8 shrink-0 flex items-start justify-between">
 				<div>
@@ -93,6 +103,7 @@
 					Home Sito
 				</a>
 
+				<!-- Iterazione semplice delle voci di menu con evidenziazione della rotta attiva -->
 				{#each menuItems as item (item.href)}
 					<a
 							href="{base}{item.href}"
@@ -119,7 +130,9 @@
 		</aside>
 	</div>
 
+	<!-- Main Container: Area dedicata al rendering dinamico delle pagine (es. /azienda/dpi) -->
 	<main class="flex-1 flex flex-col min-w-0 w-full">
+		<!-- Header: Contiene l'hamburger menu, il centro notifiche e il riepilogo identità -->
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shrink-0 sticky top-0 z-30">
 			<div class="flex items-center gap-4">
 				<button onclick={() => isMobileMenuOpen = true} class="p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors lg:hidden focus:outline-none">
@@ -139,6 +152,7 @@
 						{/if}
 					</button>
 
+					<!-- Dropdown Notifiche -->
 					{#if notificheManager.isOpen}
 						<div transition:slide={{ duration: 200 }} class="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 flex flex-col">
 							<div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">

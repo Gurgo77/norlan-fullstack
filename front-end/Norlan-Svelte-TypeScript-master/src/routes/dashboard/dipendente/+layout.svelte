@@ -14,6 +14,12 @@
 	import { createNotificheManager } from '$lib/utils/notificheUtils.svelte';
 	import { verificaAutenticazioneERuolo } from '$lib/utils/autenticazioneUtils';
 
+	/*
+Layout Globale Dashboard Dipendente.
+Definisce l'impalcatura e la navigazione dell'area riservata al singolo lavoratore.
+Implementa il controllo degli accessi (Route Guarding per ruoli DIPENDENTE/LAVORATORE),
+il menu laterale semplificato, il sistema di notifiche e il rendering del contenuto dinamico.
+*/
 	let { children } = $props();
 
 	let userEmail = $state('Caricamento...');
@@ -31,6 +37,7 @@
 		{ href: '/dashboard/dipendente/account', label: 'Il mio Account', icon: User }
 	];
 
+	// Esegue il guard della rotta, carica l'azienda di appartenenza e avvia le notifiche
 	onMount(async () => {
 		const session = await verificaAutenticazioneERuolo(['DIPENDENTE', 'LAVORATORE']);
 		if (!session) return;
@@ -47,10 +54,12 @@
 		}
 	});
 
+	// Esegue il logout e distrugge la sessione locale
 	async function handleLogout() {
 		await AuthService.logout();
 	}
 
+	// Calcola se la voce di menu corrente corrisponde al path attivo nell'URL
 	function isMenuActive(href: string, currentPath: string): boolean {
 		if (href === '/dashboard/dipendente') {
 			return currentPath === `${base}${href}`;
@@ -63,6 +72,7 @@
 	}
 </script>
 
+<!-- Listener globale: chiude la tendina notifiche cliccando in una zona vuota -->
 <svelte:window onclick={notificheManager.close} />
 
 <div class="flex min-h-screen bg-[#F9FAFB] font-sans text-[#1B4B6B]">
@@ -76,6 +86,7 @@
 	{/if}
 
 	<div class="lg:w-72 shrink-0 relative">
+		<!-- Sidebar Lavoratore: Menu semplificato orientato ai task operativi. -->
 		<aside class="fixed lg:sticky top-0 left-0 h-screen w-72 bg-[#1B4B6B] text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-out {isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}">
 			<div class="p-8 shrink-0 flex items-start justify-between">
 				<div>
@@ -93,6 +104,7 @@
 					Home Sito
 				</a>
 
+				<!-- Voci di menu: Corsi, DPI, Attestati, Messaggi -->
 				{#each menuItems as item (item.href)}
 					<a
 							href="{base}{item.href}"
@@ -118,7 +130,9 @@
 		</aside>
 	</div>
 
+	<!-- Main Area: Rendering del contenuto delle singole pagine tramite slot dinamico -->
 	<main class="flex-1 flex flex-col min-w-0 w-full">
+		<!-- Header Principale: Dropdown notifiche e recap dell'Azienda assegnata -->
 		<header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shrink-0 sticky top-0 z-30">
 			<div class="flex items-center gap-4">
 				<button onclick={() => isMobileMenuOpen = true} class="p-2 -ml-2 text-gray-400 hover:text-[#1B4B6B] transition-colors lg:hidden focus:outline-none">

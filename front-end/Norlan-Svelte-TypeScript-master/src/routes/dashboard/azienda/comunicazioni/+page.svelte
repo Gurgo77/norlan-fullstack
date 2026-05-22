@@ -12,6 +12,12 @@
 	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
 	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
 
+	/*
+Modulo di Messaggistica Aziendale (Client Panel).
+Consente la comunicazione in tempo reale dell'Azienda tramite due canali principali:
+il supporto tecnico centralizzato (Staff NorLan) e i propri dipendenti (comunicazione interna).
+Implementa la connessione WebSocket, la gestione della rubrica e l'aggiornamento ottimistico dell'UI.
+*/
 	interface Contatto {
 		id: number;
 		nome: string;
@@ -38,6 +44,7 @@
 			)
 	);
 
+	// Carica i contatti (Dipendenti + Staff), verifica query string per deep-linking e apre WebSocket
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		token = AuthService.getToken() || '';
@@ -85,10 +92,12 @@
 		}
 	});
 
+	// Assicura la chiusura del canale di comunicazione alla distruzione della pagina
 	onDestroy(() => {
 		if (chatService) chatService.disconnect();
 	});
 
+	// Aggiorna il contatto attivo e recupera lo storico messaggi dal database
 	async function selectContact(contatto: Contatto) {
 		activeContact = contatto;
 		messaggi = [];
@@ -98,6 +107,7 @@
 		}
 	}
 
+	// Gestisce l'invio fisico del messaggio e aggiorna istantaneamente il DOM
 	function sendMessage() {
 		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
 
@@ -130,8 +140,11 @@
 	}
 </script>
 
+<!-- Wrapper Principale: Imposta altezza bloccata e overflow hidden per simulare un'app nativa -->
 <div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-10rem)] flex bg-white rounded-2xl md:rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
+	<!-- Sidebar Rubrica: Gestisce la ricerca testuale e la lista contatti -->
+	<!-- Su mobile, scompare se un contatto è selezionato ({activeContact ? 'hidden md:flex' : 'flex'}) -->
 	<div class="w-full md:w-1/3 border-r border-gray-100 flex-col bg-gray-50/50 {activeContact ? 'hidden md:flex' : 'flex'}">
 		<div class="p-4 md:p-8 border-b border-gray-100 bg-white flex flex-col gap-4 md:gap-5">
 			<div>
@@ -177,6 +190,7 @@
 		</div>
 	</div>
 
+	<!-- Area Chat: Mostrata solo se un contatto è selezionato -->
 	<div class="w-full md:flex-1 flex-col bg-white {activeContact ? 'flex' : 'hidden md:flex'}">
 		{#if activeContact}
 			<div class="p-4 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
@@ -199,6 +213,7 @@
 				</div>
 			</div>
 
+			<!-- Container Messaggi: Auto-scrollabile verso il basso ad ogni aggiornamento -->
 			<div id="chat-scroll-container" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar bg-gray-50/30">
 				{#each messaggi as msg (msg.idMessaggio)}
 					<div in:scale={{duration: 200, start: 0.95}}>
@@ -213,6 +228,7 @@
 			</div>
 
 			<div class="p-4 md:p-8 border-t border-gray-100 bg-white">
+				<!-- Input Form: Disabilitato se vuoto per prevenire invii accidentali -->
 				<form class="flex gap-2 md:gap-4" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 					<input
 							bind:value={newMessage}

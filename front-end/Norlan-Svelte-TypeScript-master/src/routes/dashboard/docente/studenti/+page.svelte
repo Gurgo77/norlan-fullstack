@@ -13,6 +13,12 @@
 	import DettagliCard from '$lib/Components/Features/Anagrafica/DettagliCard.svelte';
 	import { caricaDettagliEntita } from '$lib/utils/dettaglioUtils';
 
+	/*
+Modulo Gestione Studenti (Docent Panel).
+Permette al docente di visualizzare l'elenco degli iscritti raggruppati per corso,
+effettuare ricerche cross-corso e visualizzare il profilo anagrafico di dettaglio
+di ogni studente. Integra logiche di filtraggio reattivo per una gestione snella di classi numerose.
+*/
 	interface StudenteDettaglio {
 		idUtente: number;
 		emailUtente: string;
@@ -41,6 +47,7 @@
 
 	let selectedStudente = $state<StudenteCompleto | null>(null);
 
+	// Recupera tutti i corsi del docente, mappa gli iscritti e calcola il conteggio studenti unici
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -93,6 +100,7 @@
 					.filter(corso => corso.studenti.length > 0)
 	);
 
+	// Recupera i dati anagrafici approfonditi dello studente selezionato dal backend
 	async function apriDettaglioStudente(studente: StudenteDettaglio) {
 		isLoadingDettaglio = true;
 		const res = await caricaDettagliEntita(studente.idUtente, 'STUDENTE') as any;
@@ -121,6 +129,7 @@
 </script>
 
 <div in:fade class="space-y-6 md:space-y-8 max-w-7xl mx-auto pb-20 p-4 md:p-6">
+	<!-- Vista a elenco (Stato default) -->
 	{#if !selectedStudente}
 		<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
 			<div>
@@ -128,6 +137,7 @@
 				<p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-1">Classi e allievi dei corsi attivi</p>
 			</div>
 			<div class="w-full lg:w-auto">
+				<!-- Barra di ricerca e Filtro (dropdown corsi) -->
 				<StatCard
 						titolo="Iscritti Unici"
 						valore={totaleStudentiUnici}
@@ -193,6 +203,7 @@
 						<div class="p-4 md:p-8">
 							<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 								{#each corso.studenti as studente (studente.idUtente)}
+									<!-- Card studente: triggera l'apertura del dettaglio o l'avvio chat -->
 									<DipendenteCard
 											idUtente={studente.idUtente}
 											nome={studente.emailUtente}

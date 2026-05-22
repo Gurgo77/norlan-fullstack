@@ -1,5 +1,8 @@
 import { StatoRinnovo } from './Enums';
-
+/*
+Modello per la gestione delle richieste di rinnovo documentale.
+Traccia il collegamento al documento in scadenza, i dati aziendali e lo stato di avanzamento della pratica.
+*/
 export interface RichiestaRinnovoData {
 	idRichiesta: number;
 	idDocumento: number;

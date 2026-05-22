@@ -6,7 +6,12 @@
     import { ShieldAlert, Lock, Loader2, CheckCircle2 } from 'lucide-svelte';
     import { AuthService } from '$lib/services/AuthService';
     import AlertCard from '$lib/Components/UI/AlertCard.svelte';
-
+    /*
+    Modulo Cambio Password Obbligatorio (First Login).
+    Intercetta gli utenti (Aziende, Dipendenti o Docenti) al loro primo accesso
+    o in seguito a un reset amministrativo. Forza l'aggiornamento della password temporanea
+    prima di consentire l'accesso alle rispettive dashboard.
+    */
     let vecchiaPassword = $state('');
     let nuovaPassword = $state('');
     let confermaPassword = $state('');
@@ -14,6 +19,7 @@
     let success = $state(false);
     let isLoading = $state(false);
 
+    // Intercetta accessi non autorizzati o di utenti che non necessitano del reset
     onMount(() => {
         const session = AuthService.getSession();
         if (!session || !session.richiedeCambioPassword) {
@@ -21,6 +27,7 @@
         }
     });
 
+    // Gestisce la sottomissione, la validazione e il ciclo di redirect post-aggiornamento
     async function handleSubmit(e: Event) {
         e.preventDefault();
         error = '';
@@ -47,12 +54,14 @@
     }
 </script>
 
+<!-- Wrapper Centrato: Layout minimale e privo di navigazione per focalizzare l'azione -->
 <div class="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-4 md:p-6">
     <div class="w-full max-w-lg bg-white p-6 md:p-10 rounded-[30px] md:rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden">
 
         {#if !success}
             <div in:fade>
                 <div class="mb-6 md:mb-8">
+                    <!-- Banner Informativo: Spiega all'utente il motivo del blocco -->
                     <AlertCard
                             titolo="Sicurezza Account"
                             sottotitolo="Al primo accesso, è obbligatorio personalizzare la password di sistema temporanea."
@@ -78,6 +87,7 @@
                         </div>
                     </div>
 
+                    <!-- Gestione Errori: Box visibile solo in caso di fallimento validazione o API -->
                     {#if error}
                         <p class="text-red-500 text-[10px] font-black uppercase tracking-widest bg-red-50 p-4 rounded-2xl border border-red-100 text-center leading-relaxed" in:scale>
                             {error}
@@ -97,6 +107,7 @@
                 </form>
             </div>
         {:else}
+            <!-- Empty State / Success: Sostituisce il form al completamento dell'API -->
             <div class="flex flex-col items-center text-center py-6 md:py-10" in:scale>
                 <div class="w-16 h-16 md:w-20 md:h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-sm shrink-0">
                     <CheckCircle2 size={32} class="md:hidden" />
@@ -107,6 +118,7 @@
                     L'account è ora protetto.<br>
                     Verrai reindirizzato al login tra pochi istanti...
                 </p>
+                <!-- Barra animata che simula il caricamento prima del redirect al login -->
                 <div class="mt-8 w-12 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
             </div>
         {/if}

@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente Svelte per la visualizzazione a card di un Dispositivo di Protezione Individuale (DPI).
+     * Mostra i dettagli del DPI, lo stato di validità (tramite bordi colorati e badge) e fornisce
+     * pulsanti di azione contestuali in base al ruolo dell'utente (aggiorna revisione o richiedi sostituzione).
+     */
     import { HardHat, AlertTriangle, CheckCircle2, ShieldAlert, PenBox, Trash2, RefreshCw } from 'lucide-svelte';
 
     interface Props {
@@ -16,8 +21,10 @@
         onRichiediSostituzione?: (id: number | string) => void;
     }
 
+    // Destrutturazione delle proprietà: riceve il ruolo utente, i dati del DPI e le funzioni per gestire le azioni
     let { ruolo, dpi, onModifica, onElimina, onRichiediSostituzione }: Props = $props();
 
+    // Oggetto reattivo che mappa lo stato di validità del DPI ai relativi colori, icone e testi da mostrare nell'interfaccia
     let configStato = $derived({
         'OK': { colore: 'text-green-500', bg: 'bg-green-50', icona: CheckCircle2, label: 'REGOLARE' },
         'WARNING': { colore: 'text-amber-500', bg: 'bg-amber-50', icona: AlertTriangle, label: 'IN SCADENZA' },
@@ -27,6 +34,7 @@
 
 <div class="bg-white rounded-3xl p-6 border-2 {dpi.stato === 'DANGER' ? 'border-red-100 shadow-red-900/5' : 'border-gray-50 hover:border-gray-100'} shadow-sm hover:shadow-xl transition-all group flex flex-col h-full relative overflow-hidden">
 
+    <!-- Striscia colorata superiore di allerta: compare solo se il DPI è scaduto (rosso) o in scadenza (giallo) -->
     {#if dpi.stato === 'DANGER'}
         <div class="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
     {/if}
@@ -34,6 +42,7 @@
         <div class="absolute top-0 left-0 w-full h-1 bg-amber-400"></div>
     {/if}
 
+    <!-- Intestazione della card con l'icona decorativa, il badge di stato attuale e il tasto di eliminazione (se autorizzati) -->
     <div class="flex justify-between items-start mb-5">
         <div class="bg-gray-50 p-3 rounded-2xl text-gray-400 group-hover:bg-[#1B4B6B] group-hover:text-white transition-colors">
             <HardHat size={24} />
@@ -66,6 +75,7 @@
         {/if}
     </div>
 
+    <!-- Sezione dedicata alle date: mostra la data di consegna e quella di revisione (evidenziata in rosso se scaduta) -->
     <div class="mt-6 pt-5 border-t border-gray-50 grid grid-cols-2 gap-4">
         <div>
             <p class="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Consegna</p>
@@ -77,6 +87,7 @@
         </div>
     </div>
 
+    <!-- Azione specifica per admin e azienda: pulsante per aggiornare i dati della revisione del DPI -->
     {#if ruolo === 'azienda' || ruolo === 'admin'}
         <button
                 onclick={() => onModifica && onModifica(dpi.id)}
@@ -86,6 +97,7 @@
         </button>
     {/if}
 
+    <!-- Azione specifica per il dipendente: pulsante per inviare una richiesta formale di sostituzione del DPI -->
     {#if ruolo === 'dipendente'}
         <button
                 onclick={() => onRichiediSostituzione && onRichiediSostituzione(dpi.id)}

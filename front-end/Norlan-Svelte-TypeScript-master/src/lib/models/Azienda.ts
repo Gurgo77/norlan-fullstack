@@ -1,3 +1,7 @@
+/*
+Entità principale per l'anagrafica aziendale.
+Gestisce i dati fiscali, i contatti e include metodi di utility per la validazione della Partita IVA.
+*/
 import { Ruolo } from './Enums';
 
 export interface AziendaData {

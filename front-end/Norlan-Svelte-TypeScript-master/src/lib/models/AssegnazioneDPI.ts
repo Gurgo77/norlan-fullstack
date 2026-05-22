@@ -1,5 +1,8 @@
 import { TipoDPI } from './Enums';
-
+/*
+Modello per la gestione delle assegnazioni dei Dispositivi di Protezione Individuale (DPI).
+Traccia le consegne ai dipendenti, le relative scadenze e lo stato delle revisioni.
+*/
 export interface AssegnazioneDPIData {
 	idAssegnazione: number;
 	idDipendente: number;

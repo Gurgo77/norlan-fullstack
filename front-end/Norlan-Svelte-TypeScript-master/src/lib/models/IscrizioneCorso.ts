@@ -1,6 +1,9 @@
 import type { Documento } from './Documento';
 import type { StatoCorso } from '$lib/models/Enums';
-
+/*
+Entità relazionale per la gestione delle iscrizioni ai corsi.
+Traccia le conferme di presenza, lo stato del corso e l'emissione dell'attestato documentale.
+*/
 export interface IscrizioneData {
 	idUtente: number;
 	idCorso: number;

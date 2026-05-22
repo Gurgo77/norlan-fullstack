@@ -2,7 +2,13 @@
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { Shield, BadgeCheck, Users, Medal, GraduationCap, Calendar, Clock } from 'lucide-svelte';
+  /*
+  Componente di presentazione del profilo professionale della Dott.ssa Rosa Barbano-Di Maggio.
+  Gestisce il rendering dinamico delle certificazioni, l'esposizione dello storico formativo
+  tramite timeline e l'animazione degli elementi UI per migliorare l'engagement.
+  */
 
+  // Data set strutturato contenente le abilitazioni professionali, le certificazioni di parte terza e il percorso accademico/formativo
   const certifications = [
     {
       icon: Shield,
@@ -157,6 +163,7 @@
   }
 </style>
 
+<!-- Sezione Hero: Presentazione istituzionale con immagine di background -->
 <main class="min-h-screen pt-20 bg-white" in:fade out:fade>
   <section class="relative h-[70vh] flex items-center justify-center">
     <div class="absolute inset-0 w-full h-full blur-sm">
@@ -192,6 +199,7 @@
 
   <section class="py-16 bg-white">
     <div class="container mx-auto px-4">
+      <!-- Grid dinamica delle certificazioni professionali con link esterni di verifica -->
       <h2 class="text-3xl font-bold text-[#1B4B6B] mb-12 text-center">
         Certificazioni e Qualifiche
       </h2>

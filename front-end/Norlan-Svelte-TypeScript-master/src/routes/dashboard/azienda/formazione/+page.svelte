@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, scale, slide } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import { Search, AlertTriangle, Loader2, Download, UploadCloud, CheckCircle2, FileCheck2, BookPlus, Send, Trash2, User } from 'lucide-svelte';
 	import { AuthService } from '$lib/services/AuthService';
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
@@ -13,6 +13,12 @@
 	import ModalCard from '$lib/Components/UI/ModalCard.svelte';
 	import { scaricaDocumentoUniversale } from '$lib/utils/documentoUtils';
 
+	/*
+Modulo Formazione Dipendenti (Client Panel).
+Consente all'Azienda di iscrivere i propri lavoratori ai corsi a calendario,
+monitorarne lo stato di avanzamento (Da Iniziare, In Svolgimento, Completato)
+e gestire il flusso burocratico di controfirma e consegna degli attestati ufficiali.
+*/
 	interface CorsoStato { idCorso: number; idDocumento?: number; filePath?: string; titolo: string; dataSvolgimento: string; stato: 'DA_INIZIARE' | 'IN_SVOLGIMENTO' | 'COMPLETATO'; }
 	interface DipendenteFormazione { id: number; nomeCompleto: string; ruolo: string; corsi: CorsoStato[]; tuttiIdCorsiIscritto: number[]; }
 
@@ -42,6 +48,7 @@
 		}, 3000);
 	}
 
+	// Carica dati aziendali, corsi disponibili e incrocia le iscrizioni attive per ogni dipendente
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (!session) return;
@@ -97,6 +104,7 @@
 		showModalIscrizione = true;
 	}
 
+	// Registra un nuovo utente a un corso e aggiorna reattivamente il DOM
 	async function confermaIscrizione() {
 		if (idDipendenteSelezionato === '' || idCorsoSelezionato === '') return;
 		isEnrolling = true;
@@ -166,6 +174,7 @@
 		}
 	}
 
+	// Chiude il ciclo burocratico inviando l'attestato firmato
 	async function consegnaAiDipendenti(idDocumento: number) {
 		if (!fileFirmati[idDocumento]) return;
 		isActionLoading = true;
@@ -187,6 +196,7 @@
 	}
 </script>
 
+<!-- Toast System: Notifiche fluttuanti in alto a destra per feedback operativi -->
 {#if toastMessage}
 	<div transition:fade={{ duration: 200 }} class="fixed top-24 right-4 md:right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border {toastMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}">
 		{#if toastMessage.type === 'success'}
@@ -199,6 +209,7 @@
 {/if}
 
 <div in:fade class="max-w-7xl mx-auto p-4 md:p-6 pb-20">
+	<!-- Header: Titolo e Call-to-Action principale per l'iscrizione -->
 	<div class="mb-6 md:mb-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
 		<h1 class="text-2xl md:text-4xl font-extrabold uppercase tracking-tighter text-[#1B4B6B]">Formazione Dipendenti</h1>
 		<button onclick={apriModaleIscrizione} class="w-full lg:w-auto flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-[#1B4B6B] px-6 py-4 text-[11px] font-black uppercase tracking-widest text-[#1B4B6B] shadow-lg shadow-blue-900/5 transition-all hover:bg-[#1B4B6B] hover:text-white"><BookPlus size={18} /> Iscrivi a Nuovo Corso</button>
@@ -207,6 +218,7 @@
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center gap-4 py-32"><Loader2 size={48} class="animate-spin text-[#1B4B6B]" /><p class="text-[10px] font-black uppercase tracking-widest text-gray-300">Sincronizzazione dati...</p></div>
 	{:else}
+		<!-- Sezione Operativa Attestati: Visibile SOLO se ci sono documenti in stato 'IN_ATTESA_FIRMA' -->
 		{#if attestatiDaFirmare.length > 0}
 			<div class="mb-14" in:fade>
 				<div class="flex items-center gap-3 mb-6 border-b border-amber-200 pb-3"><div class="p-2 bg-amber-100 text-amber-700 rounded-lg"><FileCheck2 size={20}/></div><h2 class="text-lg md:text-xl font-extrabold text-amber-700 uppercase tracking-tight">Attestati da Controfirmare</h2></div>
@@ -261,6 +273,7 @@
 			</div>
 		{/if}
 
+		<!-- Barra di Ricerca e Filtri Stato (Tutti, Da Iniziare, In Svolgimento, Completati) -->
 		<div class="mb-10 flex flex-col md:flex-row gap-4 mt-8">
 			<div class="group relative flex-1">
 				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#1B4B6B]" size={18} />
@@ -274,6 +287,7 @@
 			</div>
 		</div>
 
+		<!-- Visualizzazione Raggruppata: Itera sui dipendenti, mostrando i relativi corsi -->
 		{#each filteredDipendenti as dip (dip.id)}
 			<div class="mb-14" in:scale>
 				<h3 class="text-lg md:text-xl font-extrabold text-[#1B4B6B] uppercase border-b border-gray-200 pb-3 mb-6 flex flex-wrap items-center gap-3">
@@ -285,6 +299,7 @@
 				</h3>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 					{#each dip.corsiFiltrati as corso (corso.idCorso)}
+						<!-- Card del corso con azioni contestuali (Annulla iscrizione se non ancora iniziato, Scarica se completato) -->
 						<DashboardCorsoCard
 								ruolo="azienda"
 								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: corso.stato, dataSvolgimento: corso.dataSvolgimento, luogo: 'Sede NorLan / Aula Virtuale' }}
@@ -301,6 +316,7 @@
 	{/if}
 </div>
 
+<!-- Modali: Iscrizione (con select concatenate) e Conferma Annullamento -->
 <ModalCard bind:isOpen={showModalIscrizione} maxWidth="max-w-lg">
 	{#snippet title()}
 		<BookPlus size={20}/> <span class="font-black uppercase tracking-tighter">Iscrizione Formativa</span>

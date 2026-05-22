@@ -1,4 +1,10 @@
 <script lang="ts">
+  /**
+   * Componente Svelte per la barra di navigazione principale (Navbar).
+   * Gestisce la navigazione tra le pagine pubbliche, lo stato di autenticazione dell'utente
+   * e l'instradamento dinamico verso la dashboard in base al ruolo.
+   * Include un design responsivo con menu ad hamburger per dispositivi mobili.
+   */
   import { fade } from "svelte/transition";
   import { Menu, X, LogIn, LogOut, User, LayoutDashboard } from "lucide-svelte";
   import { AuthService } from "$lib/services/AuthService";
@@ -23,10 +29,10 @@
     new NavLink("/Formazione", "FORMAZIONE"),
     new NavLink("/Contatti", "CONTATTI")
   ];
-
+  // Variabili di stato reattive (Svelte 5) per la gestione del menu mobile e dell'utente loggato
   let isMenuOpen = $state(false);
   let currentUser = $state<any>(null);
-
+  // All'avvio del componente, recupera la sessione e imposta un controllo periodico per mantenere lo stato di autenticazione sincronizzato
   onMount(() => {
     currentUser = AuthService.getSession();
 
@@ -38,7 +44,7 @@
 
     return () => clearInterval(checkSession);
   });
-
+  // Calcola e restituisce il percorso corretto della dashboard in base al ruolo dell'utente
   function getDashboardPath(ruolo: string): string {
     switch (ruolo) {
       case 'ADMIN': return '/dashboard/admin';
@@ -49,6 +55,7 @@
     }
   }
 
+  // Gestisce il processo di disconnessione, pulendo lo stato e reindirizzando alla pagina di login
   async function handleLogout() {
     AuthService.logout();
     currentUser = null;
@@ -57,12 +64,14 @@
   }
 </script>
 
+<!-- Barra di navigazione principale, fissata in alto sulla pagina (fixed top-0) -->
 <nav class="bg-white text-[#1B4B6B] p-4 shadow-lg fixed w-full top-0 z-50 font-sans">
   <div class="container mx-auto flex justify-between items-center">
     <a href="/" class="flex items-center">
       <img src="/NorLan.jpg" alt="NorLan Logo" class="h-12 w-auto rounded-md">
     </a>
 
+    <!-- LAYOUT DESKTOP: Link di navigazione e gestione utente (invisibile su mobile) -->
     <div class="hidden md:flex items-center space-x-8">
       <ul class="flex items-center space-x-6">
         {#each links as link (link.label)}
@@ -111,6 +120,7 @@
     </div>
 
     <button class="block md:hidden text-[#1B4B6B]" onclick={() => (isMenuOpen = !isMenuOpen)}>
+      <!-- LAYOUT MOBILE: Menu a tendina attivato dal pulsante ad hamburger -->
       {#if isMenuOpen}
         <X size={28} />
       {:else}

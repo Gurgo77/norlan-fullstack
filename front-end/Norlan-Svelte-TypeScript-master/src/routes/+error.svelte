@@ -2,9 +2,15 @@
   import { fade } from "svelte/transition";
   import { Search } from "lucide-svelte";
   import { page } from '$app/stores';
+  /*
+Pagina di gestione errori standard (Error Boundary).
+Fornisce un feedback visivo immediato all'utente in caso di fallimento della richiesta,
+utilizzando lo store "$page" per recuperare dinamicamente lo stato HTTP e il messaggio di errore dal sistema.
+*/
 </script>
 
 <div class="min-h-screen bg-white flex flex-col" in:fade out:fade>
+  <!-- Sezione Hero: Banner visivo che mostra lo status code dell'errore (es. 404 o 500) su sfondo offuscato -->
   <section class="h-64 flex items-center justify-center relative">
     <div class="absolute inset-0 bg-[url('/NorLan.jpg')] bg-cover bg-center blur-sm"></div>
 
@@ -16,6 +22,7 @@
     </div>
   </section>
 
+  <!-- Sezione informativa: suggerisce l'azione da intraprendere (ritorno alla Home) e fornisce una diagnostica rapida -->
   <section class="flex-1 py-12 bg-gray-50 flex flex-col items-center justify-center text-center px-4">
     <div class="max-w-2xl mx-auto">
       <Search class="w-16 h-16 mx-auto text-[#1B4B6B] mb-6" />

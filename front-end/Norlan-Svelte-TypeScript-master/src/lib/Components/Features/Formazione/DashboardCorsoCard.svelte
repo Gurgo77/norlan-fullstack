@@ -1,4 +1,9 @@
 <script lang="ts">
+    /**
+     * Componente Svelte per la visualizzazione a card di un corso di formazione.
+     * Renderizza dinamicamente informazioni (stato, date, luogo) e un pannello di azioni
+     * diversificato in base al ruolo dell'utente (docente, admin, dipendente o azienda) e allo stato del corso.
+     */
     import {
         BookOpen,
         Download,
@@ -54,7 +59,7 @@
         onConcludiCorso,
         onDownloadMateriale
     }: Props = $props();
-
+    // Funzione helper che mappa lo stato attuale del corso a un set di stili (colori, background), icone e testi predefiniti per l'interfaccia
     const getStatoConfig = (stato: StatoCorso) => {
         switch (stato) {
             case 'COMPLETATO':
@@ -70,6 +75,7 @@
     let sc = $derived(getStatoConfig(corso.stato));
 </script>
 
+<!-- Contenitore principale della card con effetti di transizione all'hover e layout strutturato a colonna -->
 <div id="corso-{corso.id}" class="group flex h-full flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#1B4B6B]/30 hover:shadow-xl">
     <div class="relative flex items-start gap-4 p-6 pb-4">
         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#1B4B6B]/10 text-[#1B4B6B] transition-colors group-hover:bg-[#1B4B6B] group-hover:text-white">
@@ -105,6 +111,7 @@
     </div>
 
     <div class="mt-auto flex items-center justify-between gap-2 border-t border-gray-50 bg-gray-50/50 p-4">
+        <!-- Pannello delle azioni specifico per il ruolo "docente": gestisce l'avvio del corso, il caricamento materiali, la firma e la conclusione -->
         {#if ruolo === 'docente'}
             {#if corso.stato === 'DA_INIZIARE'}
                 <div class="flex w-full gap-2">
@@ -148,6 +155,7 @@
             {/if}
         {/if}
 
+        <!-- Pannello delle azioni specifico per il ruolo "admin": permette l'eliminazione, la validazione presenze e la visualizzazione dei feedback -->
         {#if ruolo === 'admin'}
             <div class="flex w-full gap-2">
                 {#if corso.stato === 'DA_INIZIARE'}
@@ -178,6 +186,7 @@
             </div>
         {/if}
 
+        <!-- Pannello delle azioni per "dipendente" e "azienda": consente di consultare/scaricare materiali, attestati o annullare l'iscrizione -->
         {#if ruolo === 'dipendente' || ruolo === 'azienda'}
             <div class="flex w-full gap-2">
                 {#if corso.stato === 'IN_SVOLGIMENTO'}

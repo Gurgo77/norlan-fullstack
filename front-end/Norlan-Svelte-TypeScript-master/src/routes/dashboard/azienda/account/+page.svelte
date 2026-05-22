@@ -12,6 +12,12 @@
     import { AnagraficaService } from '$lib/services/AnagraficaService';
     import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
+    /*
+Modulo Gestione Profilo Azienda (Client Panel).
+Permette all'utente Azienda di visualizzare e aggiornare in autonomia i propri
+dati legali, i recapiti operativi e le credenziali di accesso (password).
+Implementa controlli di integrità sui campi univoci (PEC, Partita IVA).
+*/
     let isLoading = $state(true);
     let isSaving = $state(false);
     let azienda = $state<AziendaData | null>(null);
@@ -30,6 +36,7 @@
     let passwordSuccessMessage = $state('');
     let isChangingPassword = $state(false);
 
+    // Recupera i dati dell'azienda loggata al caricamento della pagina
     onMount(async () => {
         const session = AuthService.getSession();
         if (session) {
@@ -42,6 +49,7 @@
         isLoading = false;
     });
 
+    // Aggiorna l'anagrafica con gestione specifica per conflitti di unicità (P.IVA, PEC)
     async function salvaDati() {
         if (!azienda) return;
         isSaving = true;
@@ -67,6 +75,7 @@
         }
     }
 
+    // Valida e aggiorna la password di accesso con feedback visivo temporizzato
     async function cambiaPassword() {
         passwordError = '';
         passwordSuccessMessage = '';
@@ -106,6 +115,7 @@
 </script>
 
 <div in:fade class="p-4 md:p-8 max-w-6xl mx-auto pb-24">
+    <!-- Intestazione: Titolo della vista e contesto -->
     <div class="mb-6 md:mb-10">
         <h1 class="text-2xl md:text-3xl font-black text-[#1B4B6B] tracking-tight uppercase">GESTIONE AZIENDA</h1>
         <p class="text-gray-400 text-xs md:text-sm font-medium mt-1">Visualizza e modifica i dati legali e di contatto della tua società</p>
@@ -117,8 +127,9 @@
             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recupero dati societari...</p>
         </div>
     {:else if azienda}
+        <!-- Layout a Griglia: Pannello riassuntivo (sinistra) e form operativo (destra) -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-
+            <!-- Sidebar di Riepilogo: Mostra dati immutabili o di identificazione primaria -->
             <div class="space-y-6 md:space-y-8">
                 <div class="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
                     <div class="w-24 h-24 md:w-36 md:h-36 bg-gray-50 rounded-2xl md:rounded-[45px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden shrink-0">
@@ -141,6 +152,7 @@
                 </div>
             </div>
 
+            <!-- Form Dati Contatto: Campi modificabili (Sede, PEC, Telefoni) -->
             <div class="lg:col-span-2 space-y-6 md:space-y-8">
                 <div class="bg-white p-5 md:p-10 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100">
 
@@ -169,6 +181,7 @@
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email (Login)</label>
                             <div class="flex items-center gap-3 md:gap-4 bg-gray-50 p-4 rounded-xl md:rounded-2xl border border-gray-100 opacity-70">
                                 <Mail size={18} class="text-gray-400 shrink-0" />
+                                <!-- Nota: L'email di Login è in readonly per prevenire disallineamenti di sistema -->
                                 <input type="email" value={azienda.email} readonly class="bg-transparent border-none outline-none text-sm font-bold text-[#1B4B6B] w-full cursor-default" />
                             </div>
                         </div>
@@ -203,6 +216,7 @@
                     </div>
 
                     <div class="mt-8 pt-8 md:pt-10 border-t border-gray-50 space-y-4">
+                        <!-- Sezione Sicurezza: Form espandibile per il cambio password -->
                         <button
                                 onclick={() => isPasswordFormVisible = !isPasswordFormVisible}
                                 class="w-full flex items-center justify-between p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
@@ -279,6 +293,7 @@
                             {/if}
                         </div>
 
+                        <!-- Footer Form: Pulsante di salvataggio con animazione di caricamento e feedback di successo -->
                         <button
                                 onclick={salvaDati}
                                 disabled={isSaving}

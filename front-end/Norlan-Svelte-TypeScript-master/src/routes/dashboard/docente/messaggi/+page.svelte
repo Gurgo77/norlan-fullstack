@@ -10,10 +10,17 @@
 	import { Messaggio } from '$lib/models/Messaggio';
 	import type { DipendenteData } from '$lib/models/Dipendente';
 	import { StatoCorso } from '$lib/models/Enums';
-
+	import { SvelteMap } from 'svelte/reactivity';
 	import ContattoRubrica from '$lib/Components/Features/Messaggistica/ContattoRubrica.svelte';
 	import ChatBubble from '$lib/Components/Features/Messaggistica/ChatBubble.svelte';
 
+	/*
+Modulo Messaggistica Docente (Docent Panel).
+Abilita la comunicazione diretta tra il docente e la propria platea di studenti,
+oltre al canale istituzionale con lo Staff NorLan. Integra WebSocket per il
+real-time, logica di raggruppamento per iscrizioni ai corsi e persistenza
+storica delle conversazioni.
+*/
 	interface Contatto {
 		id: number;
 		nome: string;
@@ -42,6 +49,7 @@
 			)
 	);
 
+	// Recupera tutti i corsi e gli studenti iscritti, costruisce la rubrica e connette WebSocket
 	onMount(async () => {
 		currentUser = AuthService.getSession();
 		token = AuthService.getToken() || '';
@@ -60,8 +68,7 @@
 						c.stato !== StatoCorso.CERTIFICATO
 				);
 
-				const studentiMap = new Map<number, DipendenteData>();
-
+				const studentiMap = new SvelteMap<number, DipendenteData>();
 				for (const corso of mieiCorsiAttivi) {
 					const iscritti = await FormazioneService.getIscrizioniByCorso(corso.idCorso);
 
@@ -118,10 +125,12 @@
 		}
 	});
 
+	// Assicura il disconnessione pulita del WebSocket per evitare sessioni zombie
 	onDestroy(() => {
 		if (chatService) chatService.disconnect();
 	});
 
+	// Cambia il contesto della chat: resetta i messaggi correnti e carica lo storico dal DB
 	async function selectContact(contatto: Contatto) {
 		activeContact = contatto;
 		messaggi = [];
@@ -131,6 +140,7 @@
 		}
 	}
 
+	// Invia il payload al backend e aggiorna la UI localmente
 	function sendMessage() {
 		if (!newMessage.trim() || !activeContact || !currentUser || !chatService) return;
 
@@ -166,8 +176,10 @@
 	}
 </script>
 
+<!-- Wrapper Principale: Altezza fissa [h-[calc(100vh-10rem)]] per evitare scroll dell'intera pagina -->
 <div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-10rem)] flex bg-white rounded-2xl md:rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden" in:fade>
 
+	<!-- Sidebar Rubrica: Gestisce ricerca e lista studenti/staff -->
 	<div class="w-full md:w-1/3 border-r border-gray-100 flex-col bg-gray-50/50 {activeContact ? 'hidden md:flex' : 'flex'}">
 		<div class="p-5 md:p-8 border-b border-gray-100 bg-white flex flex-col gap-4 md:gap-5">
 			<div>
@@ -213,6 +225,7 @@
 		</div>
 	</div>
 
+	<!-- Area Chat: Mostrata solo se un contatto è attivo (Responsive) -->
 	<div class="w-full md:flex-1 flex-col bg-white {activeContact ? 'flex' : 'hidden md:flex'}">
 		{#if activeContact}
 			<div class="p-4 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">

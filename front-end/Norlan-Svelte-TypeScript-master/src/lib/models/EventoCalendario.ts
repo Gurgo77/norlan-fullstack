@@ -1,3 +1,7 @@
+/*
+Modello DTO per la gestione degli appuntamenti a calendario.
+Struttura i dati necessari per la visualizzazione e l'organizzazione di corsi, scadenze e meeting.
+*/
 export interface EventoCalendarioData {
 	idEvento: string;
 	titolo: string;

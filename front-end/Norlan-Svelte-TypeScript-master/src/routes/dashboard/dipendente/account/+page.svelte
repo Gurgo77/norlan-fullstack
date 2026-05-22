@@ -11,6 +11,12 @@
 	import { LavoratoreService } from '$lib/services/LavoratoreService';
 	import { cambiaPasswordUniversale } from '$lib/utils/cambioPassUtils';
 
+	/*
+Modulo Gestione Profilo Lavoratore (Employee Panel).
+Area personale dedicata al dipendente. Permette la consultazione dei propri
+dati anagrafici e di inquadramento aziendale (in sola lettura) e garantisce
+la gestione in totale autonomia delle credenziali di accesso (cambio password).
+*/
 	let isLoading = $state(true);
 	let utente = $state<DipendenteData | null>(null);
 
@@ -28,6 +34,7 @@
 	let passwordSuccessMessage = $state('');
 	let isChangingPassword = $state(false);
 
+	// Recupera il profilo del lavoratore basandosi sul token di sessione
 	onMount(async () => {
 		const session = AuthService.getSession();
 		if (session) {
@@ -40,6 +47,7 @@
 		isLoading = false;
 	});
 
+	// Gestisce la validazione e il cambio password, con feedback visivo temporizzato
 	async function handlePasswordChange() {
 		passwordError = '';
 		passwordSuccessMessage = '';
@@ -80,6 +88,7 @@
 </script>
 
 <div in:fade class="p-4 md:p-8 max-w-5xl mx-auto pb-24">
+	<!-- Header della pagina -->
 	<div class="mb-6 md:mb-10">
 		<h1 class="text-2xl md:text-3xl font-black text-[#1B4B6B] tracking-tight uppercase">IL MIO ACCOUNT</h1>
 		<p class="text-gray-400 text-xs md:text-sm font-medium mt-1">Gestisci le tue informazioni personali e le credenziali di accesso</p>
@@ -91,8 +100,10 @@
 			<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Caricamento profilo...</p>
 		</div>
 	{:else if utente}
+		<!-- Layout a Griglia Asimmetrica (1 colonna sx, 2 colonne dx) -->
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
+			<!-- Sidebar Sinistra: Card Profilo e Badge Aziendale -->
 			<div class="space-y-6 md:space-y-8">
 				<div class="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100 flex flex-col items-center">
 					<div class="w-24 h-24 md:w-32 md:h-32 bg-gray-100 rounded-2xl md:rounded-[35px] flex items-center justify-center border-4 border-white shadow-xl overflow-hidden shrink-0">
@@ -113,6 +124,7 @@
 				</div>
 			</div>
 
+			<!-- Colonna Principale Destra: Dati Personali e Sicurezza -->
 			<div class="lg:col-span-2 space-y-6 md:space-y-8">
 				<div class="bg-white p-6 md:p-10 rounded-3xl md:rounded-[40px] shadow-sm border border-gray-100">
 					<div class="flex items-center gap-3 mb-6 md:mb-10">
@@ -120,6 +132,7 @@
 						<h3 class="text-xs md:text-sm font-black text-[#1B4B6B] uppercase tracking-widest">Dettagli Personali</h3>
 					</div>
 
+					<!-- Sezione Dati Anagrafici (Input bloccati in sola lettura) -->
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
 						<div class="space-y-2">
 							<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Privata</label>
@@ -139,6 +152,7 @@
 					</div>
 
 					<div class="mt-8 md:mt-12 pt-8 md:pt-10 border-t border-gray-50 space-y-4">
+						<!-- Sezione Sicurezza: Accordion per il cambio password -->
 						<button
 								onclick={() => isPasswordFormVisible = !isPasswordFormVisible}
 								class="w-full flex items-center justify-between p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100 hover:border-[#1B4B6B] transition-all group">
@@ -157,6 +171,7 @@
 									<div class="space-y-2">
 										<label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password Attuale</label>
 										<div class="relative">
+											<!-- Form Password con Toggle visibilità (Icone Eye/EyeOff) -->
 											<input type={showVecchia ? "text" : "password"} bind:value={vecchiaPassword} class="w-full bg-white border border-gray-200 rounded-xl md:rounded-2xl pl-5 pr-12 py-3 text-sm font-bold text-[#1B4B6B] outline-none focus:border-[#1B4B6B] transition-all" />
 											<button type="button" onclick={() => showVecchia = !showVecchia} class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1B4B6B] transition-colors">
 												{#if showVecchia}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
