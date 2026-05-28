@@ -150,7 +150,8 @@ public class AnagraficaController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // Endpoint per la lettura e l'aggiornamento del profilo dell'amministratore di sistema    @GetMapping("/admin/{id}")
+    // Endpoint per la lettura e l'aggiornamento del profilo dell'amministratore di sistema
+    @GetMapping("/admin/{id}")
     public ResponseEntity<AdminDTO> getAdmin(@PathVariable Long id) {
         return adminService.getUnicoAdmin()
                 .map(admin -> ResponseEntity.ok(adminService.convertToDTO(admin)))

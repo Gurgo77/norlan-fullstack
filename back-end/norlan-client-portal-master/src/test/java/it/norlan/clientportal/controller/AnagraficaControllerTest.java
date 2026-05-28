@@ -1,8 +1,11 @@
 package it.norlan.clientportal.controller;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.norlan.clientportal.dto.*;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.service.*;
+import it.norlan.clientportal.factory.UtenteFactoryProvider;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,13 +15,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
 import java.util.List;
 import java.util.Optional;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 /**
  * Suite di collaudo (Unit Test) per il layer di esposizione REST (Controller).
  * Sfrutta il framework MockMvc per simulare le transazioni HTTP in isolamento dal database,
@@ -44,6 +50,10 @@ class AnagraficaControllerTest {
 
     @Mock
     private DipendenteService dipendenteService;
+
+    // Aggiunto il mock del Factory Provider necessario per risolvere la dipendenza del Controller
+    @Mock
+    private UtenteFactoryProvider utenteFactoryProvider;
 
     @InjectMocks
     private AnagraficaController anagraficaController;
@@ -115,6 +125,7 @@ class AnagraficaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idUtente").value(1));
     }
+
     // Negative Testing sul verbo GET: collauda la resilienza dell'API simulando l'assenza della risorsa per verificare il corretto mapping dell'errore (404 Not Found)
     @Test
     void getAziendaById_NonTrovata_Ritorna404() throws Exception {
@@ -233,7 +244,7 @@ class AnagraficaControllerTest {
     }
 
     @Test
-    void updateDocente_NonTrovato_Ritorna404() throws Exception {
+    void updateDocente_NonTrovata_Ritorna404() throws Exception {
         when(docenteService.findById(2)).thenReturn(Optional.empty());
 
         mockMvc.perform(put("/api/anagrafica/docenti/2")
@@ -263,11 +274,14 @@ class AnagraficaControllerTest {
     @Test
     void getAdmin_Trovato_Ritorna200() throws Exception {
         Admin admin = new Admin();
+        admin.setRuolo(Utente.Ruolo.ADMIN);
+
         AdminDTO dto = new AdminDTO();
         dto.setIdUtente(3);
+        lenient().when(utenteFactoryProvider.creaUtente(Utente.Ruolo.ADMIN)).thenReturn(admin);
 
         when(adminService.getUnicoAdmin()).thenReturn(Optional.of(admin));
-        when(adminService.convertToDTO(admin)).thenReturn(dto);
+        when(adminService.convertToDTO(any(Admin.class))).thenReturn(dto);
 
         mockMvc.perform(get("/api/anagrafica/admin/3"))
                 .andExpect(status().isOk())
@@ -276,6 +290,10 @@ class AnagraficaControllerTest {
 
     @Test
     void getAdmin_NonTrovato_Ritorna404() throws Exception {
+        Admin adminVuoto = new Admin();
+        adminVuoto.setRuolo(Utente.Ruolo.ADMIN);
+
+        lenient().when(utenteFactoryProvider.creaUtente(Utente.Ruolo.ADMIN)).thenReturn(adminVuoto);
         when(adminService.getUnicoAdmin()).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/anagrafica/admin/3"))

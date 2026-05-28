@@ -1,5 +1,6 @@
 package it.norlan.clientportal.service;
 
+import it.norlan.clientportal.factory.UtenteFactoryProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import it.norlan.clientportal.dto.AuthRequestDTO;
 import it.norlan.clientportal.factory.UtenteFactory;
@@ -27,7 +28,7 @@ public class RegistrazioneService {
     private AziendaRepository aziendaRepository;
 
     @Autowired
-    private UtenteFactory utenteFactory;
+    private UtenteFactoryProvider utenteFactory;
 
     @Autowired
     private PasswordEncoder passwordEncoder;

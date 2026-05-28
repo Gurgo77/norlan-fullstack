@@ -1,6 +1,7 @@
 package it.norlan.clientportal.service;
 import it.norlan.clientportal.dto.AuthRequestDTO;
 import it.norlan.clientportal.factory.UtenteFactory;
+import it.norlan.clientportal.factory.UtenteFactoryProvider;
 import it.norlan.clientportal.model.*;
 import it.norlan.clientportal.repository.AziendaRepository;
 import it.norlan.clientportal.repository.UtenteRepository;
@@ -32,7 +33,7 @@ class RegistrazioneServiceTest {
     private AziendaRepository aziendaRepository;
 
     @Mock
-    private UtenteFactory utenteFactory;
+    private UtenteFactoryProvider utenteFactory;
 
     @Mock
     private PasswordEncoder passwordEncoder;
