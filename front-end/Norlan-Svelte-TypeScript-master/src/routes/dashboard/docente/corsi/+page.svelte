@@ -70,15 +70,17 @@ validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedbac
 		try {
 			const tuttiCorsi = await FormazioneService.getAllCorsi();
 			const mieiCorsi = tuttiCorsi.filter(c => c.idDocente === session.idUtente);
+
+			// Inizializza l'array
 			corsi = mieiCorsi.map(c => ({ ...c, numeroIscritti: 0, isLoadingIscritti: true }));
+
+			// Forza la reattività di Svelte mappando un nuovo array per ogni aggiornamento
 			for (let i = 0; i < corsi.length; i++) {
 				try {
 					const iscritti = await FormazioneService.getIscrizioniByCorso(corsi[i].idCorso);
-					corsi[i].numeroIscritti = iscritti.length;
+					corsi = corsi.map(c => c.idCorso === corsi[i].idCorso ? { ...c, numeroIscritti: iscritti.length, isLoadingIscritti: false } : c);
 				} catch{
 					console.warn("Errore caricamento iscritti per corso", corsi[i].idCorso);
-				} finally {
-					corsi[i].isLoadingIscritti = false;
 				}
 			}
 		} catch (error) {
@@ -120,7 +122,11 @@ validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedbac
 			await FormazioneService.updateStatoCorso(corsoDaCambiareStato.idCorso, nuovoStatoPrevisto);
 			corsi = corsi.map(c => c.idCorso === corsoDaCambiareStato?.idCorso ? { ...c, stato: nuovoStatoPrevisto as StatoCorso } : c);
 			showCambioStatoModal = false; triggerBanner("Stato corso aggiornato!");
-		} catch { triggerBanner("Errore durante il cambio stato", 'ERR'); }
+		} catch (error: any) {
+			// Estrae il messaggio reale del backend (Es: "Violazione FSM: Impossibile passare allo stato...")
+			const msg = typeof error.response?.data === 'string' ? error.response.data : "Errore di sistema durante il cambio di stato.";
+			triggerBanner(msg, 'ERR');
+		}
 		finally { isActionLoading = false; }
 	}
 
@@ -182,8 +188,9 @@ validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedbac
 			const refresh = await httpClient.get(`/api/formazione/corsi/${selectedCorsoMateriale.idCorso}/materiali`);
 			materialiCaricati = refresh.data;
 			fileMateriale = null; titoloMateriale = '';
-		} catch {
-			triggerBanner("Errore durante l'upload", 'ERR');
+		} catch (error: any) {
+			const msg = typeof error.response?.data === 'string' ? error.response.data : "Errore durante l'upload";
+			triggerBanner(msg, 'ERR');
 		} finally {
 			isUploadingMateriale = false;
 		}
@@ -209,7 +216,10 @@ validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedbac
 			await FormazioneService.controfirmaRegistro(selectedCorso.idCorso);
 			corsi = corsi.map(c => c.idCorso === selectedCorso!.idCorso ? { ...c, stato: StatoCorso.VALIDATO } : c);
 			showModalFirma = false; triggerBanner("Registro firmato!");
-		} catch { triggerBanner("Errore durante la firma", 'ERR'); }
+		} catch (error: any) {
+			const msg = typeof error.response?.data === 'string' ? error.response.data : "Errore durante la firma";
+			triggerBanner(msg, 'ERR');
+		}
 		finally { isActionLoading = false; }
 	}
 
@@ -250,7 +260,7 @@ validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedbac
 					{#each corsiDaFirmare as corso (corso.idCorso)}
 						<DashboardCorsoCard
 								ruolo="docente"
-								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }}
+								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale', numeroIscritti: corso.numeroIscritti }}
 								onFirmaRegistro={() => apriValidazioneRegistro(corso)}
 						/>
 					{/each}
@@ -334,7 +344,7 @@ validazione burocratica (firma dei registri) e monitoraggio qualitativo (feedbac
 					{#each corsiArchiviati as corso (corso.idCorso)}
 						<DashboardCorsoCard
 								ruolo="docente"
-								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale' }}
+								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: 'COMPLETATO', dataSvolgimento: formattaData(corso.dataOrario), luogo: 'Sede NorLan / Aula Virtuale', numeroIscritti: corso.numeroIscritti }}
 								onAzioneCorso={() => apriStatisticheFeedback(corso)}
 						/>
 					{/each}

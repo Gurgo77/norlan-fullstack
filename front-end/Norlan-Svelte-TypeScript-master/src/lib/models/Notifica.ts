@@ -8,7 +8,6 @@ export interface NotificaData {
 	idDestinatario: number;
 	emailDestinatario: string;
 	messaggio: string;
-	letta: boolean;
 	priorita: Priorita;
 	dataInvio: string;
 }
@@ -18,7 +17,6 @@ export class Notifica {
 	idDestinatario: number;
 	emailDestinatario: string;
 	messaggio: string;
-	letta: boolean;
 	priorita: Priorita;
 	dataInvio: string;
 
@@ -27,7 +25,6 @@ export class Notifica {
 		this.idDestinatario = data.idDestinatario;
 		this.emailDestinatario = data.emailDestinatario;
 		this.messaggio = data.messaggio;
-		this.letta = data.letta;
 		this.priorita = data.priorita;
 		this.dataInvio = data.dataInvio;
 	}

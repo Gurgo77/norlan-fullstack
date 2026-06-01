@@ -157,14 +157,6 @@ e gestire il flusso burocratico di controfirma e consegna degli attestati uffici
 		await scaricaDocumentoUniversale(attestato.idDocumento, attestato.filePath);
 	}
 
-	async function scaricaAttestato(corso: CorsoStato) {
-		if (!corso.idDocumento || !corso.filePath) {
-			showToast("L'attestato non è ancora disponibile.", "error");
-			return;
-		}
-		await scaricaDocumentoUniversale(corso.idDocumento, corso.filePath);
-	}
-
 	function handleFileChange(event: Event, idDocumento: number) {
 		const input = event.target as HTMLInputElement;
 		if (input.files && input.files.length > 0) {
@@ -304,7 +296,6 @@ e gestire il flusso burocratico di controfirma e consegna degli attestati uffici
 								ruolo="azienda"
 								corso={{ id: corso.idCorso, titolo: corso.titolo, stato: corso.stato, dataSvolgimento: corso.dataSvolgimento, luogo: 'Sede NorLan / Aula Virtuale' }}
 								onAnnullaIscrizione={corso.stato === 'DA_INIZIARE' ? () => preparaRimuoviIscrizione(dip.id, corso.idCorso, corso.titolo) : undefined}
-								onDownloadAttestato={() => scaricaAttestato(corso)}
 						/>
 					{/each}
 				</div>

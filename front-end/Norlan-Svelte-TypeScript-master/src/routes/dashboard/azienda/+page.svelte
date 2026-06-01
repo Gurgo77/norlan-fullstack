@@ -12,6 +12,7 @@
 	import { LavoratoreService, type DipendenteDTO } from '$lib/services/LavoratoreService';
 	import { FormazioneService } from '$lib/services/FormazioneService';
 	import { ChatService } from '$lib/services/ChatService';
+	import { ComplianceService } from '$lib/services/ComplianceService';
 	import type { AziendaData } from '$lib/models/Azienda';
 	import type { Documento } from '$lib/models/Documento';
 	import type { CorsoFormazione } from '$lib/models/CorsoFormazione';
@@ -41,6 +42,7 @@ e stabilisce la connessione in background con il team di supporto (Chat).
 	let dipendenti = $state<DipendenteDTO[]>([]);
 	let prossimiCorsi = $state<CorsoFormazione[]>([]);
 	let dpisAzienda = $state<any[]>([]);
+	let reportCompliance = $state<any>(null);
 
 	const dataOggi = new Date().toLocaleDateString('it-IT', {
 		weekday: 'long', day: '2-digit', month: 'short', year: 'numeric'
@@ -60,6 +62,15 @@ e stabilisce la connessione in background con il team di supporto (Chat).
 	);
 
 	const infoStato = $derived(() => {
+		if (reportCompliance && reportCompliance.stato === 'CRITICO') {
+			return {
+				label: 'CRITICO',
+				color: 'bg-red-500',
+				icon: AlertTriangle,
+				text: 'Rilevato da Audit di Compliance'
+			};
+		}
+
 		const haDocsScaduti = documentiScadenza.some(d => getInfoScadenza(d.dataScadenza).stato === 'DANGER');
 		const haDpiScaduti = alertDpis.some(dpi => getInfoScadenza(dpi.dataScadenzaRevisione || dpi.dataScadenza).stato === 'DANGER');
 
@@ -103,16 +114,20 @@ e stabilisce la connessione in background con il team di supporto (Chat).
 		try {
 			const profilo = await AnagraficaService.getAziendaById(currentUser.idUtente) as AziendaData;
 			utenteAzienda = profilo;
-			const [docs, lavoratori, corsi, cronologiaChat] = await Promise.all([
+
+			const [docs, lavoratori, corsi, cronologiaChat, report] = await Promise.all([
 				DocumentoService.getDocumentiByAzienda(currentUser.idUtente),
 				LavoratoreService.getByAzienda(currentUser.idUtente),
 				FormazioneService.getAllCorsi(),
-				ChatService.getCronologia(currentUser.idUtente, STAFF_ID)
+				ChatService.getCronologia(currentUser.idUtente, STAFF_ID),
+				ComplianceService.getStatoComplianceAzienda(currentUser.idUtente)
 			]);
+
 			documentiScadenza = docs.filter(doc => doc.tipologia !== TipoDocumento.ATTESTATO_CORSO);
 			dipendenti = lavoratori;
 			prossimiCorsi = corsi.filter(c => c.stato === 'PROGRAMMATO' || !c.stato).slice(0, 4);
 			messaggiChat = cronologiaChat;
+			reportCompliance = report;
 
 			const dpiPromises = lavoratori.map((dip: any) =>
 					LavoratoreService.getDpiByLavoratore(dip.idUtente)

@@ -1,84 +1,73 @@
 import { SistemaService } from '$lib/services/SistemaService';
 import type { Notifica } from '$lib/models/Notifica';
-/*
-Manager reattivo per la gestione del sistema di notifiche utente.
-Incapsula lo stato (conteggio, elenco, visibilità) e le operazioni di inizializzazione, lettura e toggle.
-*/
 
-// Factory function per creare un'istanza reattiva (Svelte 5+) del gestore notifiche
-export function createNotificheManager() {
-	let count = $state<number>(0);
-	let isOpen = $state(false);
-	let list = $state<Notifica[]>([]);
-	let isLoading = $state(false);
-	let currentUserId: number | null = null;
+export class NotificheManager {
+	count = $state<number>(0);
+	isOpen = $state(false);
+	list = $state<Notifica[]>([]);
+	isLoading = $state(false);
 
-	// Inizializza il contatore delle notifiche per l'utente loggato all'avvio dell'applicazione
-	async function init(idUtente: number) {
-		currentUserId = idUtente;
+	currentUserId: number | null = null;
+	private pollingInterval: any = null;
+
+	private parseCount(rawCount: any): number {
+		if (typeof rawCount === 'object' && rawCount !== null) {
+			const safeCount = rawCount as { data?: string | number };
+			return Number(Object.values(rawCount)[0] || safeCount.data || 0);
+		}
+		return Number(rawCount || 0);
+	}
+
+	private async fetchCount() {
+		if (!this.currentUserId) return;
 		try {
-			const rawCount = await SistemaService.countNotificheNonLette(idUtente);
-			if (typeof rawCount === 'object' && rawCount !== null) {
-				const safeCount = rawCount as { data?: string | number };
-				count = Number(Object.values(rawCount)[0] || safeCount.data || 0);
-			} else {
-				count = Number(rawCount || 0);
-			}
+			const rawCount = await SistemaService.countNotificheNonLette(this.currentUserId);
+			this.count = this.parseCount(rawCount);
 		} catch (error) {
-			console.error('Errore durante il recupero delle notifiche:', error);
-			count = 0;
+			console.error('Errore durante il fetch del conteggio:', error);
 		}
 	}
 
-	// Gestisce l'apertura/chiusura del pannello notifiche e carica i dati necessari in modo asincrono
-	async function toggle(event: Event) {
+	async init(idUtente: number) {
+		this.currentUserId = idUtente;
+		await this.fetchCount();
+
+		if (this.pollingInterval) clearInterval(this.pollingInterval);
+		this.pollingInterval = setInterval(() => this.fetchCount(), 3000);
+	}
+
+	toggle = async (event: Event) => {
 		event.stopPropagation();
-		isOpen = !isOpen;
+		this.isOpen = !this.isOpen;
 
-		if (isOpen && currentUserId) {
-			isLoading = true;
+		if (this.isOpen && this.currentUserId) {
+			this.isLoading = true;
 			try {
-				list = await SistemaService.getNotificheNonLette(currentUserId);
+				await this.fetchCount();
+				this.list = await SistemaService.getNotificheNonLette(this.currentUserId);
 			} catch (error) {
-				console.error('Errore durante il caricamento delle notifiche:', error);
+				console.error('Errore durante il caricamento lista:', error);
 			} finally {
-				isLoading = false;
+				this.isLoading = false;
 			}
 		}
 	}
 
-	// Segna una notifica come letta lato server e aggiorna localmente lo stato reattivo (list/count)
-	async function leggi(idNotifica: number) {
+	elimina = async (idNotifica: number) => {
 		try {
-			await SistemaService.segnaLetta(idNotifica);
-			list = list.filter((n) => n.idNotifica !== idNotifica);
-			count = Math.max(0, count - 1);
+			await SistemaService.deleteNotifica(idNotifica);
+			this.list = this.list.filter((n) => n.idNotifica !== idNotifica);
+			this.count = Math.max(0, this.count - 1);
 		} catch (error) {
-			console.error('Errore nel segnare la notifica come letta:', error);
+			console.error("Errore durante l'eliminazione:", error);
 		}
 	}
 
-	// Metodo helper per chiudere forzatamente il pannello delle notifiche
-	function close() {
-		if (isOpen) isOpen = false;
+	close = () => {
+		if (this.isOpen) this.isOpen = false;
 	}
+}
 
-	return {
-		get count() {
-			return count;
-		},
-		get list() {
-			return list;
-		},
-		get isOpen() {
-			return isOpen;
-		},
-		get isLoading() {
-			return isLoading;
-		},
-		init,
-		toggle,
-		leggi,
-		close
-	};
+export function createNotificheManager() {
+	return new NotificheManager();
 }

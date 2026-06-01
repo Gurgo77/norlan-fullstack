@@ -168,7 +168,10 @@ dei contenuti specifici del modulo di docenza.
 									</div>
 								{:else if notificheManager.list.length > 0}
 									{#each notificheManager.list as notifica (notifica.idNotifica)}
-										<NotificaItem {notifica} onLeggi={notificheManager.leggi} />
+										<NotificaItem
+												{notifica}
+												onElimina={notificheManager.elimina}
+										/>
 									{/each}
 								{:else}
 									<div class="p-8 text-center text-gray-400">

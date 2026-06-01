@@ -14,7 +14,7 @@ Modulo Registro DPI (Employee Panel).
 Area dedicata alla visualizzazione e al controllo delle dotazioni di protezione
 individuale (DPI) assegnate al lavoratore. Permette il monitoraggio dello stato
 di validità (scadenze revisione) e fornisce un canale diretto per segnalare
-necessità di sostituzione o revisione dei dispositivi.
+necessità di sostituzione o revisione dei dispositivi tramite chat aziendale.
 */
 	type OpzioneFiltro = 'TUTTI' | StatoScadenza;
 
@@ -101,16 +101,17 @@ necessità di sostituzione o revisione dei dispositivi.
 		attenzione: dotazioni.filter(d => d.stato === 'WARNING').length
 	});
 
-	// Genera un messaggio pre-compilato e naviga verso la chat di supporto
-	function richiediSostituzione(idDpi: number | string) {
-		const dpi = dotazioni.find(d => d.id === idDpi);
-		if (!dpi) return;
-		const testo = `Salve, vorrei segnalare la necessità di sostituire o revisionare il seguente dispositivo: ${dpi.nome} (Matricola: ${dpi.matricola}).`;
-		goto(`/dashboard/dipendente/comunicazioni?testo=${encodeURIComponent(testo)}`);
-	}
-
 	function impostaFiltro(opzione: OpzioneFiltro) {
 		filtroStato = opzione;
+	}
+
+	// Naviga verso la chat puntando direttamente all'ID dell'Azienda associata al dipendente
+	function richiediSostituzione() {
+		if (!utente || !(utente as any).idAzienda) {
+			alert("Impossibile contattare l'azienda: dati mancanti.");
+			return;
+		}
+		goto(`/dashboard/dipendente/messaggi?chatId=${(utente as any).idAzienda}`);
 	}
 
 </script>
@@ -185,7 +186,7 @@ necessità di sostituzione o revisione dei dispositivi.
                       dataRevisione: dpi.revisione,
                       dataConsegna: dpi.consegna
                    }}
-							onRichiediSostituzione={richiediSostituzione}
+							onRichiediSostituzione={() => richiediSostituzione()}
 					/>
 				</div>
 			{/each}

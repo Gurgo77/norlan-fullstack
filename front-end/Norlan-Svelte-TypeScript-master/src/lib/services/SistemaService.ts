@@ -14,13 +14,6 @@ export interface CreateLogRequest {
 export class SistemaService {
 	private static readonly basePath = '/api/sistema';
 
-	static async getNotificheUtente(idUtente: number | string): Promise<Notifica[]> {
-		const response = await httpClient.get<NotificaData[]>(
-			`${this.basePath}/notifiche/utente/${idUtente}`
-		);
-		return response.data.map((item) => new Notifica(item));
-	}
-
 	// Recupera l'elenco delle notifiche ancora da visualizzare per l'utente specificato
 	static async getNotificheNonLette(idUtente: number | string): Promise<Notifica[]> {
 		const response = await httpClient.get<NotificaData[]>(
@@ -37,11 +30,6 @@ export class SistemaService {
 
 		const count = Number(response.data);
 		return isNaN(count) ? 0 : count;
-	}
-
-	// Aggiorna lo stato della notifica impostandola come letta nel database
-	static async segnaLetta(idNotifica: number | string): Promise<void> {
-		await httpClient.patch(`${this.basePath}/notifiche/${idNotifica}/letta`);
 	}
 
 	static async deleteNotifica(idNotifica: number | string): Promise<void> {
@@ -67,7 +55,7 @@ export class SistemaService {
 		return new LogSincronizzazione(response.data);
 	}
 
-	// Esegue la rimozione dei record di log che superano la soglia di anzianità definita
+	// Esegue la rimozione dei record di log che superano il limite definito
 	static async pulisciLogVecchi(giorniVecchiaia: number = 30): Promise<void> {
 		await httpClient.delete(`${this.basePath}/logs/pulizia`, {
 			params: { giorniVecchiaia }

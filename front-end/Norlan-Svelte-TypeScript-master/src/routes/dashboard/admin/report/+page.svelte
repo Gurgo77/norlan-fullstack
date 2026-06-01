@@ -3,24 +3,25 @@
 	import { fade } from 'svelte/transition';
 	import {
 		Activity, FileText, ShieldAlert, Search, Download,
-		User, ChevronLeft, ChevronRight, Filter
+		User, ChevronLeft, ChevronRight, Filter, Trash2
 	} from 'lucide-svelte';
 
 	import { SistemaService } from '$lib/services/SistemaService';
 	import type { LogSincronizzazione } from '$lib/models/LogSincronizzazione';
 	import StatCard from '$lib/Components/UI/StatCard.svelte';
+
 	/*
-Modulo Report & Audit Log (Dashboard Admin).
-Gestisce la visualizzazione, il filtraggio e l'esportazione CSV della cronologia
-delle attività di sistema. Utilizza una logica di categorizzazione automatica
-per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
-*/
+    Modulo Report & Audit Log (Dashboard Admin).
+    Gestisce la visualizzazione, il filtraggio e l'esportazione CSV della cronologia
+    delle attività di sistema. Integra funzionalità di pulizia (manutenzione DB) e
+    ottimizzazione server-side per il recupero dei log di errore.
+    */
+
 	let logs = $state<LogSincronizzazione[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 
 	type FiltroGravita = 'TUTTI' | 'INFO' | 'ERROR';
-	const filtriDisponibili: FiltroGravita[] = ['TUTTI' , 'INFO' , 'ERROR'];
 	let filtroGravita = $state<FiltroGravita>('TUTTI');
 
 	let currentPage = $state(1);
@@ -32,17 +33,40 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 		currentPage = 1;
 	});
 
-	// Recupera tutti i log dal server e ordina per timestamp decrescente
+	// Recupera tutti i log dal server all'avvio
 	onMount(async () => {
+		await ricaricaTuttiILog();
+	});
+
+	// Funzione base per caricare tutti i log
+	async function ricaricaTuttiILog() {
+		isLoading = true;
 		try {
 			logs = await SistemaService.getAllLogs();
 			logs.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
+			filtroGravita = 'TUTTI';
 		} catch (error) {
 			console.error("Errore durante il recupero dei log di sistema:", error);
 		} finally {
 			isLoading = false;
 		}
-	});
+	}
+
+	// Interroga il database per scaricare ESCLUSIVAMENTE i log di errore (Ottimizzazione)
+	async function caricaSoloErroriDalServer() {
+		isLoading = true;
+		try {
+			logs = await SistemaService.getErrorLogs();
+			logs.sort((a, b) => new Date(b.dataEvento).getTime() - new Date(a.dataEvento).getTime());
+			filtroGravita = 'ERROR';
+			searchQuery = ''; // Resetta la ricerca testuale
+		} catch (error) {
+			console.error("Errore durante il recupero dei log di errore:", error);
+			alert("Errore durante il recupero degli errori dal server.");
+		} finally {
+			isLoading = false;
+		}
+	}
 
 	function getCategory(desc: string): string {
 		const test = desc.toLowerCase();
@@ -52,7 +76,7 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 		return 'SISTEMA';
 	}
 
-	// Logica di filtraggio avanzata per descrizioni e stato di gravità (INFO/ERROR)
+	// Logica di filtraggio client-side per la ricerca testuale
 	const filteredLogs = $derived(
 			logs.filter(l => {
 				const matchSearch = l.descrizioneEvento.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -74,7 +98,33 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 	const documentiProcessati = $derived(logs.filter(l => getCategory(l.descrizioneEvento) === 'DOCUMENTI').length);
 	const erroriSicurezza = $derived(logs.filter(l => !l.esitoPositivo).length);
 
-	// Esporta la vista corrente in formato CSV, inclusi timestamp e dettagli tecnici
+	// Esegue la pulizia del database e traccia l'azione
+	async function eseguiPulizia() {
+		const conferma = confirm("Sei sicuro di voler eliminare definitivamente tutti i log più vecchi di 30 giorni? Questa azione non è reversibile.");
+		if (!conferma) return;
+
+		isLoading = true;
+		try {
+			await SistemaService.pulisciLogVecchi(30);
+
+			// Registriamo l'evento di pulizia
+			await SistemaService.createLog({
+				descrizioneEvento: 'PULIZIA LOG SISTEMA',
+				noteTecniche: 'Eliminati definitivamente i log antecedenti a 30 giorni.',
+				esitoPositivo: true
+			} as any);
+
+			await ricaricaTuttiILog();
+			alert("Pulizia di manutenzione completata con successo!");
+		} catch (error) {
+			console.error("Errore durante la pulizia dei log:", error);
+			alert("Errore durante la pulizia dei log dal server.");
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	// Esporta la vista corrente in formato CSV e traccia l'esportazione
 	function esportaReport() {
 		if (filteredLogs.length === 0) {
 			alert('Nessun log da esportare con i filtri attuali.');
@@ -100,6 +150,13 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 		link.download = `NorLan_Audit_Log_${new Date().toISOString().split('T')[0]}.csv`;
 		link.click();
 		URL.revokeObjectURL(url);
+
+		// Registriamo l'evento di esportazione in background per questioni di sicurezza
+		SistemaService.createLog({
+			descrizioneEvento: 'ESPORTAZIONE AUDIT LOG',
+			noteTecniche: `Esportati ${filteredLogs.length} record in formato CSV dall'Amministratore.`,
+			esitoPositivo: true
+		} as any).catch(e => console.error("Impossibile salvare il log di esportazione", e));
 	}
 </script>
 
@@ -110,16 +167,25 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 			<p class="text-gray-500 font-bold uppercase text-[10px] md:text-xs tracking-tighter mt-1">Tracciamento delle attività e statistiche di sistema.</p>
 		</div>
 
-		<button
-				onclick={esportaReport}
-				class="w-full md:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
-		>
-			<Download size={18} />
-			Esporta Registri
-		</button>
+		<div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+			<button
+					onclick={eseguiPulizia}
+					class="w-full sm:w-auto justify-center bg-white text-red-600 border-2 border-red-600 px-6 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+			>
+				<Trash2 size={18} />
+				Pulisci Vecchi (30gg)
+			</button>
+
+			<button
+					onclick={esportaReport}
+					class="w-full sm:w-auto justify-center bg-white text-[#1B4B6B] border-2 border-[#1B4B6B] px-8 py-3.5 rounded-xl font-extrabold uppercase text-xs shadow-sm hover:bg-[#1B4B6B] hover:text-white transition-all flex items-center gap-3"
+			>
+				<Download size={18} />
+				Esporta Registri
+			</button>
+		</div>
 	</div>
 
-	<!-- Dashboard KPI: Card informative per un colpo d'occhio rapido sui trend di sistema -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
 		<StatCard titolo="Operazioni Totali" valore={operazioniTotali} icona={Activity} bgIcona="bg-blue-50" testoIcona="text-[#1B4B6B]" hoverBgIcona="group-hover:bg-[#1B4B6B]"/>
 		<StatCard titolo="Accessi Rilevati" valore={accessiRilevati} icona={User} bgIcona="bg-green-50" testoIcona="text-green-600" hoverBgIcona="group-hover:bg-green-600"/>
@@ -132,7 +198,6 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 			<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
 				<div class="relative w-full md:w-72">
 					<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-					<!-- Filtri di ricerca: Ricerca testuale e toggle per gravità (filtroGravita) -->
 					<input
 							bind:value={searchQuery}
 							type="text"
@@ -140,15 +205,22 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 							class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#1B4B6B] outline-none transition-all font-bold uppercase"
 					/>
 				</div>
-				<div class="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto justify-center">
-					{#each filtriDisponibili as filtro (filtro)}
-						<button
-								onclick={() => filtroGravita = filtro}
-								class="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all {filtroGravita === filtro ? 'bg-white shadow text-[#1B4B6B]' : 'text-gray-400 hover:text-gray-600'}"
-						>
-							{filtro}
-						</button>
-					{/each}
+
+				<div class="flex gap-2 w-full sm:w-auto">
+					<button
+							onclick={ricaricaTuttiILog}
+							class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border {filtroGravita !== 'ERROR' ? 'bg-white border-gray-200 text-[#1B4B6B] shadow-sm' : 'bg-gray-50 border-transparent text-gray-400 hover:text-gray-600'}"
+					>
+						Visualizza Tutti
+					</button>
+
+					<button
+							onclick={caricaSoloErroriDalServer}
+							class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 {filtroGravita === 'ERROR' ? 'bg-red-50 text-red-600 border border-red-200 shadow-sm' : 'bg-white border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50/50'}"
+					>
+						<ShieldAlert size={14} />
+						Carica solo Errori
+					</button>
 				</div>
 			</div>
 
@@ -222,7 +294,6 @@ per facilitare il monitoraggio di sicurezza e la diagnostica degli errori.
 					Pagina {currentPage} di {totalPages}
 				</p>
 				<div class="flex gap-2">
-					<!-- Paginazione: Navigazione client-side tra i risultati estratti -->
 					<button
 							disabled={currentPage === 1}
 							onclick={() => currentPage--}
