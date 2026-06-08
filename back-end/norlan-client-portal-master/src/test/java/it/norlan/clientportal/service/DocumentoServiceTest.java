@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+
 /**
  * Suite di collaudo (Unit Test) per l'orchestrazione del Workflow Documentale.
  * Verifica l'integrazione del Behavioral Pattern (State), la protezione temporale contro caricamenti
@@ -186,7 +187,8 @@ class DocumentoServiceTest {
         documento.setStato(new StatoInAttesaFirma());
         when(documentoRepository.findById(100)).thenReturn(Optional.of(documento));
 
-        documentoService.approvaDocumento(100);
+        // CORREZIONE: aggiunto 'null' come secondo parametro
+        documentoService.approvaDocumento(100, null);
 
         assertInstanceOf(StatoApprovato.class, documento.getStato());
         verify(documentoRepository).save(documento);
@@ -210,7 +212,8 @@ class DocumentoServiceTest {
         when(iscrizioneRepository.findByDocumentoAttestatoIdDocumento(100)).thenReturn(List.of(isc));
         when(adminService.getUnicoAdmin()).thenReturn(Optional.of(new Admin()));
 
-        documentoService.approvaDocumento(100);
+        // CORREZIONE: aggiunto 'null' come secondo parametro
+        documentoService.approvaDocumento(100, null);
 
         verify(notificaService, times(2)).inviaNotifica(eq(d), anyString(), eq(Notifica.Priorita.ALTA), any());
         verify(notificaService, times(2)).inviaNotifica(any(Admin.class), anyString(), eq(Notifica.Priorita.MEDIA), any());

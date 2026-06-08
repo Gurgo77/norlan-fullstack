@@ -171,7 +171,9 @@ e gestire il flusso burocratico di controfirma e consegna degli attestati uffici
 		if (!fileFirmati[idDocumento]) return;
 		isActionLoading = true;
 		try {
-			await DocumentoService.approvaDocumento(idDocumento);
+			// MODIFICA QUI: Passiamo il file salvato al DocumentoService!
+			await DocumentoService.approvaDocumento(idDocumento, fileFirmati[idDocumento]);
+
 			attestatiDaFirmare = attestatiDaFirmare.filter(d => d.idDocumento !== idDocumento);
 			delete fileFirmati[idDocumento];
 			showToast("Attestati archiviati e consegnati!", "success");

@@ -44,7 +44,6 @@ public class DocumentoController {
     @Autowired
     private FileStorageService fileStorageService;
 
-    // Endpoint per la ricerca dei documenti e il download dei file fisici memorizzati sul server
     @GetMapping
     public ResponseEntity<List<DocumentoDTO>> getAllDocumenti() {
         List<DocumentoDTO> documenti = documentoService.findAll()
@@ -90,7 +89,6 @@ public class DocumentoController {
         return ResponseEntity.ok(documenti);
     }
 
-    // Gestisce il caricamento multipart dei file, salvando l'allegato su disco e i metadati sul database
     @PostMapping(value = "/azienda/{idAzienda}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadDocumento(
             @PathVariable Integer idAzienda,
@@ -123,17 +121,28 @@ public class DocumentoController {
         }).orElse(ResponseEntity.badRequest().body("Azienda non trovata con ID: " + idAzienda));
     }
 
-    // Endpoint per l'avanzamento degli stati nel ciclo di vita del documento (firma, approvazione, archiviazione)
     @PatchMapping("/{id}/richiedi-firma")
     public ResponseEntity<Void> richiediFirma(@PathVariable Integer id) {
         documentoService.richiediFirmaDocumento(id);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/{id}/approva")
-    public ResponseEntity<Void> approva(@PathVariable Integer id) {
-        documentoService.approvaDocumento(id);
-        return ResponseEntity.ok().build();
+    @PatchMapping(value = "/{id}/approva")
+    public ResponseEntity<?> approva(
+            @PathVariable Integer id,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
+        try {
+            String nuovoFilePath = null;
+            if (file != null && !file.isEmpty()) {
+                nuovoFilePath = fileStorageService.storeFile(file, "documenti_approvati/doc_" + id);
+            }
+            documentoService.approvaDocumento(id, nuovoFilePath);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Errore interno durante l'approvazione: " + e.getMessage());
+        }
     }
 
     @PatchMapping("/{id}/archivia")
@@ -147,7 +156,6 @@ public class DocumentoController {
         return ResponseEntity.badRequest().body(e.getMessage());
     }
 
-    // Rimuove permanentemente il documento dal database
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDocumento(@PathVariable Integer id) {
         return documentoService.findById(id).map(doc -> {
@@ -155,7 +163,7 @@ public class DocumentoController {
             return ResponseEntity.noContent().<Void>build();
         }).orElse(ResponseEntity.notFound().build());
     }
-    // Endpoint dedicati alla gestione del flusso e dello stato delle richieste di rinnovo dei documenti
+
     @GetMapping("/rinnovi")
     public ResponseEntity<List<RichiestaRinnovoDocumentoDTO>> getAllRinnovi() {
         List<RichiestaRinnovoDocumentoDTO> rinnovi = rinnovoService.findAll()

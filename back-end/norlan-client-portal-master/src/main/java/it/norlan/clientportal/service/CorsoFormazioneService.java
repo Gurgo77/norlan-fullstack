@@ -2,9 +2,11 @@ package it.norlan.clientportal.service;
 
 import it.norlan.clientportal.dto.CorsoFormazioneDTO;
 import it.norlan.clientportal.model.CorsoFormazione;
+import it.norlan.clientportal.model.Feedback;
 import it.norlan.clientportal.model.IscrizioneCorso;
 import it.norlan.clientportal.model.MaterialeDidattico;
 import it.norlan.clientportal.repository.CorsoFormazioneRepository;
+import it.norlan.clientportal.repository.FeedbackRepository;
 import it.norlan.clientportal.repository.IscrizioneCorsoRepository;
 import it.norlan.clientportal.repository.MaterialeDidatticoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +22,6 @@ import java.util.*;
  * Gestisce l'intero ciclo di vita didattico implementando una rigorosa Macchina a Stati Finiti (FSM)
  * che impedisce transizioni illegali e coordina log, iscrizioni e comunicazioni asincrone con i partecipanti.
  */
-
 @Service
 public class CorsoFormazioneService {
 
@@ -32,6 +33,9 @@ public class CorsoFormazioneService {
 
     @Autowired
     private MaterialeDidatticoRepository materialeRepository;
+
+    @Autowired
+    private FeedbackRepository feedbackRepository; // Aggiunto per l'eliminazione a cascata dei feedback
 
     @Autowired
     private NotificaService notificaService;
@@ -52,11 +56,20 @@ public class CorsoFormazioneService {
         return corsoRepository.findById(id);
     }
 
+    /**
+     * Elimina il corso eseguendo una pulizia a cascata per prevenire errori 409 (Foreign Key Constraint).
+     * Ordine di eliminazione: Materiali -> Feedback -> Iscrizioni -> Corso.
+     */
     @Transactional
     public void eliminaCorso(Integer id) {
         List<MaterialeDidattico> materiali = materialeRepository.findByCorsoIdCorso(id);
         if (!materiali.isEmpty()) {
             materialeRepository.deleteAll(materiali);
+        }
+
+        List<Feedback> feedbackDelCorso = feedbackRepository.findByIscrizione_Id_IdCorso(id);
+        if (!feedbackDelCorso.isEmpty()) {
+            feedbackRepository.deleteAll(feedbackDelCorso);
         }
 
         List<IscrizioneCorso> iscrizioni = iscrizioneRepository.findByCorsoIdCorso(id);

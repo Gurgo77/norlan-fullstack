@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 /**
  * Suite di collaudo (Unit Test) per il layer REST di gestione documentale.
  * Verifica le operazioni di I/O (Upload/Download di MultipartFile) tramite simulazione in memoria
@@ -178,7 +179,8 @@ class DocumentoControllerTest {
     void approva_Effettuata_Ritorna200() throws Exception {
         mockMvc.perform(patch("/api/documenti/1/approva"))
                 .andExpect(status().isOk());
-        verify(documentoService).approvaDocumento(1);
+        // CORREZIONE: aggiunto 'null' come secondo parametro atteso
+        verify(documentoService).approvaDocumento(1, null);
     }
 
     @Test

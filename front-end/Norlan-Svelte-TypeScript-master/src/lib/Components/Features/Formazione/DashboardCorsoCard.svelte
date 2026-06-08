@@ -13,7 +13,6 @@
         UserCheck,
         Calendar,
         MapPin,
-        FileText,
         Trash2,
         BarChart,
         CheckSquare,
@@ -29,7 +28,6 @@
         stato: StatoCorso;
         luogo?: string;
         dataSvolgimento?: string;
-        materiali?: { id: number; titolo: string; path?: string }[];
         numeroIscritti?: number;
     }
 
@@ -43,7 +41,6 @@
         onEliminaCorso?: () => void;
         onDownloadAttestato?: () => void;
         onConcludiCorso?: () => void;
-        onDownloadMateriale?: (id: number) => void;
     }
 
     let {
@@ -55,8 +52,7 @@
         onAnnullaIscrizione,
         onEliminaCorso,
         onDownloadAttestato,
-        onConcludiCorso,
-        onDownloadMateriale
+        onConcludiCorso
     }: Props = $props();
 
     // Funzione helper che mappa lo stato attuale del corso a un set di stili
@@ -106,13 +102,6 @@
                     <span class="truncate">{corso.luogo}</span>
                 </div>
             {/if}
-
-            {#if corso.materiali && corso.materiali.length > 0}
-                <div class="flex items-center gap-2 text-[10px] font-bold uppercase text-gray-500">
-                    <FileText size={14} class="text-[#1B4B6B] shrink-0" />
-                    <span class="truncate">{corso.materiali.length} File caricati</span>
-                </div>
-            {/if}
         </div>
     </div>
 
@@ -133,7 +122,7 @@
                     <button
                             onclick={onAzioneCorso}
                             class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1B4B6B] px-4 py-2.5 text-[10px] font-black uppercase text-white shadow-md transition-all hover:bg-[#1B4B6B]/90 hover:shadow-lg">
-                        <UploadCloud size={14} /> Materiale
+                        <UploadCloud size={14} /> Gestisci
                     </button>
                     {#if onConcludiCorso}
                         <button
@@ -193,23 +182,9 @@
         {#if ruolo === 'dipendente' || ruolo === 'azienda'}
             <div class="flex w-full flex-col gap-2">
                 {#if corso.stato === 'IN_SVOLGIMENTO'}
-                    {#if corso.materiali && corso.materiali.length > 0}
-                        {#each corso.materiali as mat}
-                            <button
-                                    onclick={() => onDownloadMateriale && onDownloadMateriale(mat.id)}
-                                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-4 py-2.5 text-[10px] font-black uppercase text-blue-600 transition-all hover:bg-blue-100"
-                            >
-                                <Download size={14} /> Scarica {mat.titolo}
-                            </button>
-                        {/each}
-                    {:else}
-                        <button
-                                onclick={onAzioneCorso}
-                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-4 py-2.5 text-[10px] font-black uppercase text-blue-600 transition-all hover:bg-blue-100"
-                        >
-                            <BookOpen size={14} /> Materiale di Studio
-                        </button>
-                    {/if}
+                    <div class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase text-blue-600">
+                        <PlayCircle size={14} /> In Svolgimento
+                    </div>
                 {:else if corso.stato === 'COMPLETATO'}
                     {#if ruolo === 'dipendente'}
                         <button
@@ -219,7 +194,6 @@
                             <Download size={14} /> Scarica Attestato
                         </button>
                     {/if}
-
                 {:else if corso.stato === 'DA_INIZIARE'}
                     {#if ruolo === 'azienda' && onAnnullaIscrizione}
                         <button onclick={onAnnullaIscrizione} class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-[10px] font-black uppercase text-red-600 transition-all hover:bg-red-100 hover:border-red-200">

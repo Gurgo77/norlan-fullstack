@@ -62,8 +62,18 @@ export class DocumentoService {
 		await httpClient.patch(`${this.basePath}/${id}/richiedi-firma`);
 	}
 
-	static async approvaDocumento(id: number | string): Promise<void> {
-		await httpClient.patch(`${this.basePath}/${id}/approva`);
+	// Approva il documento e, opzionalmente, invia la versione controfirmata
+	static async approvaDocumento(id: number | string, file?: File): Promise<void> {
+		if (file) {
+			const formData = new FormData();
+			formData.append('file', file);
+
+			await httpClient.patch(`${this.basePath}/${id}/approva`, formData, {
+				headers: { 'Content-Type': 'multipart/form-data' }
+			});
+		} else {
+			await httpClient.patch(`${this.basePath}/${id}/approva`);
+		}
 	}
 
 	static async archiviaDocumento(id: number | string): Promise<void> {

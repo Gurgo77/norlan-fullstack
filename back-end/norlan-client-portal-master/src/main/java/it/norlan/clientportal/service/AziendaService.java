@@ -2,8 +2,15 @@ package it.norlan.clientportal.service;
 
 import it.norlan.clientportal.dto.AziendaDTO;
 import it.norlan.clientportal.model.Azienda;
+import it.norlan.clientportal.model.Dipendente;
+import it.norlan.clientportal.model.Documento;
+import it.norlan.clientportal.model.RichiestaRinnovoDocumento;
 import it.norlan.clientportal.repository.AziendaRepository;
 import it.norlan.clientportal.repository.DipendenteRepository;
+import it.norlan.clientportal.repository.DocumentoRepository;
+import it.norlan.clientportal.repository.MessaggioRepository;
+import it.norlan.clientportal.repository.NotificaRepository;
+import it.norlan.clientportal.repository.RichiestaRinnovoDocumentoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,10 +21,8 @@ import java.util.Optional;
 
 /**
  * Livello di servizio (Business Logic) per l'entità Azienda.
- * Coordina l'anagrafica aziendale gestendo operazioni complesse come l'eliminazione a cascata (Cascade Delete)
- * dei dipendenti associati e l'integrazione con i moduli di notifica e auditing di sistema.
+ * Gestisce l'anagrafica aziendale e l'eliminazione a cascata totale e sicura di ogni dipendenza.
  */
-
 @Service
 public class AziendaService {
 
@@ -31,7 +36,22 @@ public class AziendaService {
     private DipendenteRepository dipendenteRepository;
 
     @Autowired
-    private NotificaService notificaService;
+    private DipendenteService dipendenteService; // Per sfruttare la pulizia profonda del dipendente
+
+    @Autowired
+    private DocumentoRepository documentoRepository;
+
+    @Autowired
+    private DocumentoService documentoService; // Per eliminare i file fisici e liberare i corsi
+
+    @Autowired
+    private RichiestaRinnovoDocumentoRepository rinnovoRepository; // Per ripulire le richieste di rinnovo dei documenti
+
+    @Autowired
+    private NotificaRepository notificaRepository;
+
+    @Autowired
+    private MessaggioRepository messaggioRepository;
 
     @Autowired
     private LogSincronizzazioneService logService;
@@ -46,11 +66,9 @@ public class AziendaService {
         return aziendaRepository.findById(id);
     }
 
-    // Persiste l'anagrafica aziendale a database e innesca la notifica in-app di benvenuto in caso di nuova registrazione
     @Transactional
     public Azienda salvaAzienda(Azienda azienda) {
         boolean isNuovaAzienda = (azienda.getIdUtente() == null);
-
         Azienda salvata = aziendaRepository.save(azienda);
 
         if (isNuovaAzienda) {
@@ -61,28 +79,62 @@ public class AziendaService {
                     Notifica.CanaleNotifica.IN_APP
             );
         }
-
         return salvata;
     }
 
-    // Gestisce l'eliminazione a cascata per mantenere l'integrità referenziale: rimuove massivamente tutti i dipendenti prima dell'azienda
+    @Autowired
+    private NotificaService notificaService;
+
+    /**
+     * Elimina l'azienda eseguendo un hard clean-up a cascata di tutte le entità collegate:
+     * - Dipendenti (e i loro DPI, feedback, iscrizioni corsi, messaggi e notifiche personali)
+     * - Documenti Aziendali e relativi pacchetti Attestati Corso
+     * - Richieste di Rinnovo Documenti
+     * - Notifiche e Chat dell'Azienda stessa
+     */
     @Transactional
     public void eliminaAzienda(Integer id) {
         Azienda azienda = aziendaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Errore: Azienda non trovata con ID " + id));
         String ragioneSociale = azienda.getRagioneSociale();
 
-        dipendenteRepository.deleteByAziendaId(id);
+        // Recuperiamo tutti i dipendenti dell'azienda
+        List<Dipendente> dipendenti = dipendenteRepository.findByAziendaIdUtente(id);
+        for (Dipendente dip : dipendenti) {
+            dipendenteService.eliminaDipendente(dip.getIdUtente());
+        }
+
+        List<Documento> documenti = documentoRepository.findByAziendaIdUtente(id);
+
+        // Dobbiamo svuotare le richieste di rinnovo collegate ai documenti di questa azienda per evitare blocchi FK
+        for (Documento doc : documenti) {
+            List<RichiestaRinnovoDocumento> rinnovi = rinnovoRepository.findAll().stream()
+                    .filter(r -> r.getDocumento().getIdDocumento().equals(doc.getIdDocumento()))
+                    .toList();
+            rinnovoRepository.deleteAll(rinnovi);
+        }
+
+        for (Documento doc : documenti) {
+            documentoService.eliminaDocumento(doc.getIdDocumento());
+        }
+
+        notificaRepository.deleteAll(notificaRepository.findByDestinatarioIdUtenteOrderByDataInvioDesc(id));
+
+        messaggioRepository.deleteAll(messaggioRepository.findAll().stream()
+                .filter(m -> m.getMittente().getIdUtente().equals(id) || m.getDestinatario().getIdUtente().equals(id))
+                .toList());
+
         aziendaRepository.deleteById(id);
 
+        // Registro l'evento nell'auditing di sistema
         logService.registraEvento(
                 "Eliminazione anagrafica: AZIENDA",
                 true,
-                "Cancellata azienda ID: " + id + " (" + ragioneSociale + ")"
+                "Cancellazione totale completata per '" + ragioneSociale + "' (ID: " + id + "). " +
+                        "Rimossi a cascata: dipendenti, notifiche, attestati, documenti e storici chat."
         );
     }
 
-    // Mappa l'entità nel DTO calcolando dinamicamente il flag "hasDipendenti" tramite un'interrogazione ottimizzata al repository
     public AziendaDTO convertToDTO(Azienda azienda) {
         AziendaDTO dto = new AziendaDTO();
         dto.setIdUtente(azienda.getIdUtente());
@@ -96,7 +148,7 @@ public class AziendaService {
         dto.setTelefono(azienda.getTelefono());
         dto.setCellulare(azienda.getCellulare());
         dto.setReferenteAziendale(azienda.getReferenteAziendale());
-        dto.setHasDipendenti(dipendenteRepository.existsByAziendaIdUtente(azienda.getIdUtente())); // <--- AGGIUNTO
+        dto.setHasDipendenti(dipendenteRepository.existsByAziendaIdUtente(azienda.getIdUtente()));
 
         return dto;
     }
