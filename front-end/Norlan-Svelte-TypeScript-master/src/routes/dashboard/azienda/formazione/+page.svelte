@@ -104,26 +104,63 @@ e gestire il flusso burocratico di controfirma e consegna degli attestati uffici
 		showModalIscrizione = true;
 	}
 
-	// Registra un nuovo utente a un corso e aggiorna reattivamente il DOM
 	async function confermaIscrizione() {
 		if (idDipendenteSelezionato === '' || idCorsoSelezionato === '') return;
+
+		// Guard clause anti-doppio click
+		if (isEnrolling) return;
 		isEnrolling = true;
+
 		try {
 			await FormazioneService.iscriviUtente(idCorsoSelezionato as number, idDipendenteSelezionato as number);
-			const corsoScelto = corsiDisponibili.find(c => c.idCorso === idCorsoSelezionato);
-			const dipendenteScelto = dipendenti.find(d => d.id === idDipendenteSelezionato);
-			if (corsoScelto && dipendenteScelto) {
-				dipendenteScelto.corsi = [...dipendenteScelto.corsi, { idCorso: corsoScelto.idCorso, titolo: corsoScelto.titolo.toUpperCase(), dataSvolgimento: formattaData(corsoScelto.dataOrario), stato: 'DA_INIZIARE' }];
-				dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso);
-				dipendenti = [...dipendenti];
+			applicaSuccessoIscrizione();
+
+		} catch (error: any) {
+			console.warn("Rilevata caduta di connessione. Avvio verifica di sicurezza in background...");
+
+			try {
+				const iscrizioniAttuali = await FormazioneService.getIscrizioniUtente(idDipendenteSelezionato as number);
+				const salvataggioRiuscito = iscrizioniAttuali.some(i => i.idCorso === idCorsoSelezionato);
+
+				if (salvataggioRiuscito) {
+					console.log("Il dato era stato salvato dal backend! Ignoro l'errore fittizio.");
+					applicaSuccessoIscrizione();
+					return; // Usciamo senza mostrare nessun errore all'utente
+				}
+			} catch {
+				// Ignoriamo errori secondari qui
 			}
-			showToast("Iscrizione completata con successo!", "success");
-			showModalIscrizione = false;
-		} catch {
-			showToast("Impossibile iscrivere il dipendente.", "error");
+
+			// Se arriva fin qui in basso, significa che il backend NON ha salvato. È un vero errore.
+			if (error?.status === 409 || error?.message?.includes("409")) {
+				showToast("Il dipendente risulta già iscritto a questo corso.");
+			} else {
+				showToast("Impossibile iscrivere il dipendente.", "error");
+			}
+
 		} finally {
 			isEnrolling = false;
 		}
+	}
+
+	// Funzione helper per evitare di scrivere codice duplicato
+	function applicaSuccessoIscrizione() {
+		const corsoScelto = corsiDisponibili.find(c => c.idCorso === idCorsoSelezionato);
+		const dipendenteScelto = dipendenti.find(d => d.id === idDipendenteSelezionato);
+
+		if (corsoScelto && dipendenteScelto) {
+			dipendenteScelto.corsi = [...dipendenteScelto.corsi, {
+				idCorso: corsoScelto.idCorso,
+				titolo: corsoScelto.titolo.toUpperCase(),
+				dataSvolgimento: formattaData(corsoScelto.dataOrario),
+				stato: 'DA_INIZIARE'
+			}];
+			dipendenteScelto.tuttiIdCorsiIscritto.push(corsoScelto.idCorso);
+			dipendenti = [...dipendenti];
+		}
+
+		showToast("Iscrizione completata con successo!", "success");
+		setTimeout(() => { showModalIscrizione = false; }, 150);
 	}
 
 	function preparaRimuoviIscrizione(idDip: number, idCorso: number, nome: string) {
