@@ -2,3 +2,6 @@
 
 .DS_Store
 **/.DS_Store
+
+# --- Secrets (NEVER commit) ---
+back-end/norlan-client-portal-master/src/main/resources/application.properties
